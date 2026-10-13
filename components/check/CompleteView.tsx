@@ -9,6 +9,7 @@ import type { SyncState } from "@/lib/client/useCheckSession";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Banner, Btn, Chip, Frame, TabletIcon, Tick, Tile, Warn } from "../ui";
 import { ClipDialog } from "./Dialogs";
+import { LodgeButton } from "./MainView";
 
 export function savedChip(sync: SyncState): string {
   if (sync.pending || sync.saving) return sync.offline ? "Saved on this device" : "Saving…";
@@ -17,12 +18,13 @@ export function savedChip(sync: SyncState): string {
 }
 
 export function CompleteView({
-  state, now, sync, onOpenHold,
+  state, now, sync, onOpenHold, onLodge,
 }: {
   state: CheckState;
   now: number;
   sync: SyncState;
   onOpenHold: (did: string) => void;
+  onLodge: () => void;
 }) {
   const [clip, setClip] = useState<string | null>(null);
   const conf = conformance(state) ?? 0;
@@ -135,7 +137,9 @@ export function CompleteView({
               <span className="text-base text-soft">Enter any remaining readings, then sign off. FactoryLens AI does not release the cell.</span>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <LodgeButton onClick={onLodge} />
+            <span className="flex-1" />
             <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
               Start a new check
             </Link>
