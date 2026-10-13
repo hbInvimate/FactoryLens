@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
