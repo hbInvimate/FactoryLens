@@ -50,13 +50,22 @@ export function PausedOverlay({ onResume, reason }: { onResume: () => void; reas
 const LEAVE_REASONS = ["Break", "End of shift", "Called away", "Wrong part or session", "Other"];
 
 /** Leaving pauses the check and keeps it. It can be resumed from the start page or the history. */
-export function LeaveDialog({ onStay, onLeave }: { onStay: () => void; onLeave: (reason: string) => void }) {
+export function LeaveDialog({
+  onStay, onLeave, body, confirm = "Leave the check",
+}: {
+  onStay: () => void;
+  onLeave: (reason: string) => void;
+  body?: string;
+  confirm?: string;
+}) {
   const [pick, setPick] = useState<string | null>(null);
   const [text, setText] = useState("");
   const reason = pick === "Other" ? text.trim() : pick;
   return (
     <Modal title="Leave this check?" onClose={onStay}>
-      <p className="text-[19px] text-soft">The check is paused and kept on this device and the server. You can resume it later. Why are you leaving?</p>
+      <p className="text-[19px] text-soft">
+        {body ?? "The check is paused and kept on this device and the server. You can resume it later."} Why are you leaving?
+      </p>
       <div className="flex flex-wrap gap-2.5">
         {LEAVE_REASONS.map((r) => (
           <button
@@ -85,7 +94,7 @@ export function LeaveDialog({ onStay, onLeave }: { onStay: () => void; onLeave: 
       <div className="flex justify-end gap-3">
         <Btn onClick={onStay}>Stay</Btn>
         <Btn variant="primary" disabled={!reason} onClick={() => reason && onLeave(reason)}>
-          Leave the check
+          {confirm}
         </Btn>
       </div>
     </Modal>

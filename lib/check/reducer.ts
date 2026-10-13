@@ -34,6 +34,7 @@ function initial(startedAt: number): CheckState {
     paused: false,
     pauses: [],
     leaves: [],
+    left: null,
     stepEvents: [],
     status: "running",
     raisers: new Set(),
@@ -113,9 +114,15 @@ function findDisc(s: CheckState, did: string): Discrepancy | undefined {
 }
 
 function apply(s: CheckState, a: Action) {
-  if (s.status === "part_held") return;
+  if (s.status === "part_held" || s.left) return;
   if (s.paused && a.type !== "resume" && a.type !== "leave") return;
   if (s.steps[0].startedAt === null) s.steps[0].startedAt = s.startedAt;
+
+  // A finished check cannot be paused or left; leaving its screen just records the reason.
+  if ((a.type === "pause" || a.type === "leave") && s.current > STEP_COUNT) {
+    if (a.type === "leave") s.leaves.push({ at: a.at, reason: a.reason.slice(0, 500) });
+    return;
+  }
 
   switch (a.type) {
     case "pause":
@@ -130,6 +137,14 @@ function apply(s: CheckState, a: Action) {
     }
     case "leave":
       s.leaves.push({ at: a.at, reason: a.reason.slice(0, 500) });
+      if (a.end && s.current <= STEP_COUNT) {
+        s.left = { at: a.at, reason: a.reason.slice(0, 500) };
+        s.endedAt = a.at;
+        const p = s.pauses[s.pauses.length - 1];
+        if (p && p.to === null) p.to = a.at;
+        s.paused = false;
+        return;
+      }
       if (!s.paused) {
         s.paused = true;
         s.pauses.push({ from: a.at, to: null });
@@ -317,6 +332,7 @@ function deriveStatus(s: CheckState): CheckState["status"] {
   const stops = s.discrepancies.filter((d) => d.effect === "stop" && d.status !== "fixed_on_spot");
   if (stops.some((d) => d.status === "open" || d.status === "escalated")) return "stopped";
   if (stops.length) return "part_held";
+  if (s.left) return "left";
   if (s.paused) return "paused";
   if (openHolds(s).length) return "on_hold";
   if (s.current > STEP_COUNT) return "complete";

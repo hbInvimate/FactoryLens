@@ -1,7 +1,7 @@
 import type { IssueEffect, IssueKind } from "@/lib/issues";
 import type { HandoffItem, TrialOutcome } from "@/lib/procedure";
 
-export type SessionStatus = "running" | "paused" | "on_hold" | "stopped" | "complete" | "part_held";
+export type SessionStatus = "running" | "paused" | "on_hold" | "stopped" | "complete" | "part_held" | "left";
 
 export const STATUS_LABEL: Record<SessionStatus, string> = {
   running: "Running",
@@ -10,7 +10,11 @@ export const STATUS_LABEL: Record<SessionStatus, string> = {
   stopped: "Stopped",
   complete: "Complete",
   part_held: "Part held, not checked",
+  left: "Left, not finished",
 };
+
+/** Sessions that are over: nothing more happens in them, and they are never "in progress". */
+export const ENDED_STATUSES: SessionStatus[] = ["complete", "part_held", "left"];
 
 export interface SessionMeta {
   id: string;
@@ -35,7 +39,8 @@ export type ActionBody =
   | { type: "undo"; target: string }
   | { type: "pause" }
   | { type: "resume" }
-  | { type: "leave"; reason: string }
+  /** end: she left this session for good to start a new one. Otherwise leaving pauses it. */
+  | { type: "leave"; reason: string; end?: boolean }
   | { type: "fixed_on_spot"; did: string; step: number; issue: string; done: string[] }
   | { type: "lodge"; did: string; step: number; issue: string; tried: string[] }
   | { type: "call_marked"; did: string; who: string }
@@ -159,6 +164,8 @@ export interface CheckState {
   paused: boolean;
   pauses: { from: number; to: number | null }[];
   leaves: { at: number; reason: string }[];
+  /** Set when she left the session for good. */
+  left: { at: number; reason: string } | null;
   stepEvents: StepEvent[];
   status: SessionStatus;
   /** Actions that raised a deviation. They cannot be undone. */

@@ -104,6 +104,73 @@ test("Pause and Resume; Leave asks for a reason and keeps the session", async ({
   await expect(page.locator("li[aria-current=step]")).toContainText("Lower the part onto pads P1 to P3");
 });
 
+async function statusOf(request: import("@playwright/test").APIRequestContext, id: string) {
+  const { sessions } = await (await request.get("/api/sessions")).json();
+  return (sessions as { id: string; status: string }[]).find((s) => s.id === id)?.status;
+}
+
+test("After a completed check, a new check starts at once and nothing shows as in progress", async ({ page, request }) => {
+  const first = await startCheck(page);
+  await doSteps(page, 1, 12);
+  await expect(page.getByRole("heading", { name: "Check complete" })).toBeVisible();
+  await waitSaved(page);
+
+  // Back to the start page by the in-app link (the start page was visited before).
+  await page.getByRole("link", { name: "Start a new check" }).click();
+  await page.waitForURL(/\/$/);
+  await expect(page.getByText("A check is in progress on this device")).toHaveCount(0);
+  const start = page.getByRole("button", { name: "Start the check" });
+  await expect(start).toBeEnabled();
+  await start.click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
+  const second = page.url().split("/check/")[1];
+  expect(second).not.toBe(first);
+  await expect(page.locator("li[aria-current=step]")).toContainText("Put on gloves and safety glasses");
+  expect(await statusOf(request, first)).toBe("complete");
+
+  // Leave on a finished check must not turn it back into one in progress.
+  await doSteps(page, 1, 12);
+  await page.getByRole("button", { name: "Leave", exact: true }).click();
+  await page.getByRole("button", { name: "End of shift" }).click();
+  await page.getByRole("button", { name: "Leave the check" }).click();
+  await page.waitForURL(/\/$/);
+  await expect(page.getByText("A check is in progress on this device")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start the check" })).toBeEnabled();
+  await waitSavedFor(request, second, "complete");
+});
+
+async function waitSavedFor(request: import("@playwright/test").APIRequestContext, id: string, status: string) {
+  await expect.poll(() => statusOf(request, id), { timeout: 15_000 }).toBe(status);
+}
+
+test("A check still running: resume it, or leave it with a reason and start a new one", async ({ page, request }) => {
+  const old = await startCheck(page);
+  await doSteps(page, 1, 2);
+  await waitSaved(page);
+
+  await page.goto("/");
+  await expect(page.getByText("A check is in progress on this device")).toBeVisible();
+  await expect(page.getByText("Step 3 of 12.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start the check" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Resume the check" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Leave this check and start a new one" }).click();
+  const confirm = page.getByRole("button", { name: "Leave it and start a new check" });
+  await expect(confirm).toBeDisabled();
+  await page.getByRole("button", { name: "Wrong part or session" }).click();
+  await confirm.click();
+
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
+  expect(page.url()).not.toContain(old);
+  await expect(page.locator("li[aria-current=step]")).toContainText("Put on gloves and safety glasses");
+  await waitSavedFor(request, old, "left");
+
+  const journal = await (await request.get(`/api/sessions/${old}`)).json();
+  expect(journal.actions.some((a: { type: string; end?: boolean; reason?: string }) => a.type === "leave" && a.end && a.reason === "Wrong part or session")).toBeTruthy();
+  await page.goto(`/check/${old}`);
+  await expect(page.getByRole("heading", { name: "This check was left, not finished" })).toBeVisible();
+});
+
 test("Touch targets are at least 56 px", async ({ page }) => {
   await startCheck(page);
   await doSteps(page, 1, 6);

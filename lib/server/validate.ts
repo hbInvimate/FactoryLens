@@ -69,7 +69,7 @@ const FIELDS: Record<Action["type"], Record<string, (v: unknown) => boolean>> = 
   undo: { target: (v) => isStr(v, 64) },
   pause: {},
   resume: {},
-  leave: { reason: (v) => isStr(v, 500) },
+  leave: { reason: (v) => isStr(v, 500), end: (v) => v === undefined || typeof v === "boolean" },
   fixed_on_spot: { did: (v) => isStr(v, 64), step: isInt, issue: (v) => isStr(v, 200), done: isStrList },
   lodge: { did: (v) => isStr(v, 64), step: isInt, issue: (v) => isStr(v, 200), tried: isStrList },
   call_marked: { did: (v) => isStr(v, 64), who: (v) => isStr(v, 100) },

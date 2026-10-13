@@ -3,8 +3,8 @@
 // locally first, and sends queued actions to the server with automatic retry.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { reduce } from "@/lib/check/reducer";
-import type { Action, ActionBody, CheckState, SessionMeta } from "@/lib/check/types";
-import { readLocal, setActiveId, uid, writeLocal, type LocalSession } from "./local";
+import { ENDED_STATUSES, type Action, type ActionBody, type CheckState, type SessionMeta } from "@/lib/check/types";
+import { getActiveId, readLocal, setActiveId, uid, writeLocal, type LocalSession } from "./local";
 
 export type LoadState = "loading" | "ready" | "missing" | "error";
 
@@ -195,7 +195,39 @@ export function useCheckSession(id: string) {
     [rec],
   );
 
+  // A session that is over is never "in progress" on this device.
+  const ended = !!state && ENDED_STATUSES.includes(state.status);
+  const actionCount = rec?.actions.length ?? 0;
+  useEffect(() => {
+    if (ended && getActiveId() === id) setActiveId(null);
+  }, [ended, id, actionCount]);
+
   return { meta: rec?.meta ?? null, actions: rec?.actions ?? [], state, load, loadError, sync, dispatch, retry };
+}
+
+/**
+ * Leaves a session for good (with her reason) so a new one can start. The action is kept
+ * locally first, then sent; if the send fails it stays queued with that session.
+ */
+export async function leaveSessionForGood(id: string, reason: string): Promise<void> {
+  const cur = readLocal(id);
+  if (getActiveId() === id) setActiveId(null);
+  if (!cur) return;
+  const seq = cur.actions.reduce((m, a) => Math.max(m, a.seq), 0) + 1;
+  const action = { type: "leave", reason, end: true, id: uid(), seq, at: Date.now() } as Action;
+  const next: LocalSession = { ...cur, actions: [...cur.actions, action], pending: [...cur.pending, action.id] };
+  writeLocal(next);
+  try {
+    const pendingSet = new Set(next.pending);
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/actions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ meta: next.meta, actions: next.actions.filter((a) => pendingSet.has(a.id)).slice(0, BATCH) }),
+    });
+    if (res.ok) writeLocal({ ...next, created: true, pending: next.pending.slice(BATCH) });
+  } catch {
+    // Offline: it stays queued in the local copy of that session.
+  }
 }
 
 /** Creates a session in the browser. It is saved to the server by the check page. */

@@ -8,6 +8,7 @@ const TONE: Record<SessionStatus, "green" | "amber" | "red" | "blue" | "gray"> =
   stopped: "red",
   complete: "green",
   part_held: "red",
+  left: "gray",
 };
 
 export function StatusChip({ status }: { status: SessionStatus }) {

@@ -112,6 +112,16 @@ export function CheckApp({ id }: { id: string }) {
     );
   }
 
+  if (state.left) {
+    return (
+      <PageCenter title="This check was left, not finished" body={`Reason: ${state.left.reason}. A new check was started instead.`}>
+        <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+          Start a check
+        </Link>
+      </PageCenter>
+    );
+  }
+
   const act = (body: ActionBody) => dispatch(body);
   const dev = openDeviation(state);
   const stop = activeStop(state);

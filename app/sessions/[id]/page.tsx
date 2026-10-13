@@ -7,6 +7,7 @@ import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
 import { Chip, KV, Panel, Tick, Ring, Warn } from "@/components/ui";
 import type { Projection } from "@/lib/check/project";
+import { ENDED_STATUSES } from "@/lib/check/types";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
 import { STEPS, stepLabel } from "@/lib/sop";
@@ -49,7 +50,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
   }
   if (!p) notFound();
   const s = p.session;
-  const open = s.status !== "complete" && s.status !== "part_held";
+  const open = !ENDED_STATUSES.includes(s.status);
   const deviations = p.stepEvents.filter((e) => e.kind !== "done");
   const pointsByStep = (n: number) => p!.points.filter((x) => x.step === n);
 

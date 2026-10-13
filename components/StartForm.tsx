@@ -1,30 +1,54 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { reduce } from "@/lib/check/reducer";
-import { STATUS_LABEL, type SessionMeta, type SessionStatus } from "@/lib/check/types";
-import { getActiveId, readLocal } from "@/lib/client/local";
-import { createLocalSession } from "@/lib/client/useCheckSession";
+import { ENDED_STATUSES, STATUS_LABEL, type SessionStatus } from "@/lib/check/types";
+import { getActiveId, readLocal, setActiveId } from "@/lib/client/local";
+import { createLocalSession, leaveSessionForGood } from "@/lib/client/useCheckSession";
 import { SESSION_DEFAULTS, STEP_COUNT } from "@/lib/sop";
+import { LeaveDialog } from "./check/Dialogs";
 import { Btn, Chip, Panel } from "./ui";
 
 interface Active {
-  meta: SessionMeta;
+  id: string;
+  label: string;
   status: SessionStatus;
   step: number;
 }
 
-const noSubscribe = () => () => {};
+const START_TIMEOUT_MS = 8000;
 
-/** The check in progress on this device, if it has not ended. */
-function findActive(id: string | null): Active | null {
+/** "id|status|step|label" for the check in progress on this device, or "" if there is none. */
+function activeSnapshot(): string {
+  const id = getActiveId();
   const local = id ? readLocal(id) : null;
-  if (!local) return null;
+  if (!id || !local) return "";
   const s = reduce(local.actions, local.meta.createdAt);
-  if (s.status === "complete" || s.status === "part_held") return null;
-  return { meta: local.meta, status: s.status, step: Math.min(s.current, STEP_COUNT) };
+  if (ENDED_STATUSES.includes(s.status)) {
+    setActiveId(null); // a finished session is never "in progress"
+    return "";
+  }
+  return [id, s.status, Math.min(s.current, STEP_COUNT), `${local.meta.part} · ${local.meta.fixture} · ${local.meta.operator}`].join("|");
 }
+
+function parse(snap: string): Active | null {
+  if (!snap) return null;
+  const [id, status, step, label] = snap.split("|");
+  return { id, status: status as SessionStatus, step: Number(step), label };
+}
+
+// The page stays mounted (hidden) between visits; subscribing again when it is shown re-reads the snapshot.
+const listeners = new Set<() => void>();
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    listeners.delete(cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+const refresh = () => listeners.forEach((l) => l());
 
 function Field({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -48,15 +72,53 @@ export function StartForm() {
   const [fixture, setFixture] = useState(SESSION_DEFAULTS.fixture);
   const [operator, setOperator] = useState(SESSION_DEFAULTS.operator);
   const [starting, setStarting] = useState(false);
-  const activeId = useSyncExternalStore(noSubscribe, getActiveId, () => null);
-  const active = useMemo(() => findActive(activeId), [activeId]);
+  const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const active = parse(useSyncExternalStore(subscribe, activeSnapshot, () => ""));
 
-  const start = (e: FormEvent) => {
-    e.preventDefault();
-    if (!part.trim() || !fixture.trim() || !operator.trim()) return;
+  // When the page is hidden (we navigated to the check), forget the in-flight start.
+  useLayoutEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+      setStarting(false);
+      setError(null);
+      setLeaving(false);
+    },
+    [],
+  );
+
+  const open = (id: string) => {
     setStarting(true);
-    const id = createLocalSession({ part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), operator: operator.trim() });
+    setError(null);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      setStarting(false);
+      setError("The new check did not open. Check the connection, then tap Retry.");
+    }, START_TIMEOUT_MS);
     router.push(`/check/${id}`);
+  };
+
+  const startNew = () => {
+    if (!part.trim() || !fixture.trim() || !operator.trim()) return;
+    let id: string;
+    try {
+      id = createLocalSession({ part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), operator: operator.trim() });
+    } catch {
+      setError("This device could not store the new check. Tap Retry.");
+      return;
+    }
+    if (!readLocal(id)) {
+      setError("This device could not store the new check. Free some browser storage, then tap Retry.");
+      return;
+    }
+    refresh();
+    open(id);
+  };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    startNew();
   };
 
   return (
@@ -64,13 +126,14 @@ export function StartForm() {
       {active && (
         <Panel title="A check is in progress on this device">
           <p className="text-[18px] text-soft">
-            {active.meta.part} · {active.meta.fixture} · {active.meta.operator}. Step {active.step} of 12.
+            {active.label}. Step {active.step} of 12.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Chip tone={active.status === "running" ? "green" : "amber"}>{STATUS_LABEL[active.status]}</Chip>
             <span className="flex-1" />
+            <Btn onClick={() => setLeaving(true)}>Leave this check and start a new one</Btn>
             <Link
-              href={`/check/${active.meta.id}`}
+              href={`/check/${active.id}`}
               className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink"
             >
               Resume the check
@@ -80,17 +143,26 @@ export function StartForm() {
       )}
 
       <Panel title="Start a first-off check">
-        <form onSubmit={start} className="flex flex-col gap-5">
+        <form onSubmit={submit} className="flex flex-col gap-5">
           <p className="text-[17px] text-soft">
             SOP: {SESSION_DEFAULTS.sop}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
           <Field id="fixture" label="Cell and fixture" value={fixture} onChange={setFixture} />
           <Field id="operator" label="Quality Technician" value={operator} onChange={setOperator} />
+          {error && (
+            <div role="alert" className="flex flex-wrap items-center gap-4 rounded-xl border-2 border-red bg-red-bg px-4 py-2 text-[18px] text-red-soft">
+              <span className="flex-1">{error}</span>
+              <Btn variant="danger" onClick={startNew}>
+                Retry
+              </Btn>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Btn type="submit" variant="success" disabled={starting} className="px-10">
+            <Btn type="submit" variant="success" disabled={starting || !!active} className="px-10">
               {starting ? "Starting…" : "Start the check"}
             </Btn>
+            {active && <span className="text-base text-muted">Resume or leave the check in progress first.</span>}
             <span className="flex-1" />
             <Link href="/sessions" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
               Session history
@@ -98,6 +170,20 @@ export function StartForm() {
           </div>
         </form>
       </Panel>
+
+      {leaving && active && (
+        <LeaveDialog
+          body="The old check is marked as left, not finished, and kept in the history. A new check starts."
+          confirm="Leave it and start a new check"
+          onStay={() => setLeaving(false)}
+          onLeave={async (reason) => {
+            setLeaving(false);
+            await leaveSessionForGood(active.id, reason);
+            refresh();
+            startNew();
+          }}
+        />
+      )}
     </div>
   );
 }
