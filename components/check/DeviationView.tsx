@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { checkPointsDone, conformanceSoFar, elapsedMs, missingPoints, stepsDone } from "@/lib/check/reducer";
 import { deviationText } from "@/lib/check/text";
 import type { CheckState, Deviation } from "@/lib/check/types";
@@ -43,6 +44,12 @@ export function DeviationView({
   const fixedNow = missing.length === 0 && !run.needsRelease;
   const conf = conformanceSoFar(state);
   const ink = tone === "red" ? "text-red-soft" : "text-amber-soft";
+  const [nudge, setNudge] = useState(false);
+  const notYet = run.needsRelease
+    ? "Release all clamps first, then tap C1 to C6 in order."
+    : def.ordered
+      ? `Tap clamps C1 to C6 first. ${missing[0]} is next.`
+      : `Tap ${describePoints(missing)} first.`;
 
   const look = (p: string): PointLook => {
     if (run.wrong.includes(p)) return "wrong";
@@ -114,8 +121,10 @@ export function DeviationView({
                 Release all clamps
               </Btn>
             )}
-            <span className="text-[18px] text-soft">
-              {run.needsRelease
+            <span className={cx("text-[18px]", nudge && !fixedNow ? cx("font-semibold text-[22px]", ink) : "text-soft")} data-testid="dev-hint">
+              {nudge && !fixedNow
+                ? notYet
+                : run.needsRelease
                 ? "Release all the clamps, then close them again from C1."
                 : fixedNow
                   ? "Done. Tap Fixed, continue."
@@ -125,7 +134,7 @@ export function DeviationView({
             </span>
             <span className="flex-1" />
             <LodgeButton onClick={onLodge} />
-            <Btn variant="success" onClick={() => onFixed(dev.id)}>
+            <Btn variant="success" onClick={() => (fixedNow ? onFixed(dev.id) : setNudge(true))}>
               Fixed, continue
             </Btn>
           </div>

@@ -205,8 +205,7 @@ function apply(s: CheckState, a: Action) {
         completeStep(s, run, a.at);
         return;
       }
-      dev.failed += 1;
-      event(s, a, dev.step, dev.kind, dev.failed, `Still ${missingVerb(dev.step)}: ${describePoints(missing)}`);
+      // Not fixed yet. Pressing a button is not a new mistake: no attempt, no event.
       return;
     }
 

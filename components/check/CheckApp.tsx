@@ -196,6 +196,7 @@ export function CheckApp({ id }: { id: string }) {
   } else if (dev) {
     screen = (
       <DeviationView
+        key={dev.id}
         state={state}
         dev={dev}
         now={now}

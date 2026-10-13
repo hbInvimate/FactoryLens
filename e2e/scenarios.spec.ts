@@ -40,9 +40,10 @@ test("Scenario 2: holes H9 to H12 skipped, corrected, 11 of 12 is 92%", async ({
   await expect(page.getByText("Attempt 1")).toBeVisible();
   await expect(grid(page, 7, "your view").getByRole("button", { name: "H10", exact: true })).toHaveAttribute("data-look", "missing");
 
-  // Fixed, continue too early is a failed attempt.
+  // Fixed, continue too early only explains what is missing. It is not a new attempt.
   await page.getByRole("button", { name: "Fixed, continue" }).click();
-  await expect(page.getByText("Attempt 2")).toBeVisible();
+  await expect(page.getByTestId("dev-hint")).toHaveText("Tap holes H9 to H12 first.");
+  await expect(page.getByText("Attempt 1")).toBeVisible();
 
   await tap(page, 7, ["H9", "H10", "H11", "H12"], "your view");
   await expect(page.getByTestId("dev-status")).toHaveText("All 14 checked");
@@ -71,9 +72,19 @@ test("Scenario 3: clamp C4 before C3 is wrong order; three attempts offer a trai
   await expect(page.getByText("Step 5: close C3 before C4.")).toBeVisible();
   await expect(grid(page, 5, "your view").getByRole("button", { name: "C4", exact: true })).toHaveAttribute("data-look", "wrong");
 
-  // Two more failed attempts: the expert clip and Call a trainer appear.
+  // Pressing Fixed, continue is not a mistake.
   await page.getByRole("button", { name: "Fixed, continue" }).click();
-  await page.getByRole("button", { name: "Fixed, continue" }).click();
+  await expect(page.getByTestId("dev-hint")).toHaveText("Release all clamps first, then tap C1 to C6 in order.");
+  await expect(page.getByText("Attempt 1")).toBeVisible();
+  await expect(page.getByTestId("expert-clip")).toHaveCount(0);
+
+  // Two more real mistakes: the expert clip and Call a trainer appear.
+  await page.getByRole("button", { name: "Release all clamps" }).click();
+  await tap(page, 5, ["C2"], "your view");
+  await expect(page.getByText("Attempt 2")).toBeVisible();
+  await expect(page.getByTestId("expert-clip")).toHaveCount(0);
+  await page.getByRole("button", { name: "Release all clamps" }).click();
+  await tap(page, 5, ["C1", "C3"], "your view");
   await expect(page.getByText("Attempt 3")).toBeVisible();
   await expect(page.getByTestId("expert-clip")).toBeVisible();
   await page.getByRole("button", { name: "Call a trainer" }).click();
@@ -88,6 +99,34 @@ test("Scenario 3: clamp C4 before C3 is wrong order; three attempts offer a trai
   await expect(page.getByTestId("conformance")).toHaveText("92%");
   await expect(page.getByTestId("result-step-5")).toContainText("Corrected");
   await expect(page.getByText("Step 5: clamp C4 closed before C3")).toBeVisible();
+});
+
+test("Step 5 skipped: Fixed, continue returns to the SOP once C1 to C6 are closed in order", async ({ page }) => {
+  await startCheck(page);
+  await doSteps(page, 1, 4);
+  await page.getByRole("button", { name: "Next step", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Step 5 skipped" })).toBeVisible();
+  await expect(page.getByText("Clamps C1 to C6 not closed", { exact: true })).toBeVisible();
+
+  // Pressing too early changes nothing but the hint, however often.
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "Fixed, continue" }).click();
+  await expect(page.getByTestId("dev-hint")).toHaveText("Tap clamps C1 to C6 first. C1 is next.");
+  await expect(page.getByText("Attempt 1")).toBeVisible();
+  await expect(page.getByTestId("expert-clip")).toHaveCount(0);
+
+  await tap(page, 5, ["C1", "C2", "C3"], "your view");
+  await page.getByRole("button", { name: "Fixed, continue" }).click();
+  await expect(page.getByTestId("dev-hint")).toHaveText("Tap clamps C1 to C6 first. C4 is next.");
+  await tap(page, 5, ["C4", "C5", "C6"], "your view");
+  await page.getByRole("button", { name: "Fixed, continue" }).click();
+
+  // Back in the normal SOP view at step 6, step 5 corrected.
+  await expect(page.getByRole("heading", { name: "Step 5 skipped" })).toHaveCount(0);
+  await expect(page.locator("li[aria-current=step]")).toContainText("Close clamps fully, same order");
+  await doSteps(page, 6, 12);
+  await expect(page.getByTestId("result-step-5")).toContainText("Corrected");
+  await expect(page.getByTestId("conformance")).toHaveText("92%");
 });
 
 test("Scenario 4: a crack stops the check; handoff, clearance, part held with no score", async ({ page }) => {
