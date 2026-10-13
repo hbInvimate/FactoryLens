@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 import { reduce } from "@/lib/check/reducer";
 import { STATUS_LABEL, type SessionMeta, type SessionStatus } from "@/lib/check/types";
-import { getActiveId, readLocal, setActiveId } from "@/lib/client/local";
+import { getActiveId, readLocal } from "@/lib/client/local";
 import { createLocalSession } from "@/lib/client/useCheckSession";
 import { SESSION_DEFAULTS, STEP_COUNT } from "@/lib/sop";
 import { Btn, Chip, Panel } from "./ui";
@@ -13,6 +13,17 @@ interface Active {
   meta: SessionMeta;
   status: SessionStatus;
   step: number;
+}
+
+const noSubscribe = () => () => {};
+
+/** The check in progress on this device, if it has not ended. */
+function findActive(id: string | null): Active | null {
+  const local = id ? readLocal(id) : null;
+  if (!local) return null;
+  const s = reduce(local.actions, local.meta.createdAt);
+  if (s.status === "complete" || s.status === "part_held") return null;
+  return { meta: local.meta, status: s.status, step: Math.min(s.current, STEP_COUNT) };
 }
 
 function Field({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
@@ -36,20 +47,9 @@ export function StartForm() {
   const [part, setPart] = useState(SESSION_DEFAULTS.part);
   const [fixture, setFixture] = useState(SESSION_DEFAULTS.fixture);
   const [operator, setOperator] = useState(SESSION_DEFAULTS.operator);
-  const [active, setActive] = useState<Active | null>(null);
   const [starting, setStarting] = useState(false);
-
-  useEffect(() => {
-    const id = getActiveId();
-    const local = id ? readLocal(id) : null;
-    if (!local) return;
-    const s = reduce(local.actions, local.meta.createdAt);
-    if (s.status === "complete" || s.status === "part_held") {
-      setActiveId(null);
-      return;
-    }
-    setActive({ meta: local.meta, status: s.status, step: Math.min(s.current, STEP_COUNT) });
-  }, []);
+  const activeId = useSyncExternalStore(noSubscribe, getActiveId, () => null);
+  const active = useMemo(() => findActive(activeId), [activeId]);
 
   const start = (e: FormEvent) => {
     e.preventDefault();

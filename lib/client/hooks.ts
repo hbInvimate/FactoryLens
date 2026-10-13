@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /** Current time, ticking. Starts at 0 on the server so the first render matches. */
 export function useNow(intervalMs = 1000): number {
@@ -19,30 +19,37 @@ const VOICE_KEY = "fl.voice";
  * Guidance is spoken, never drawn on the lens. Off by default.
  * Uses the browser's text-to-speech; the glasses will play the same lines later.
  */
-export function useSpeech() {
-  const [enabled, setEnabled] = useState(false);
-  const [supported, setSupported] = useState(false);
+const voiceListeners = new Set<() => void>();
+let voiceMemory: boolean | null = null;
 
-  useEffect(() => {
-    setSupported("speechSynthesis" in window);
-    try {
-      setEnabled(window.localStorage.getItem(VOICE_KEY) === "on");
-    } catch {
-      // stays off
-    }
-  }, []);
+function readVoice(): boolean {
+  if (voiceMemory !== null) return voiceMemory;
+  try {
+    return window.localStorage.getItem(VOICE_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+function subscribeVoice(cb: () => void) {
+  voiceListeners.add(cb);
+  return () => voiceListeners.delete(cb);
+}
+
+export function useSpeech() {
+  const enabled = useSyncExternalStore(subscribeVoice, readVoice, () => false);
+  const supported = useSyncExternalStore(subscribeVoice, () => "speechSynthesis" in window, () => false);
 
   const toggle = useCallback(() => {
-    setEnabled((on) => {
-      const next = !on;
-      try {
-        window.localStorage.setItem(VOICE_KEY, next ? "on" : "off");
-      } catch {
-        // not remembered, still works
-      }
-      if (!next && "speechSynthesis" in window) window.speechSynthesis.cancel();
-      return next;
-    });
+    const next = !readVoice();
+    voiceMemory = next;
+    try {
+      window.localStorage.setItem(VOICE_KEY, next ? "on" : "off");
+    } catch {
+      // not remembered after a reload, still works now
+    }
+    if (!next && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    voiceListeners.forEach((l) => l());
   }, []);
 
   const say = useCallback(

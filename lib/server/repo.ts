@@ -41,7 +41,8 @@ export function getRepo(): Repo {
 // ---------- Postgres ----------
 
 function toPayload(a: Action): Record<string, unknown> {
-  const { id: _id, seq: _seq, at: _at, type: _type, ...rest } = a;
+  const rest: Record<string, unknown> = { ...a };
+  for (const k of ["id", "seq", "at", "type"]) delete rest[k];
   return rest;
 }
 
@@ -80,7 +81,8 @@ function pgRepo(db: Db): Repo {
       const [sessionRow] = await db.select().from(t.sessions).where(eq(t.sessions.id, meta.id));
       const rows = await db.select().from(t.sessionActions).where(eq(t.sessionActions.sessionId, meta.id));
       const p = project(metaFromRow(sessionRow), rows.map(fromRow), now.getTime());
-      const { id: _id, ...sessionUpdate } = p.session;
+      const sessionUpdate: Partial<SessionRow> = { ...p.session };
+      delete sessionUpdate.id;
 
       await db.batch([
         db.update(t.sessions).set(sessionUpdate).where(eq(t.sessions.id, meta.id)),
