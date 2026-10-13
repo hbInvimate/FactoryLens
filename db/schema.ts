@@ -99,6 +99,13 @@ export const discrepancies = pgTable(
     clearedBy: text("cleared_by"),
     clearReason: text("clear_reason"),
     closedAt: ts("closed_at"),
+    /** From docs/dashboard/issue_categories.json. */
+    category: text("category"),
+    /** The hold decision, recorded by the Quality Technician, made by others. Null for older rows. */
+    decisionOutcome: text("decision_outcome"),
+    decidedBy: text("decided_by"),
+    decisionReason: text("decision_reason"),
+    decidedAt: ts("decided_at"),
   },
   (t) => [index("discrepancies_session_idx").on(t.sessionId)],
 );

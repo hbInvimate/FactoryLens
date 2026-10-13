@@ -15,6 +15,13 @@
       "when": 1791895676030,
       "tag": "0001_stations",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791897312005,
+      "tag": "0002_hold_decisions",
+      "breakpoints": true
     }
   ]
 }

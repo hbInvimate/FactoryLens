@@ -1,5 +1,5 @@
 // Checks what the browser sends before it reaches the database.
-import { ACTION_TYPES, type Action, type SessionMeta } from "@/lib/check/types";
+import { ACTION_TYPES, DECIDERS, HOLD_OUTCOMES, type Action, type SessionMeta } from "@/lib/check/types";
 
 export const MAX_ACTIONS_PER_SAVE = 500;
 const ID = /^[A-Za-z0-9_-]{6,64}$/;
@@ -87,6 +87,13 @@ const FIELDS: Record<Action["type"], Record<string, (v: unknown) => boolean>> = 
   clear: {
     did: (v) => isStr(v, 64), who: (v) => isStr(v, 200), reason: (v) => isStr(v, 1000),
     outcome: (v) => v === "cleared" || v === "scrapped",
+  },
+  hold_decision: {
+    did: (v) => isStr(v, 64),
+    outcome: (v) => HOLD_OUTCOMES.some((o) => o.id === v),
+    by: (v) => (DECIDERS as readonly string[]).includes(v as string),
+    reason: (v) => typeof v === "string" && v.trim().length > 0 && v.length <= 1000,
+    decidedAt: (v) => typeof v === "number" && Number.isFinite(v),
   },
   proc_tick: { did: (v) => isStr(v, 64), key: (v) => isStr(v, 8) },
   proc_holes: { did: (v) => isStr(v, 64), holes: isStrList },

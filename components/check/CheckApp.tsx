@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { activeStop, openDeviation, openHolds, undoCandidate } from "@/lib/check/reducer";
 import { deviationText } from "@/lib/check/text";
-import type { ActionBody, CheckState } from "@/lib/check/types";
+import { STATUS_LABEL, type ActionBody, type CheckState } from "@/lib/check/types";
 import { useNow, useSpeech } from "@/lib/client/hooks";
 import { uid } from "@/lib/client/local";
 import { useCheckSession } from "@/lib/client/useCheckSession";
@@ -19,7 +19,7 @@ import { LodgeFlow } from "./LodgeFlow";
 import { MainView } from "./MainView";
 import { StepDetail } from "./StepDetail";
 import { Procedure } from "./Procedure";
-import { PartHeldView, StoppedView } from "./StopViews";
+import { EndedView, StoppedView, type DecisionInput } from "./StopViews";
 import { SyncNotice, TopBar } from "./TopBar";
 
 export type View =
@@ -40,14 +40,19 @@ function spoken(state: CheckState, view: View): [string, string] {
   }
   const stop = activeStop(state);
   if (stop) return [`stop:${stop.id}`, "The check is stopped. Keep the part clamped. Do not measure anything else."];
-  if (state.status === "part_held") return ["held", "Part held, not checked."];
+  if (isEnded(state)) return ["ended", `${STATUS_LABEL[state.status]}. The check is over.`];
   const dev = openDeviation(state);
   if (dev) return [`dev:${dev.id}:${dev.failed}`, deviationText(dev).correction];
   if (state.current <= 12) return [`step:${state.current}`, sopStep(state.current).spoken];
   return ["done", "Check complete. Sign off on the tablet."];
 }
 
-function HoldStrip({ state, onOpen }: { state: CheckState; onOpen: (did: string) => void }) {
+/** Ended on a hold decision, or (older sessions) as part held. Left-for-good sessions have their own page. */
+function isEnded(s: CheckState): boolean {
+  return s.final !== null || s.status === "part_held";
+}
+
+function HoldStrip({ state, onOpen, onDecide }: { state: CheckState; onOpen: (did: string) => void; onDecide: (did: string) => void }) {
   const holds = openHolds(state);
   if (!holds.length) return null;
   return (
@@ -58,9 +63,16 @@ function HoldStrip({ state, onOpen }: { state: CheckState; onOpen: (did: string)
       </span>
       <span className="flex-1" />
       {holds.map((h) => (
-        <button key={h.id} type="button" onClick={() => onOpen(h.id)} className="tap rounded-xl border-2 border-red px-4 text-[17px] font-semibold text-red-soft">
-          {h.proc ? "Hole check procedure" : "Open the hold"}
-        </button>
+        <span key={h.id} className="flex gap-2">
+          {h.proc && (
+            <button type="button" onClick={() => onOpen(h.id)} className="tap rounded-xl border-2 border-red px-4 text-[17px] font-semibold text-red-soft">
+              Hole check procedure
+            </button>
+          )}
+          <button type="button" onClick={() => onDecide(h.id)} className="tap rounded-xl border-2 border-red px-4 text-[17px] font-semibold text-red-soft">
+            Open the hold
+          </button>
+        </span>
       ))}
     </div>
   );
@@ -125,7 +137,11 @@ export function CheckApp({ id }: { id: string }) {
   const act = (body: ActionBody) => dispatch(body);
   const dev = openDeviation(state);
   const stop = activeStop(state);
-  const ended = state.status === "part_held";
+  const ended = isEnded(state);
+  const decide = (did: string) => (x: DecisionInput) => {
+    act({ type: "hold_decision", did, outcome: x.outcome, by: x.by, reason: x.reason, decidedAt: x.decidedAt });
+    main();
+  };
   const undo = now && !state.paused ? undoCandidate(actions, state, now) : null;
   const main = () => setView({ kind: "main" });
   const openHold = (did: string) => {
@@ -160,14 +176,11 @@ export function CheckApp({ id }: { id: string }) {
         onProcedure={() => setView({ kind: "procedure", did: lodged.id, screen: 0 })}
         onCalled={(who) => act({ type: "call_marked", did: lodged.id, who })}
         onTodo={(index) => act({ type: "todo_tick", did: lodged.id, index })}
-        onClear={(who, outcome, reason) => {
-          act({ type: "clear", did: lodged.id, who, outcome, reason });
-          main();
-        }}
+        onDecision={decide(lodged.id)}
       />
     );
   } else if (ended) {
-    screen = <PartHeldView state={state} meta={meta} sync={sync} />;
+    screen = <EndedView state={state} meta={meta} sync={sync} />;
   } else if (stop) {
     screen = (
       <StoppedView
@@ -176,7 +189,7 @@ export function CheckApp({ id }: { id: string }) {
         now={now}
         onItem={(item) => act({ type: "handoff", did: stop.id, item })}
         onCalled={(who) => act({ type: "call_marked", did: stop.id, who })}
-        onClear={(who, outcome, reason) => act({ type: "clear", did: stop.id, who, outcome, reason })}
+        onDecision={decide(stop.id)}
         onLodge={() => setView({ kind: "lodge" })}
       />
     );
@@ -258,7 +271,7 @@ export function CheckApp({ id }: { id: string }) {
         canPause={!ended && state.status !== "complete"}
       />
       <SyncNotice sync={sync} onRetry={retry} />
-      {showHoldStrip && <HoldStrip state={state} onOpen={openHold} />}
+      {showHoldStrip && <HoldStrip state={state} onOpen={openHold} onDecide={(did) => setView({ kind: "lodged", did })} />}
       {flash && (
         <div role="status" className="flex flex-none items-center gap-3 bg-green-bg px-8 py-2 text-[18px] text-green">
           {flash}

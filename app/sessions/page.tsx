@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
+import { conformanceLabel } from "@/lib/dashboard/metrics";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { NotConfiguredNotice, TableSkeleton } from "./shared";
 
@@ -58,7 +59,7 @@ async function SessionTable() {
               <td className="px-3">{r.checkPoints} / 50</td>
               <td className="px-3">{r.deviations}</td>
               <td className="px-3">{r.discrepancies}</td>
-              <td className="px-5">{r.conformance === null ? (r.status === "part_held" ? "No score" : "—") : `${r.conformance}%`}</td>
+              <td className="px-5">{conformanceLabel(r.status, r.conformance)}</td>
             </tr>
           ))}
         </tbody>

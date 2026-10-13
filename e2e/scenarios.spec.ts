@@ -1,6 +1,6 @@
 // Scenarios 1 to 6 in docs/scenarios.md.
 import { expect, test } from "@playwright/test";
-import { doStep, doSteps, grid, lodge, startCheck, tap, waitSaved } from "./helpers";
+import { decideHold, doStep, doSteps, grid, lodge, startCheck, tap, waitSaved } from "./helpers";
 
 test("Scenario 1: a clean check scores 100%, 50 of 50, no deviations, and is saved", async ({ page, request }) => {
   const id = await startCheck(page);
@@ -129,7 +129,7 @@ test("Step 5 skipped: Fixed, continue returns to the SOP once C1 to C6 are close
   await expect(page.getByTestId("conformance")).toHaveText("92%");
 });
 
-test("Scenario 4: a crack stops the check; handoff, clearance, part held with no score", async ({ page }) => {
+test("Scenario 4: a crack stops the check; handoff, decision, part scrapped with no score", async ({ page }) => {
   const id = await startCheck(page);
   await doSteps(page, 1, 2);
   await lodge(page, /Lower the part onto pads P1 to P3/, "Crack seen in the part");
@@ -141,8 +141,8 @@ test("Scenario 4: a crack stops the check; handoff, clearance, part held with no
   await page.getByRole("button", { name: "Mark Shift supervisor as called" }).click();
   await page.getByRole("button", { name: "Next: mark and hand off" }).click();
 
-  // Stopped: the steps are locked.
-  await expect(page.getByRole("heading", { name: "Check stopped" })).toBeVisible();
+  // On hold, stopped: the steps are locked.
+  await expect(page.getByRole("heading", { name: "On hold: the check is stopped" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Done, next step" })).toHaveCount(0);
   await page.getByRole("button", { name: /Mark the problem on the part/ }).click();
   await page.getByRole("button", { name: /Photograph it close up/ }).click();
@@ -151,20 +151,17 @@ test("Scenario 4: a crack stops the check; handoff, clearance, part held with no
   await page.getByRole("button", { name: /Hand over in person/ }).click();
   await expect(page.getByText(/^Waiting \d+:\d\d$/)).toBeVisible();
 
-  // Someone arrives and decides.
-  await page.getByRole("button", { name: "Quality", exact: true }).click();
-  await page.getByRole("button", { name: "Part scrapped" }).click();
-  await page.getByLabel("Why (their words)").fill("Crack confirmed at the upper end");
-  await page.getByRole("button", { name: "Record and end the check" }).click();
+  // Someone arrives and decides; the Quality Technician records it.
+  await decideHold(page, "Part scrapped", "Quality", "Crack confirmed at the upper end");
 
-  await expect(page.getByRole("heading", { name: "Part held, not checked" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Part scrapped" })).toBeVisible();
   await expect(page.getByTestId("held-outcome")).toHaveText("Part scrapped");
   await expect(page.getByText("2 photos").or(page.getByText("2", { exact: true })).first()).toBeVisible();
   await expect(page.getByTestId("conformance")).toHaveCount(0);
 
   await waitSaved(page);
   await page.goto(`/sessions/${id}`);
-  await expect(page.getByTestId("detail-conformance")).toHaveText("No score: part held, not checked");
+  await expect(page.getByTestId("detail-conformance")).toHaveText("Not scored: part scrapped");
   await expect(page.getByText("Closed by Quality: Crack confirmed at the upper end")).toBeVisible();
   await expect(page.getByText(/2 photos/)).toBeVisible();
 });
@@ -203,7 +200,7 @@ test("Scenario 5: fix it yourself, and a try that did not work becomes a lodged 
   await page.getByRole("button", { name: "Did not work: lodge and call" }).click();
   await expect(page.getByTestId("lodged-effect")).toHaveText("The check is stopped.");
   await page.getByRole("button", { name: "Next: mark and hand off" }).click();
-  await expect(page.getByRole("heading", { name: "Check stopped" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "On hold: the check is stopped" })).toBeVisible();
 });
 
 test("Scenario 6: holes H5 to H8 lodged, the check continues, the procedure runs to release", async ({ page }) => {

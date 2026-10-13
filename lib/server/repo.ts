@@ -1,6 +1,7 @@
 // Storage for sessions. Postgres (Neon, via Drizzle) in production.
 // FL_STORAGE=memory gives a throwaway in-process store for tests and demos without a database.
-import { and, asc, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { categoryOf } from "@/lib/issues";
 import { getDb, type Db } from "@/db/client";
 import * as t from "@/db/schema";
 import { activeSecondsOf, project, stationOf, type Projection, type SessionRow } from "@/lib/check/project";
@@ -22,6 +23,25 @@ export interface SaveResult {
 export interface DashRow extends SessionRow {
   /** Lodged discrepancies not yet cleared, released or scrapped. */
   openDiscrepancies: number;
+  /** The oldest open hold: why the session or the cell is on hold. */
+  hold: HoldInfo | null;
+}
+
+export interface HoldInfo {
+  step: number;
+  issue: string;
+  category: string;
+  effect: string;
+  who: string[];
+  startedAt: Date;
+}
+
+function oldestHold(rows: { step: number; issueLabel: string; category: string | null; effect: string; whoToCall: string[]; loggedAt: Date; status: string }[]): HoldInfo | null {
+  const open = rows.filter((r) => OPEN.includes(r.status)).sort((a, b) => a.loggedAt.getTime() - b.loggedAt.getTime());
+  const h = open[0];
+  return h
+    ? { step: h.step, issue: h.issueLabel, category: h.category ?? categoryOf(h.step, h.issueLabel), effect: h.effect, who: h.whoToCall, startedAt: h.loggedAt }
+    : null;
 }
 
 export interface Repo {
@@ -179,11 +199,11 @@ function pgRepo(db: Db): Repo {
       if (!rows.length) return [];
       const ids = rows.map((r) => r.id);
       const open = await db
-        .select({ sessionId: t.discrepancies.sessionId, n: count() })
+        .select()
         .from(t.discrepancies)
-        .where(and(inArray(t.discrepancies.sessionId, ids), inArray(t.discrepancies.status, OPEN)))
-        .groupBy(t.discrepancies.sessionId);
-      const openBy = new Map(open.map((o) => [o.sessionId, Number(o.n)]));
+        .where(and(inArray(t.discrepancies.sessionId, ids), inArray(t.discrepancies.status, OPEN)));
+      const openBy = new Map<string, typeof open>();
+      for (const o of open) openBy.set(o.sessionId, [...(openBy.get(o.sessionId) ?? []), o]);
 
       // Sessions saved before check time was stored: work it out from their log.
       const missing = rows.filter((r) => r.activeSeconds === null && r.conformance !== null);
@@ -199,7 +219,8 @@ function pgRepo(db: Db): Repo {
         ...r,
         status: r.status as SessionRow["status"],
         activeSeconds: r.activeSeconds ?? filled.get(r.id) ?? null,
-        openDiscrepancies: openBy.get(r.id) ?? 0,
+        openDiscrepancies: openBy.get(r.id)?.length ?? 0,
+        hold: oldestHold(openBy.get(r.id) ?? []),
       }));
     },
   };
@@ -268,6 +289,7 @@ function memoryRepo(): Repo {
         .map((p) => ({
           ...p.session,
           openDiscrepancies: p.discrepancies.filter((d) => OPEN.includes(d.status)).length,
+          hold: oldestHold(p.discrepancies),
         }));
     },
   };

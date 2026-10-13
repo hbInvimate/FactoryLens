@@ -27,7 +27,7 @@ export function CompleteView({
   onLodge: () => void;
 }) {
   const [clip, setClip] = useState<string | null>(null);
-  const conf = conformance(state) ?? 0;
+  const conf = conformance(state);
   const holds = openHolds(state);
   const lodged = state.discrepancies.filter((d) => d.status !== "fixed_on_spot");
 
@@ -63,9 +63,12 @@ export function CompleteView({
             <div className="flex flex-[1.2] flex-col gap-1 rounded-[14px] bg-panel px-[22px] py-[18px]">
               <span className="text-[17px] text-muted">Sequence conformance</span>
               <span className="text-[96px] font-semibold leading-none text-green" data-testid="conformance">
-                {conf}%
+                {conf === null ? "Not scored" : `${conf}%`}
               </span>
-              <span className="text-base text-muted">{correctFirstTime(state)} of 12 steps correct first time</span>
+              <span className="text-base text-muted">
+                {correctFirstTime(state)} of 12 steps correct first time
+                {conf === null && ". Scored once the hold is closed."}
+              </span>
             </div>
             <div className="grid flex-1 grid-cols-2 gap-3">
               <Tile label="Time" value={fmtClock(elapsedMs(state, now))} sub="Target: [set by plant]" />

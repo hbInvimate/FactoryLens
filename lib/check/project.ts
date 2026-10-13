@@ -1,4 +1,5 @@
 // Turns a session log into the rows stored in the summary tables.
+import { categoryOf } from "@/lib/issues";
 import { activeCheckMs, conformance, correctFirstTime, checkPointsDone, reduce, stepsDone } from "./reducer";
 import type { Action, CheckState, SessionMeta, SessionStatus, StepEventKind } from "./types";
 
@@ -61,6 +62,11 @@ export interface DiscrepancyRow {
   clearedBy: string | null;
   clearReason: string | null;
   closedAt: Date | null;
+  category: string | null;
+  decisionOutcome: string | null;
+  decidedBy: string | null;
+  decisionReason: string | null;
+  decidedAt: Date | null;
 }
 
 export interface HandoffRow {
@@ -92,9 +98,9 @@ export function endedAt(s: CheckState): number | null {
   return Math.max(...times);
 }
 
-/** Check time in seconds, only for a completed check (never for a held or left part). */
+/** Check time in seconds, only for a complete check (never for one on hold, held, scrapped or left). */
 export function activeSecondsOf(s: CheckState): number | null {
-  if (s.status !== "complete" && s.status !== "on_hold") return null;
+  if (s.status !== "complete") return null;
   const ms = activeCheckMs(s);
   return ms === null ? null : Math.round(ms / 1000);
 }
@@ -146,6 +152,11 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
         id: d.id, sessionId: sid, step: d.step, issueLabel: d.issue, kind: d.kind, whoToCall: d.who,
         effect: d.effect, status: d.status, loggedAt: new Date(d.loggedAt), whatWasDone: done.join("\n"),
         clearedBy: d.clearedBy, clearReason: d.clearReason, closedAt: d.closedAt === null ? null : new Date(d.closedAt),
+        category: categoryOf(d.step, d.issue),
+        decisionOutcome: d.decision?.outcome ?? null,
+        decidedBy: d.decision?.by ?? null,
+        decisionReason: d.decision?.reason ?? null,
+        decidedAt: d.decision ? new Date(d.decision.decidedAt) : null,
       };
     }),
     handoffs: lodged.map((d) => {

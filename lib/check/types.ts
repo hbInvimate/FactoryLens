@@ -1,20 +1,56 @@
 import type { IssueEffect, IssueKind } from "@/lib/issues";
 import type { HandoffItem, TrialOutcome } from "@/lib/procedure";
 
-export type SessionStatus = "running" | "paused" | "on_hold" | "stopped" | "complete" | "part_held" | "left";
+/**
+ * Live: running, paused, on_hold. Final: complete, scrapped, rework, concession, left.
+ * "stopped" and "part_held" are kept only for sessions saved before hold decisions existed.
+ */
+export type SessionStatus =
+  | "running" | "paused" | "on_hold" | "complete" | "scrapped" | "rework" | "concession" | "left"
+  | "stopped" | "part_held";
 
 export const STATUS_LABEL: Record<SessionStatus, string> = {
   running: "Running",
   paused: "Paused",
   on_hold: "On hold",
-  stopped: "Stopped",
   complete: "Complete",
+  scrapped: "Part scrapped",
+  rework: "Sent for rework or sorting",
+  concession: "Concession approved",
+  left: "Left",
+  stopped: "On hold",
   part_held: "Part held, not checked",
-  left: "Left, not finished",
 };
 
 /** Sessions that are over: nothing more happens in them, and they are never "in progress". */
-export const ENDED_STATUSES: SessionStatus[] = ["complete", "part_held", "left"];
+export const ENDED_STATUSES: SessionStatus[] = ["complete", "scrapped", "rework", "concession", "left", "part_held"];
+
+/** Ended without a completed check: never scored. */
+export const ENDED_WITHOUT_CHECK: SessionStatus[] = ["scrapped", "rework", "concession", "part_held"];
+
+export const ON_HOLD_STATUSES: SessionStatus[] = ["on_hold", "stopped"];
+
+/** What the people called decided about a hold. The Quality Technician only records it. */
+export type HoldOutcome = "cleared" | "scrapped" | "rework" | "concession" | "abandoned";
+export const HOLD_OUTCOMES: { id: HoldOutcome; label: string }[] = [
+  { id: "cleared", label: "Cleared, the check continues" },
+  { id: "scrapped", label: "Part scrapped" },
+  { id: "rework", label: "Sent for rework or sorting" },
+  { id: "concession", label: "Concession approved" },
+  { id: "abandoned", label: "Check abandoned" },
+];
+export const DECIDERS = ["Process engineer", "Shift supervisor", "Quality"] as const;
+export type Decider = (typeof DECIDERS)[number];
+
+export interface HoldDecision {
+  outcome: HoldOutcome;
+  by: string;
+  reason: string;
+  /** When the decision was made, as entered. */
+  decidedAt: number;
+  /** When it was recorded. */
+  recordedAt: number;
+}
 
 export interface SessionMeta {
   id: string;
@@ -48,7 +84,9 @@ export type ActionBody =
   | { type: "call_marked"; did: string; who: string }
   | { type: "todo_tick"; did: string; index: number }
   | { type: "handoff"; did: string; item: HandoffItem }
+  /** Older sessions only: a stop cleared or scrapped ended the session as "part held". */
   | { type: "clear"; did: string; who: string; outcome: ClearOutcome; reason: string }
+  | { type: "hold_decision"; did: string; outcome: HoldOutcome; by: string; reason: string; decidedAt: number }
   | { type: "proc_tick"; did: string; key: string }
   | { type: "proc_holes"; did: string; holes: string[] }
   | { type: "proc_parts"; did: string; count: number }
@@ -60,7 +98,7 @@ export type Action = ActionBody & { id: string; seq: number; at: number };
 
 export const ACTION_TYPES: ActionType[] = [
   "tap_point", "next_step", "release_clamps", "fix_continue", "call_trainer", "undo", "pause", "resume",
-  "leave", "fixed_on_spot", "lodge", "call_marked", "todo_tick", "handoff", "clear", "proc_tick",
+  "leave", "fixed_on_spot", "lodge", "call_marked", "todo_tick", "handoff", "clear", "hold_decision", "proc_tick",
   "proc_holes", "proc_parts", "trial_outcome", "proc_close",
 ];
 
@@ -104,7 +142,9 @@ export interface Deviation {
   trainerCalledAt: number | null;
 }
 
-export type DiscrepancyStatus = "fixed_on_spot" | "open" | "cleared" | "scrapped" | "escalated" | "released";
+export type DiscrepancyStatus =
+  | "fixed_on_spot" | "open" | "escalated" | "released"
+  | "cleared" | "scrapped" | "rework" | "concession" | "abandoned";
 
 export interface Handoff {
   marks: boolean;
@@ -139,6 +179,8 @@ export interface Discrepancy {
   handoff: Handoff;
   clearedBy: string | null;
   clearReason: string | null;
+  /** The decision recorded on the hold screen. Null for older sessions (see clearedBy). */
+  decision: HoldDecision | null;
   closedAt: number | null;
   /** Present when this issue follows the hole check procedure. */
   proc: ProcState | null;
@@ -168,6 +210,8 @@ export interface CheckState {
   leaves: { at: number; reason: string }[];
   /** Set when she left the session for good. */
   left: { at: number; reason: string } | null;
+  /** Set when a hold decision ended the session (scrapped, rework, concession, abandoned). */
+  final: { outcome: Exclude<HoldOutcome, "cleared">; at: number; did: string } | null;
   stepEvents: StepEvent[];
   status: SessionStatus;
   /** Actions that raised a deviation. They cannot be undone. */

@@ -2,6 +2,7 @@
 import { CONTINUE_TODO, findIssue, opensHoleProcedure, STOP_TODO } from "@/lib/issues";
 import { MAX_TRIALS, PROC_SECTIONS } from "@/lib/procedure";
 import { countsAsCheckPoint, describePoints, missingVerb, step as sopStep, STEP_COUNT, STEPS } from "@/lib/sop";
+import { HOLD_OUTCOMES } from "./types";
 import type {
   Action, ActionType, CheckState, Deviation, Discrepancy, StepEventKind, StepRun,
 } from "./types";
@@ -15,7 +16,8 @@ const UNDOABLE = new Set<ActionType>([
 
 const HOLES = new Set(STEPS[6].points);
 const G_KEYS = PROC_SECTIONS.find((s) => s.id === "G")!.items.map((i) => i.key);
-const PROC_KEYS = new Set(PROC_SECTIONS.flatMap((s) => s.items.map((i) => i.key)));
+const HOLD_OUTCOME_IDS = new Set<string>(HOLD_OUTCOMES.map((o) => o.id));
+const PROC_KEYS =new Set(PROC_SECTIONS.flatMap((s) => s.items.map((i) => i.key)));
 
 export function sortActions(actions: Action[]): Action[] {
   return [...actions].sort((a, b) => a.seq - b.seq || a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -35,6 +37,7 @@ function initial(startedAt: number): CheckState {
     pauses: [],
     leaves: [],
     left: null,
+    final: null,
     stepEvents: [],
     status: "running",
     raisers: new Set(),
@@ -46,8 +49,13 @@ export function openDeviation(s: CheckState): Deviation | null {
   return s.deviations.find((d) => d.fixedAt === null) ?? null;
 }
 
+/** The steps are locked while a stop hold is open, and once the session has ended without a check. */
 export function isLocked(s: CheckState): boolean {
-  return s.status === "stopped" || s.status === "part_held";
+  return activeStop(s) !== null || ended(s);
+}
+
+function ended(s: CheckState): boolean {
+  return s.final !== null || s.left !== null || s.status === "part_held";
 }
 
 function fold(actions: Action[], startedAt: number, undone: Set<string>): CheckState {
@@ -114,7 +122,7 @@ function findDisc(s: CheckState, did: string): Discrepancy | undefined {
 }
 
 function apply(s: CheckState, a: Action) {
-  if (s.status === "part_held" || s.left) return;
+  if (ended(s)) return;
   if (s.paused && a.type !== "resume" && a.type !== "leave") return;
   if (s.steps[0].startedAt === null) s.steps[0].startedAt = s.startedAt;
 
@@ -247,7 +255,7 @@ function apply(s: CheckState, a: Action) {
         called: [],
         todo: (issue.effect === "stop" ? STOP_TODO : CONTINUE_TODO).map(() => false),
         handoff: { marks: false, photos: 0, sheet: false, handedOverAt: null },
-        clearedBy: null, clearReason: null, closedAt: lodged ? null : a.at,
+        clearedBy: null, clearReason: null, decision: null, closedAt: lodged ? null : a.at,
         proc: lodged && opensHoleProcedure(a.step, issue.label)
           ? { ticks: {}, holes: [], parts: 0, trials: [], trialStartedAt: null, passedAt: null }
           : null,
@@ -286,6 +294,27 @@ function apply(s: CheckState, a: Action) {
       d.clearReason = a.reason.slice(0, 1000);
       d.closedAt = a.at;
       if (d.effect === "stop") s.endedAt = a.at;
+      return;
+    }
+    case "hold_decision": {
+      // Recorded by the Quality Technician; decided by the people called. The app never decides.
+      const d = findDisc(s, a.did);
+      if (!d || (d.status !== "open" && d.status !== "escalated")) return;
+      if (!HOLD_OUTCOME_IDS.has(a.outcome)) return;
+      const decidedAt = Number.isFinite(a.decidedAt) ? Math.min(a.at, Math.max(d.loggedAt, a.decidedAt)) : a.at;
+      d.decision = { outcome: a.outcome, by: a.by.slice(0, 100), reason: a.reason.slice(0, 1000), decidedAt, recordedAt: a.at };
+      d.status = a.outcome;
+      d.clearedBy = d.decision.by;
+      d.clearReason = d.decision.reason;
+      d.closedAt = a.at;
+      if (a.outcome !== "cleared") {
+        // Any outcome but "cleared" ends the session with that outcome. "Cleared" resumes at the same step.
+        s.final = { outcome: a.outcome, at: a.at, did: d.id };
+        s.endedAt = a.at;
+        const p = s.pauses[s.pauses.length - 1];
+        if (p && p.to === null) p.to = a.at;
+        s.paused = false;
+      }
       return;
     }
 
@@ -328,15 +357,25 @@ function apply(s: CheckState, a: Action) {
   }
 }
 
+const FINAL_STATUS = { scrapped: "scrapped", rework: "rework", concession: "concession", abandoned: "left" } as const;
+
 function deriveStatus(s: CheckState): CheckState["status"] {
-  const stops = s.discrepancies.filter((d) => d.effect === "stop" && d.status !== "fixed_on_spot");
-  if (stops.some((d) => d.status === "open" || d.status === "escalated")) return "stopped";
-  if (stops.length) return "part_held";
+  if (s.final) return FINAL_STATUS[s.final.outcome];
+  // Older sessions: a stop closed with the old "clear" ended as "part held, not checked".
+  if (s.discrepancies.some((d) => d.effect === "stop" && !d.decision && (d.status === "cleared" || d.status === "scrapped"))) {
+    return "part_held";
+  }
   if (s.left) return "left";
+  if (activeStop(s)) return "on_hold";
   if (s.paused) return "paused";
   if (openHolds(s).length) return "on_hold";
   if (s.current > STEP_COUNT) return "complete";
   return "running";
+}
+
+/** Every lodged issue still holding the session or the cell, stop or continue, oldest first. */
+export function openHoldsAll(s: CheckState): Discrepancy[] {
+  return s.discrepancies.filter((d) => d.status === "open" || d.status === "escalated").sort((a, b) => a.loggedAt - b.loggedAt);
 }
 
 /** Lodged "continue" issues still holding the cell. */
@@ -368,10 +407,9 @@ export function correctFirstTime(s: CheckState): number {
   return s.steps.filter((r) => r.outcome === "correct").length;
 }
 
-/** Final score: steps correct first time / 12. None for a stopped or held part. */
+/** Final score: steps correct first time / 12. Only for a complete session: never for one on hold or ended without a check. */
 export function conformance(s: CheckState): number | null {
-  if (s.status === "stopped" || s.status === "part_held") return null;
-  if (s.current <= STEP_COUNT) return null;
+  if (s.status !== "complete" || s.current <= STEP_COUNT) return null;
   return Math.round((correctFirstTime(s) / STEP_COUNT) * 100);
 }
 

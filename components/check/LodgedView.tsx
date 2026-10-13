@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { CONTINUE_TODO, STOP_TODO } from "@/lib/issues";
 import { reminderOnlyCalls } from "@/lib/integrations";
-import type { CheckState, Discrepancy, SessionMeta } from "@/lib/check/types";
+import { HOLD_OUTCOMES, type CheckState, type Discrepancy, type SessionMeta } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
 import { stepLabel } from "@/lib/sop";
 import { Banner, Btn, Chip, Frame, KV, Panel, Ring, Tick, cx } from "../ui";
-import { ClearDialog } from "./StopViews";
+import { HoldDecisionDialog, type DecisionInput } from "./StopViews";
 
 export function sessionTime(state: CheckState, at: number): string {
   const paused = state.pauses.reduce((t, p) => t + Math.max(0, Math.min(p.to ?? at, at) - p.from), 0);
@@ -65,7 +65,7 @@ export function TodoList({ d, onTick }: { d: Discrepancy; onTick: (i: number) =>
 }
 
 export function LodgedView({
-  state, meta, d, onBack, onProcedure, onCalled, onTodo, onClear,
+  state, meta, d, onBack, onProcedure, onCalled, onTodo, onDecision,
 }: {
   state: CheckState;
   meta: SessionMeta;
@@ -74,7 +74,7 @@ export function LodgedView({
   onProcedure: () => void;
   onCalled: (who: string) => void;
   onTodo: (i: number) => void;
-  onClear: (who: string, outcome: "cleared" | "scrapped", reason: string) => void;
+  onDecision: (x: DecisionInput) => void;
 }) {
   const [clearing, setClearing] = useState(false);
   const stop = d.effect === "stop";
@@ -83,7 +83,7 @@ export function LodgedView({
     ? "The check is stopped."
     : open
       ? "The check can continue. The cell is on hold."
-      : `Hold closed: ${d.status}.`;
+      : `Hold closed: ${HOLD_OUTCOMES.find((o) => o.id === d.status)?.label ?? d.status}.`;
 
   return (
     <>
@@ -134,25 +134,21 @@ export function LodgedView({
               <Btn variant="primary" onClick={onBack}>
                 Back to the check
               </Btn>
-              {d.proc ? (
+              {d.proc && (
                 <Btn variant="success" onClick={onProcedure}>
                   Open the hole check procedure
                 </Btn>
-              ) : (
-                open && <Btn onClick={() => setClearing(true)}>Record who cleared the hold</Btn>
               )}
+              {open && <Btn onClick={() => setClearing(true)}>Record the decision and close the hold</Btn>}
             </>
           )}
         </div>
       </div>
       {clearing && (
-        <ClearDialog
-          d={d}
-          title="Hold cleared"
-          submit="Record and close the hold"
+        <HoldDecisionDialog
           onCancel={() => setClearing(false)}
-          onSubmit={(who, outcome, reason) => {
-            onClear(who, outcome, reason);
+          onSubmit={(x) => {
+            onDecision(x);
             setClearing(false);
           }}
         />

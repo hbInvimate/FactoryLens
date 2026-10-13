@@ -7,7 +7,7 @@ import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
 import { Chip, KV, Panel, Tick, Ring, Warn } from "@/components/ui";
 import type { Projection } from "@/lib/check/project";
-import { ENDED_STATUSES } from "@/lib/check/types";
+import { ENDED_STATUSES, STATUS_LABEL } from "@/lib/check/types";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
 import { STEPS, stepLabel } from "@/lib/sop";
@@ -83,11 +83,11 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
                 k="Sequence conformance"
                 v={
                   <span data-testid="detail-conformance">
-                    {s.conformance !== null
+                    {s.status === "complete" && s.conformance !== null
                       ? `${s.conformance}% (${s.correctFirstTime} of 12 correct first time)`
-                      : s.status === "part_held"
-                        ? "No score: part held, not checked"
-                        : "Not finished"}
+                      : s.status === "running" || s.status === "paused"
+                        ? "In progress"
+                        : `Not scored: ${STATUS_LABEL[s.status].toLowerCase()}`}
                   </span>
                 }
               />

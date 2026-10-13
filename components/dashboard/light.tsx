@@ -42,10 +42,13 @@ const STATUS_TONE: Record<SessionStatus, keyof typeof CHIP> = {
   running: "blue",
   paused: "gray",
   on_hold: "amber",
-  stopped: "red",
+  stopped: "amber",
   complete: "green",
   part_held: "red",
   left: "gray",
+  scrapped: "red",
+  rework: "amber",
+  concession: "amber",
 };
 
 export function StatusPill({ status }: { status: SessionStatus }) {

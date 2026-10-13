@@ -39,6 +39,41 @@ export async function waitSaved(page: Page) {
   await expect(page.getByTestId("connection")).toHaveText("Connected", { timeout: 15_000 });
 }
 
+/** Records the hold decision on the hold screen or in the hold dialog. */
+export async function decideHold(page: Page, outcome: string, by: string, reason: string) {
+  await page.getByRole("button", { name: outcome, exact: true }).click();
+  await page.getByRole("button", { name: by, exact: true }).click();
+  await page.getByLabel("Reason (their words, required)").fill(reason);
+  await page.getByRole("button", { name: "Record the decision and close the hold" }).last().click();
+}
+
+/** Starts a check at a station, adding the station first if it is not in the list. */
+export async function startAt(page: Page, station: string): Promise<string> {
+  await page.goto("/");
+  const select = page.getByLabel("Cell and fixture", { exact: true });
+  const known = await select.locator("option", { hasText: station }).count();
+  if (known) {
+    await select.selectOption(station);
+  } else {
+    await select.selectOption("__add__");
+    await page.getByLabel("New station: cell and fixture").fill(station);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(select).toHaveValue(station);
+  }
+  await page.getByRole("button", { name: "Start the check" }).click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  await expect(page.locator("li[aria-current=step]")).toBeVisible();
+  return page.url().split("/check/")[1];
+}
+
+export async function openDashboard(page: Page, station: string) {
+  await page.goto(`/dashboard?station=${encodeURIComponent(station)}&range=all`);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByLabel("Station")).toHaveValue(station);
+}
+
+export const unique = (label: string) => `${label} ${Math.random().toString(36).slice(2, 7)}`;
+
 export async function lodge(page: Page, stepName: RegExp | string, issue: string) {
   await page.getByRole("button", { name: "Lodge a discrepancy" }).first().click();
   await expect(page.getByRole("heading", { name: "Lodge a discrepancy" })).toBeVisible();

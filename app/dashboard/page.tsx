@@ -2,9 +2,10 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
-import { SessionsTable } from "@/components/dashboard/SessionsTable";
+import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
 import { PageBar } from "@/components/PageBar";
 import { parseRange, rangeStart, summarise } from "@/lib/dashboard/metrics";
+import { HOLD_WARN_MINUTES } from "@/lib/config";
 import { fmtClock } from "@/lib/format";
 import { getRepo, NotConfigured, SEED_STATION } from "@/lib/server/repo";
 
@@ -36,7 +37,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
   const station = stations.includes(asked) ? asked : stations.includes(SEED_STATION) ? SEED_STATION : stations[0];
   const range = parseRange(sp.range);
   const rows = await repo.dashboard(station, rangeStart(range));
-  const s = summarise(rows);
+  const s = summarise(rows.map((r) => ({ ...r, holdStartedAt: r.hold?.startedAt ?? null })));
 
   return (
     <>
@@ -53,30 +54,40 @@ async function Body({ searchParams }: { searchParams: SP }) {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             <StatCard
               testId="tile-sessions"
               value={s.total}
               label="Sessions"
-              sub={`${s.complete} complete · ${s.partHeld} part held · ${s.left} left${s.inProgress ? ` · ${s.inProgress} not finished` : ""}`}
+              sub={
+                <span data-testid="tile-sessions-split">
+                  {`${s.complete} complete · ${s.onHold} on hold · ${s.endedWithoutCheck} ended without a check · ${s.left} left${s.inProgress ? ` · ${s.inProgress} in progress` : ""}`}
+                </span>
+              }
+            />
+            <StatCard
+              testId="tile-open-holds"
+              value={s.onHold}
+              label="Open holds"
+              sub={s.oldestHold ? <OldestHoldAge since={s.oldestHold.toISOString()} /> : "none waiting"}
             />
             <StatCard
               testId="tile-conformance"
               value={s.conformance === null ? "not recorded" : `${s.conformance}%`}
               label="Station conformance"
-              sub={s.scored ? `steps correct first time, ${s.scored} completed ${s.scored === 1 ? "session" : "sessions"}` : "no completed sessions yet"}
+              sub={s.scored ? `steps correct first time, ${s.scored} complete ${s.scored === 1 ? "session" : "sessions"}` : "no complete sessions yet"}
             />
             <StatCard
               testId="tile-no-deviation"
               value={s.noDeviationShare === null ? "not recorded" : `${s.noDeviationShare}%`}
               label="Sessions with no deviation"
-              sub={s.scored ? `${s.noDeviation} of ${s.scored} completed` : "no completed sessions yet"}
+              sub={s.scored ? `${s.noDeviation} of ${s.scored} complete` : "no complete sessions yet"}
             />
             <StatCard
               testId="tile-check-time"
               value={s.avgCheckSeconds === null ? "not recorded" : fmtClock(s.avgCheckSeconds * 1000)}
               label="Average check time"
-              sub={s.timed ? `completed sessions, without pauses and holds (${s.timed})` : "no completed sessions yet"}
+              sub={s.timed ? `complete sessions, without pauses and holds (${s.timed})` : "no complete sessions yet"}
             />
             <StatCard testId="tile-open" value={s.openDiscrepancies} label="Open discrepancies" sub="lodged, not yet cleared" />
           </div>
@@ -92,10 +103,11 @@ async function Body({ searchParams }: { searchParams: SP }) {
               deviations: r.deviations,
               discrepancies: r.discrepancies,
               activeSeconds: r.activeSeconds,
+              hold: r.hold && { ...r.hold, startedAt: r.hold.startedAt.toISOString() },
             }))}
           />
           <p className="text-[13px] text-[#6b7480]">
-            Conformance = steps correct on the first attempt ÷ 12, averaged over completed sessions. Part-held and left sessions are not scored and are left out of averages.
+            Conformance = steps correct on the first attempt ÷ 12, averaged over complete sessions. Sessions on hold, ended without a check, or left are not scored and are left out of averages. Waiting turns red after {HOLD_WARN_MINUTES} minutes.
           </p>
         </>
       )}

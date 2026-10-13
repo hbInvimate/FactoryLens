@@ -1,5 +1,16 @@
-// The 54-issue catalogue. Single source of truth: docs/issues.json.
+// The 54-issue catalogue. Single source of truth: docs/issues.json, categories from docs/dashboard/issue_categories.json.
 import raw from "@/docs/issues.json";
+import categoriesRaw from "@/docs/dashboard/issue_categories.json";
+
+const CATEGORY = new Map(
+  (categoriesRaw as { issues: { step: number; label: string; category: string }[] }).issues.map((c) => [`${c.step}|${c.label}`, c.category]),
+);
+export const CATEGORIES: string[] = (categoriesRaw as { categories: string[] }).categories;
+
+/** The issue's category for the dashboard. "Other" if it has none. */
+export function categoryOf(stepN: number, label: string): string {
+  return CATEGORY.get(`${stepN}|${label}`) ?? "Other";
+}
 
 export type IssueKind = "self" | "try" | "lodge";
 export type IssueEffect = "stop" | "continue";

@@ -1,12 +1,16 @@
 "use client";
-// Scenario 4: the part or fixture is bad and the check cannot continue.
-// Mark and photograph, hand off, wait, then record who cleared or scrapped it. The part is held, not checked.
+// Holds (scenarios 4 and 6): why the session or the cell is on hold, the handoff, and recording the decision.
+// The Quality Technician only records a decision made by others. The app never decides.
 import Link from "next/link";
 import { useState } from "react";
 import { stepsDone } from "@/lib/check/reducer";
-import type { CheckState, ClearOutcome, Discrepancy, SessionMeta } from "@/lib/check/types";
+import {
+  DECIDERS, HOLD_OUTCOMES, STATUS_LABEL,
+  type CheckState, type Discrepancy, type HoldOutcome, type SessionMeta,
+} from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
 import type { SyncState } from "@/lib/client/useCheckSession";
+import { categoryOf } from "@/lib/issues";
 import type { HandoffItem } from "@/lib/procedure";
 import { stepLabel } from "@/lib/sop";
 import { Banner, Btn, Chip, Frame, KV, Panel, Ring, Stat, Tick, cx } from "../ui";
@@ -16,76 +20,80 @@ import { CallList, sessionTime } from "./LodgedView";
 import { LodgeButton } from "./MainView";
 import { MiniStepList } from "./StepList";
 
-function ClearFields({
-  d, onSubmit, submit, onCancel,
-}: {
-  d: Discrepancy;
-  onSubmit: (who: string, outcome: ClearOutcome, reason: string) => void;
-  submit: string;
-  onCancel?: () => void;
-}) {
-  const options = [...d.who, "Someone else"];
-  const [who, setWho] = useState<string | null>(null);
-  const [other, setOther] = useState("");
-  const [outcome, setOutcome] = useState<ClearOutcome | null>(d.effect === "stop" ? null : "cleared");
+export interface DecisionInput {
+  outcome: HoldOutcome;
+  by: string;
+  reason: string;
+  decidedAt: number;
+}
+
+/** "HH:MM" today, or yesterday if that is still to come. Empty: now. */
+function timeToMs(hhmm: string): number {
+  const now = Date.now();
+  if (!hhmm) return now;
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() > now + 60_000) d.setDate(d.getDate() - 1);
+  return d.getTime();
+}
+
+function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={cx("tap rounded-xl border-2 px-5 text-left text-[19px]", on ? "border-blue bg-sel" : "border-edge")}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function HoldDecisionForm({ onSubmit, onCancel }: { onSubmit: (d: DecisionInput) => void; onCancel?: () => void }) {
+  const [outcome, setOutcome] = useState<HoldOutcome | null>(null);
+  const [by, setBy] = useState<string | null>(null);
   const [reason, setReason] = useState("");
-  const name = who === "Someone else" ? other.trim() : who;
-  const ready = !!name && !!outcome && reason.trim().length > 0;
+  const [time, setTime] = useState("");
+  const ready = !!outcome && !!by && reason.trim().length > 0;
 
   return (
     <form
       className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
-        if (ready) onSubmit(name!, outcome!, reason.trim());
+        if (ready) onSubmit({ outcome: outcome!, by: by!, reason: reason.trim(), decidedAt: timeToMs(time) });
       }}
     >
+      <p className="text-base text-soft">Record what the people called decided. You do not decide, and neither does the app.</p>
       <fieldset className="flex flex-col gap-2">
-        <legend className="pb-1.5 text-base text-muted">Who came</legend>
+        <legend className="pb-1.5 text-base text-muted">Outcome</legend>
         <div className="flex flex-wrap gap-2.5">
-          {options.map((o) => (
-            <button
-              key={o}
-              type="button"
-              aria-pressed={who === o}
-              onClick={() => setWho(o)}
-              className={cx("tap rounded-xl border-2 px-5 text-[19px]", who === o ? "border-blue bg-sel" : "border-edge")}
-            >
-              {o}
-            </button>
+          {HOLD_OUTCOMES.map((o) => (
+            <Choice key={o.id} on={outcome === o.id} onClick={() => setOutcome(o.id)}>
+              {o.label}
+            </Choice>
           ))}
         </div>
-        {who === "Someone else" && (
-          <input
-            aria-label="Name or role"
-            placeholder="Name or role"
-            value={other}
-            maxLength={120}
-            onChange={(e) => setOther(e.target.value)}
-            className="tap rounded-xl border-2 border-line2 bg-deep px-4 text-[20px]"
-          />
+        {outcome && (
+          <span className="text-[15px] text-muted">
+            {outcome === "cleared" ? "The check carries on at the same step." : "The session ends with this outcome. It is not scored."}
+          </span>
         )}
       </fieldset>
-      {d.effect === "stop" && (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="pb-1.5 text-base text-muted">What they decided</legend>
-          <div className="flex flex-wrap gap-2.5">
-            {(["cleared", "scrapped"] as const).map((o) => (
-              <button
-                key={o}
-                type="button"
-                aria-pressed={outcome === o}
-                onClick={() => setOutcome(o)}
-                className={cx("tap rounded-xl border-2 px-5 text-[19px]", outcome === o ? "border-blue bg-sel" : "border-edge")}
-              >
-                {o === "cleared" ? "Part cleared" : "Part scrapped"}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      )}
+      <fieldset className="flex flex-col gap-2">
+        <legend className="pb-1.5 text-base text-muted">Decision made by</legend>
+        <div className="flex flex-wrap gap-2.5">
+          {DECIDERS.map((w) => (
+            <Choice key={w} on={by === w} onClick={() => setBy(w)}>
+              {w}
+            </Choice>
+          ))}
+        </div>
+      </fieldset>
       <label className="flex flex-col gap-1.5">
-        <span className="text-base text-muted">Why (their words)</span>
+        <span className="text-base text-muted">Reason (their words, required)</span>
         <textarea
           value={reason}
           maxLength={1000}
@@ -94,29 +102,47 @@ function ClearFields({
           className="rounded-xl border-2 border-line2 bg-deep px-4 py-3 text-[20px]"
         />
       </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-base text-muted">Time of the decision (leave empty for now)</span>
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="tap w-[200px] rounded-xl border-2 border-line2 bg-deep px-4 text-[20px]"
+        />
+      </label>
       <div className="flex flex-wrap justify-end gap-3">
         {onCancel && <Btn onClick={onCancel}>Cancel</Btn>}
         <Btn type="submit" variant="primary" disabled={!ready}>
-          {submit}
+          Record the decision and close the hold
         </Btn>
       </div>
     </form>
   );
 }
 
-export function ClearDialog({
-  d, title, submit, onCancel, onSubmit,
-}: {
-  d: Discrepancy;
-  title: string;
-  submit: string;
-  onCancel: () => void;
-  onSubmit: (who: string, outcome: ClearOutcome, reason: string) => void;
-}) {
+export function HoldDecisionDialog({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: (d: DecisionInput) => void }) {
   return (
-    <Modal title={title} onClose={onCancel} wide>
-      <ClearFields d={d} submit={submit} onCancel={onCancel} onSubmit={onSubmit} />
+    <Modal title="Record the decision" onClose={onCancel} wide>
+      <HoldDecisionForm onCancel={onCancel} onSubmit={onSubmit} />
     </Modal>
+  );
+}
+
+/** Why it is on hold: derived from the lodged discrepancy. */
+export function HoldReason({ state, d, now }: { state: CheckState; d: Discrepancy; now: number }) {
+  return (
+    <Panel title="Why it is on hold">
+      <div>
+        <KV k="Step" v={stepLabel(d.step)} />
+        <KV k="Issue" v={d.issue} />
+        <KV k="Category" v={categoryOf(d.step, d.issue)} />
+        <KV k="Who to call" v={d.who.length ? d.who.join(", ") : "No call needed"} />
+        <KV k="The check" v={d.effect === "stop" ? "Stopped" : "Continues"} />
+        <KV k="Hold started" v={sessionTime(state, d.loggedAt)} />
+        <KV k="Waiting so far" v={<span data-testid="hold-waiting">{fmtClock(Math.max(0, now - d.loggedAt))}</span>} />
+      </div>
+    </Panel>
   );
 }
 
@@ -163,27 +189,27 @@ export function HandoffChecklist({ d, onItem }: { d: Discrepancy; onItem: (item:
   );
 }
 
+/** The hold screen when the check is stopped (scenario 4). */
 export function StoppedView({
-  state, d, now, onItem, onCalled, onClear, onLodge,
+  state, d, now, onItem, onCalled, onDecision, onLodge,
 }: {
   state: CheckState;
   d: Discrepancy;
   now: number;
   onItem: (item: HandoffItem) => void;
   onCalled: (who: string) => void;
-  onClear: (who: string, outcome: ClearOutcome, reason: string) => void;
+  onDecision: (x: DecisionInput) => void;
   onLodge: () => void;
 }) {
   const waiting = d.handoff.handedOverAt;
-  const chip = waiting ? `Waiting ${fmtClock(now - waiting)}` : `Logged ${sessionTime(state, d.loggedAt)}`;
   return (
     <>
       <Frame tone="red" />
-      <Banner tone="red" title="Check stopped" sub={`${d.issue}. Do not force anything. Keep the part clamped.`} chip={chip} />
+      <Banner tone="red" title="On hold: the check is stopped" sub={`${d.issue}. Do not force anything. Keep the part clamped.`} chip={`Waiting ${fmtClock(Math.max(0, now - d.loggedAt))}`} />
       <div className="flex min-h-0 flex-1 gap-5 overflow-y-auto px-8 py-5">
         <aside className="flex w-[290px] flex-none flex-col gap-2 rounded-[14px] bg-panel2 px-2 py-3.5">
           <span className="px-3 text-[19px] font-semibold">SOP · locked</span>
-          <span className="px-3 text-[15px] text-muted">The steps are locked until someone clears this.</span>
+          <span className="px-3 text-[15px] text-muted">The steps are locked until the decision is recorded.</span>
           <MiniStepList state={state} flag={d.step || undefined} />
           <div className="flex-1" />
           <div className="px-2">
@@ -191,21 +217,18 @@ export function StoppedView({
           </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
+          <HoldReason state={state} d={d} now={now} />
           <HandoffChecklist d={d} onItem={onItem} />
           <CallList d={d} onCalled={onCalled} />
           <div className="flex gap-3.5">
             <Stat label="Marks" value={d.handoff.marks ? "Done" : "To do"} />
             <Stat label="Photos" value={String(d.handoff.photos)} />
-            <Stat label="Waiting" value={waiting ? fmtClock(now - waiting) : "Not handed over"} tone={waiting ? "red" : undefined} />
-            <Stat label="Handoff sheet" value={d.handoff.sheet ? "On tablet" : "To do"} />
+            <Stat label="Since handover" value={waiting ? fmtClock(now - waiting) : "Not handed over"} />
           </div>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-          <Panel title="When someone arrives">
-            <p className="text-base text-soft">
-              Record who came and what they decided. The check then ends as &quot;Part held, not checked&quot;. There is no conformance score.
-            </p>
-            <ClearFields d={d} submit="Record and end the check" onSubmit={onClear} />
+          <Panel title="When the decision is made">
+            <HoldDecisionForm onSubmit={onDecision} />
           </Panel>
           <Panel title="If no one comes">
             <p className="text-base text-soft">After [set by plant] minutes, call the shift supervisor. Hand over to the next shift at shift end.</p>
@@ -216,44 +239,46 @@ export function StoppedView({
   );
 }
 
-export function PartHeldView({
-  state, meta, sync,
-}: {
-  state: CheckState;
-  meta: SessionMeta;
-  sync: SyncState;
-}) {
-  const held = state.discrepancies.filter((x) => x.effect === "stop" && x.status !== "fixed_on_spot");
+const ENDED_TITLE: Partial<Record<CheckState["status"], string>> = {
+  part_held: "Part held, not checked",
+  scrapped: "Part scrapped",
+  rework: "Sent for rework or sorting",
+  concession: "Concession approved",
+  left: "Check abandoned",
+};
+
+/** A session that ended on a hold decision (or, for older sessions, as part held). Never scored. */
+export function EndedView({ state, meta, sync }: { state: CheckState; meta: SessionMeta; sync: SyncState }) {
+  const closing = state.final ? state.discrepancies.filter((x) => x.id === state.final!.did) : state.discrepancies.filter((x) => x.effect === "stop" && x.status !== "fixed_on_spot");
   return (
     <>
       <Frame tone="red" />
-      <Banner tone="red" title="Part held, not checked" sub="No conformance score. The part was not checked." chip={savedChip(sync)} />
+      <Banner tone="red" title={ENDED_TITLE[state.status] ?? STATUS_LABEL[state.status]} sub="Not scored. The check did not finish." chip={savedChip(sync)} />
       <div className="flex min-h-0 flex-1 gap-6 overflow-y-auto px-8 py-6">
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-          {held.map((d) => (
+          {closing.map((d) => (
             <Panel key={d.id} title={d.issue}>
               <div>
                 <KV k="Step" v={stepLabel(d.step)} />
-                <KV k="Logged at" v={sessionTime(state, d.loggedAt)} />
+                <KV k="Category" v={categoryOf(d.step, d.issue)} />
+                <KV k="Hold started" v={sessionTime(state, d.loggedAt)} />
                 <KV k="Called" v={d.called.length ? d.called.join(", ") : "Not marked"} />
-                <KV k="Marks" v={d.handoff.marks ? "Done" : "Not done"} />
-                <KV k="Photos" v={String(d.handoff.photos)} />
-                <KV k="Handoff sheet" v={d.handoff.sheet ? "Done" : "Not done"} />
+                <KV k="Marks and photos" v={`${d.handoff.marks ? "Marked" : "Not marked"}, ${d.handoff.photos} photos`} />
+                <KV k="Waited" v={d.closedAt ? fmtClock(d.closedAt - d.loggedAt) : "not recorded"} />
                 <KV
-                  k="Waiting time"
-                  v={d.handoff.handedOverAt && d.closedAt ? fmtClock(d.closedAt - d.handoff.handedOverAt) : "Not handed over"}
+                  k="Outcome"
+                  v={<span data-testid="held-outcome">{d.decision ? HOLD_OUTCOMES.find((o) => o.id === d.decision!.outcome)?.label : d.status === "scrapped" ? "Part scrapped" : "Part cleared"}</span>}
                 />
-                <KV k="Outcome" v={<span data-testid="held-outcome">{d.status === "scrapped" ? "Part scrapped" : "Part cleared"}</span>} />
-                <KV k="By" v={d.clearedBy ?? ""} />
-                <KV k="Why" v={d.clearReason ?? ""} />
+                <KV k="Decided by" v={d.decision?.by ?? d.clearedBy ?? "not recorded"} />
+                <KV k="Reason" v={d.decision?.reason ?? d.clearReason ?? "not recorded"} />
               </div>
             </Panel>
           ))}
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-          <Panel title="Where the check stopped">
+          <Panel title="Where the check ended">
             <p className="text-[18px] text-soft">
-              {meta.part} · {meta.fixture} · {meta.operator}. {stepsDone(state)} of 12 steps done before it stopped.
+              {meta.part} · {meta.fixture} · {meta.operator}. {stepsDone(state)} of 12 steps done.
             </p>
             <MiniStepList state={state} short={false} />
           </Panel>

@@ -1,27 +1,6 @@
 // Supervisor dashboard, phase 1: stations, navigation, /dashboard tiles and table, /dashboard/[id] report.
 import { expect, test, type Page } from "@playwright/test";
-import { doSteps, lodge, tap, waitSaved } from "./helpers";
-
-const unique = (label: string) => `${label} ${Math.random().toString(36).slice(2, 7)}`;
-
-/** Starts a check at a station, adding the station first if it is not in the list. */
-async function startAt(page: Page, station: string): Promise<string> {
-  await page.goto("/");
-  const select = page.getByLabel("Cell and fixture", { exact: true });
-  const known = await select.locator("option", { hasText: station }).count();
-  if (known) {
-    await select.selectOption(station);
-  } else {
-    await select.selectOption("__add__");
-    await page.getByLabel("New station: cell and fixture").fill(station);
-    await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(select).toHaveValue(station);
-  }
-  await page.getByRole("button", { name: "Start the check" }).click();
-  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
-  await expect(page.locator("li[aria-current=step]")).toBeVisible();
-  return page.url().split("/check/")[1];
-}
+import { decideHold, doSteps, lodge, openDashboard, startAt, tap, unique, waitSaved } from "./helpers";
 
 /** Step 7: H9 to H12 skipped, then fixed. */
 async function skipHolesThenFix(page: Page) {
@@ -37,12 +16,6 @@ async function wrongClampsThenFix(page: Page) {
   await page.getByRole("button", { name: "Release all clamps" }).click();
   await tap(page, 5, ["C1", "C2", "C3", "C4", "C5", "C6"], "your view");
   await page.getByRole("button", { name: "Fixed, continue" }).click();
-}
-
-async function openDashboard(page: Page, station: string) {
-  await page.goto(`/dashboard?station=${encodeURIComponent(station)}&range=all`);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(page.getByLabel("Station")).toHaveValue(station);
 }
 
 test("Navigation: Dashboard button on the first screen and in the top navigation", async ({ page }) => {
@@ -119,7 +92,7 @@ test("Two deviations fixed score 83%", async ({ page }) => {
   await expect(page.locator('tr[data-step="5"]')).toContainText("Incorrect");
 });
 
-test("A part-held session shows Not scored and is left out of conformance and check time", async ({ page }) => {
+test("A scrapped session shows Not scored and is left out of conformance and check time", async ({ page }) => {
   const station = unique("Laser cell 6 · FX-HELD");
   const clean = await startAt(page, station);
   await doSteps(page, 1, 12);
@@ -129,25 +102,22 @@ test("A part-held session shows Not scored and is left out of conformance and ch
   await doSteps(page, 1, 2);
   await lodge(page, /Lower the part onto pads P1 to P3/, "Crack seen in the part");
   await page.getByRole("button", { name: "Next: mark and hand off" }).click();
-  await page.getByRole("button", { name: "Quality", exact: true }).click();
-  await page.getByRole("button", { name: "Part scrapped" }).click();
-  await page.getByLabel("Why (their words)").fill("Crack confirmed");
-  await page.getByRole("button", { name: "Record and end the check" }).click();
-  await expect(page.getByRole("heading", { name: "Part held, not checked" })).toBeVisible();
+  await decideHold(page, "Part scrapped", "Quality", "Crack confirmed");
+  await expect(page.getByRole("heading", { name: "Part scrapped" })).toBeVisible();
   await waitSaved(page);
 
   await openDashboard(page, station);
   await expect(page.getByTestId("tile-sessions")).toHaveText("2");
-  await expect(page.getByText("1 complete · 1 part held · 0 left")).toBeVisible();
+  await expect(page.getByTestId("tile-sessions-split")).toHaveText("1 complete · 0 on hold · 1 ended without a check · 0 left");
   await expect(page.getByTestId("tile-conformance")).toHaveText("100%");
-  await expect(page.getByText("steps correct first time, 1 completed session")).toBeVisible();
-  await expect(page.getByText("completed sessions, without pauses and holds (1)")).toBeVisible();
+  await expect(page.getByText("steps correct first time, 1 complete session")).toBeVisible();
+  await expect(page.getByText("complete sessions, without pauses and holds (1)")).toBeVisible();
   await expect(page.locator(`tr[data-session="${held}"]`).getByTestId("row-conformance")).toHaveText("Not scored");
   await expect(page.locator(`tr[data-session="${clean}"]`).getByTestId("row-conformance")).toHaveText("100%");
 
   await page.locator(`tr[data-session="${held}"]`).click();
   await expect(page.getByTestId("report-conformance")).toHaveText("Not scored");
-  await expect(page.getByTestId("report-outcome")).toContainText("Part held and not scored");
+  await expect(page.getByTestId("report-outcome")).toContainText("Part scrapped, not scored");
   await expect(page.getByTestId("report-outcome")).toContainText("Crack seen in the part");
   await expect(page.locator('tr[data-step="3"]')).toContainText("Stopped");
 });
