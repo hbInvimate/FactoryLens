@@ -18,6 +18,7 @@ import { LodgedView } from "./LodgedView";
 import { LodgeFlow } from "./LodgeFlow";
 import { MainView } from "./MainView";
 import { StepDetail } from "./StepDetail";
+import { Procedure } from "./Procedure";
 import { PartHeldView, StoppedView } from "./StopViews";
 import { SyncNotice, TopBar } from "./TopBar";
 
@@ -169,8 +170,29 @@ export function CheckApp({ id }: { id: string }) {
         onLodge={() => setView({ kind: "lodge" })}
       />
     );
-  } else if (procDisc) {
-    screen = <PageCenter title="Hole check procedure" body="Coming in the next step." />;
+  } else if (procDisc && view.kind === "procedure") {
+    const did = procDisc.id;
+    screen = (
+      <Procedure
+        state={state}
+        d={procDisc}
+        screen={view.screen}
+        now={now}
+        sync={sync}
+        onScreen={(i) => setView({ kind: "procedure", did, screen: Math.max(0, Math.min(4, i)) })}
+        onBack={main}
+        onLodge={() => setView({ kind: "lodge" })}
+        onTick={(key) => act({ type: "proc_tick", did, key })}
+        onHandoff={(item) => act({ type: "handoff", did, item })}
+        onHoles={(holes) => act({ type: "proc_holes", did, holes })}
+        onParts={(count) => act({ type: "proc_parts", did, count })}
+        onTrial={(outcome) => {
+          act({ type: "trial_outcome", did, outcome });
+          if (outcome === "pass") setView({ kind: "procedure", did, screen: 4 });
+        }}
+        onClose={() => act({ type: "proc_close", did })}
+      />
+    );
   } else if (dev) {
     screen = (
       <DeviationView
