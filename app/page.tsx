@@ -1,7 +1,13 @@
+import { PageBar } from "@/components/PageBar";
+import { StartForm } from "@/components/StartForm";
+
 export default function Home() {
   return (
-    <main className="flex flex-1 items-center justify-center p-8">
-      <h1 className="text-4xl font-semibold">FactoryLens AI</h1>
-    </main>
+    <>
+      <PageBar title="Quality Technician workstation" />
+      <main className="flex flex-1 flex-col px-8 py-8">
+        <StartForm />
+      </main>
+    </>
   );
 }
