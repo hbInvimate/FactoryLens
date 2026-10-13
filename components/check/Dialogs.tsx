@@ -117,7 +117,7 @@ function describe(a: Action): string {
 }
 
 export function UndoToast({ action, now, onUndo }: { action: Action; now: number; onUndo: () => void }) {
-  const left = Math.max(0, Math.ceil((UNDO_WINDOW_MS - (now - action.at)) / 1000));
+  const left = Math.min(UNDO_WINDOW_MS / 1000, Math.max(0, Math.ceil((UNDO_WINDOW_MS - (now - action.at)) / 1000)));
   return (
     <div role="status" className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-5 rounded-2xl border-2 border-edge bg-bar py-2 pl-6 pr-2 shadow-2xl">
       <span className="text-[19px]">{describe(action)}.</span>

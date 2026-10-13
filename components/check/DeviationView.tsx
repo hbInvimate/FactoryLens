@@ -56,8 +56,8 @@ export function DeviationView({
   else if (def.ordered) status = `${missing[0]} closes next`;
   else status = `${compressIds(missing.filter((p) => p[0] === missing[0][0]))}${missing.some((p) => p[0] !== missing[0][0]) ? " and more" : ""} ${missingVerb(dev.step)}`;
 
-  const nextStepName = dev.step < 12 ? sopStep(dev.step + 1).short.toLowerCase() : "";
-  const caption = dev.kind === "wrong_order" ? t.detail : t.detail.replace("moved on without", `moved on to ${nextStepName || "the next step"} without`);
+  const caption =
+    dev.kind === "wrong_order" || dev.step === 12 ? t.detail : t.detail.replace("moved on without", `moved on to step ${dev.step + 1} without`);
 
   return (
     <>

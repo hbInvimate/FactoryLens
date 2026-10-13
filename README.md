@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FactoryLens AI
 
-## Getting Started
+A Quality Technician runs the first-off check of a B-pillar outer on checking fixture FX-014. FactoryLens AI follows the 12-step SOP, catches mistakes from what she taps, and lets her lodge discrepancies about the part or the fixture. It never measures, never judges a reading, never decides tolerance and never releases the cell. Readings go on the tablet.
 
-First, run the development server:
+The reference pack is in [`docs/`](docs/README.md): the SOP, the scenarios, the 54-issue catalogue and the screen images that the UI follows.
+
+## Pages
+
+| Path | What it is |
+|---|---|
+| `/` | Start a check (part, cell and fixture, Quality Technician label). Offers to resume a check in progress on this device. |
+| `/check/[id]` | The live check. |
+| `/sessions` | History of every check. |
+| `/sessions/[id]` | One check: its steps, deviations with times, lodged discrepancies and handoff. |
+
+## Set up
+
+You need Node.js 24 (or 22.18 or later) and npm.
+
+1. **Install.**
+
+   ```bash
+   npm install
+   ```
+
+2. **Create the database.** In the Vercel dashboard, open the project, then **Storage** → **Create Database** → **Neon** (Vercel Marketplace) → connect it to this project for Development, Preview and Production. Vercel adds `DATABASE_URL` to the project's environment variables.
+
+3. **Get `DATABASE_URL` locally.** Either pull it from Vercel:
+
+   ```bash
+   npx vercel link        # once, if the folder is not linked yet
+   npx vercel env pull .env.local
+   ```
+
+   or copy `.env.example` to `.env.local` and paste the Neon connection string. `.env.local` is git-ignored. Never commit it.
+
+4. **Create the tables.**
+
+   ```bash
+   npm run db:migrate
+   ```
+
+   This applies the SQL in `drizzle/` to the database in `DATABASE_URL`. It is safe to run again.
+
+5. **Run.**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000 and tap **Start the check**.
+
+### Deploy
+
+Push to GitHub. Vercel builds with `npm run build`. Before the first deploy (and after any schema change), run `npm run db:migrate` once with the production `DATABASE_URL` (`npx vercel env pull .env.local --environment=production`, then migrate).
+
+### Change the schema
+
+1. Edit `db/schema.ts`.
+2. Run `npm run db:generate`. It writes a new SQL file in `drizzle/`.
+3. Commit `drizzle/`, then run `npm run db:migrate`.
+
+`npm run db:studio` opens Drizzle Studio on the database.
+
+## Tests
+
+The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry. They run against a production build with `FL_STORAGE=memory`, so they never touch the database.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx playwright install chromium   # once
+npm run build
+npm run test:e2e
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## How it works
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **One action log per session.** Every tap (a point, Next step, Fixed, continue, a lodged issue, a handoff item) is an action. `lib/check/reducer.ts` rebuilds the whole check from the log: skip detection, clamp order, attempts, conformance, discrepancies and hold. The browser and the server run the same reducer.
+- **Never lose data.** Each action is written to `localStorage` first, then sent to `POST /api/sessions/[id]/actions` in batches. If the connection drops, a banner shows how many saves are queued and they are retried with backoff and on reconnect. If the server returns an error, a Retry button appears and the work stays on the device. Saves are idempotent, so a retry never duplicates anything.
+- **Resume.** Refreshing or reopening `/check/[id]` loads the local copy first and merges anything the server has. The start page offers to resume the active check.
+- **Tables.** `session_actions` is the append-only journal. On every save the server rebuilds `sessions`, `step_events`, `point_confirmations`, `discrepancies` and `handoff_items` from it, in one batch.
+- **Mistakes without AI.** Steps 5 to 11 show point grids. Next step with points unconfirmed raises "Step N skipped"; a clamp tapped out of order raises "wrong order". Undo works for 10 seconds on ordinary taps; a tap that raised a deviation stays on the record.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Seams for later
 
-## Learn More
+`lib/integrations.ts` defines the interfaces for what is out of scope in version 1:
 
-To learn more about Next.js, take a look at the following resources:
+- `DeviationSource`: a video model will report the same observations as taps, so the same rules raise the same deviations.
+- `CallService`: calls are reminders until the plant call or andon system is linked.
+- `ClipStore`: clips are placeholders until video capture exists.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Logins and the supervisor dashboard are not built. Sessions carry a free-text Quality Technician label, and the summary tables are shaped for a dashboard to read.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment variables
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Name | Where | What |
+|---|---|---|
+| `DATABASE_URL` | Vercel project, `.env.local` | Neon Postgres connection string. Required, except in tests. |
+| `FL_STORAGE` | tests only | `memory` keeps sessions in server memory instead of Postgres. |

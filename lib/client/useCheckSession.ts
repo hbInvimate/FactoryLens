@@ -113,6 +113,11 @@ export function useCheckSession(id: string) {
       setRec(local);
       setLoad("ready");
       setSync((s) => ({ ...s, pending: local.pending.length }));
+      if (!local.created) {
+        // Started on this device and never saved: nothing to fetch yet.
+        flushRef.current();
+        return;
+      }
     }
     (async () => {
       try {
