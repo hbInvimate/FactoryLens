@@ -8,6 +8,7 @@ import { getActiveId, readLocal, setActiveId } from "@/lib/client/local";
 import { createLocalSession, leaveSessionForGood } from "@/lib/client/useCheckSession";
 import { SESSION_DEFAULTS, STEP_COUNT } from "@/lib/sop";
 import { LeaveDialog } from "./check/Dialogs";
+import { StationSelect } from "./StationSelect";
 import { Btn, Chip, Panel } from "./ui";
 
 interface Active {
@@ -103,7 +104,9 @@ export function StartForm() {
     if (!part.trim() || !fixture.trim() || !operator.trim()) return;
     let id: string;
     try {
-      id = createLocalSession({ part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), operator: operator.trim() });
+      id = createLocalSession({
+        part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), station: fixture.trim(), operator: operator.trim(),
+      });
     } catch {
       setError("This device could not store the new check. Tap Retry.");
       return;
@@ -148,7 +151,7 @@ export function StartForm() {
             SOP: {SESSION_DEFAULTS.sop}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
-          <Field id="fixture" label="Cell and fixture" value={fixture} onChange={setFixture} />
+          <StationSelect value={fixture} onChange={setFixture} />
           <Field id="operator" label="Quality Technician" value={operator} onChange={setOperator} />
           {error && (
             <div role="alert" className="flex flex-wrap items-center gap-4 rounded-xl border-2 border-red bg-red-bg px-4 py-2 text-[18px] text-red-soft">
@@ -166,6 +169,9 @@ export function StartForm() {
             <span className="flex-1" />
             <Link href="/sessions" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
               Session history
+            </Link>
+            <Link href="/dashboard" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
+              Dashboard
             </Link>
           </div>
         </form>

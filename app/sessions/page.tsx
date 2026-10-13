@@ -70,7 +70,7 @@ async function SessionTable() {
 export default function SessionsPage() {
   return (
     <>
-      <PageBar title="Session history" />
+      <PageBar title="Session history" current="sessions" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
         <h1 className="text-[30px] font-semibold">Session history</h1>
         <Suspense fallback={<TableSkeleton />}>

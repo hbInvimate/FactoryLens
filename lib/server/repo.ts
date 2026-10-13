@@ -1,11 +1,12 @@
 // Storage for sessions. Postgres (Neon, via Drizzle) in production.
 // FL_STORAGE=memory gives a throwaway in-process store for tests and demos without a database.
-import { asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { getDb, type Db } from "@/db/client";
 import * as t from "@/db/schema";
-import { project, type Projection, type SessionRow } from "@/lib/check/project";
-import { sortActions } from "@/lib/check/reducer";
+import { activeSecondsOf, project, stationOf, type Projection, type SessionRow } from "@/lib/check/project";
+import { reduce, sortActions } from "@/lib/check/reducer";
 import type { Action, SessionMeta } from "@/lib/check/types";
+import { SESSION_DEFAULTS } from "@/lib/sop";
 
 export interface Journal {
   meta: SessionMeta;
@@ -17,12 +18,31 @@ export interface SaveResult {
   status: SessionRow["status"];
 }
 
+/** A session as the dashboard needs it. */
+export interface DashRow extends SessionRow {
+  /** Lodged discrepancies not yet cleared, released or scrapped. */
+  openDiscrepancies: number;
+}
+
 export interface Repo {
   readonly kind: "postgres" | "memory";
   save(meta: SessionMeta, actions: Action[]): Promise<SaveResult>;
   journal(id: string): Promise<Journal | null>;
   list(limit?: number): Promise<SessionRow[]>;
   detail(id: string): Promise<Projection | null>;
+  /** Stations from the list, plus any station older sessions were saved with. Sorted by name. */
+  stations(): Promise<string[]>;
+  addStation(name: string): Promise<string>;
+  /** Sessions at one station started on or after `since` (all if null), newest first. */
+  dashboard(station: string, since: Date | null): Promise<DashRow[]>;
+}
+
+export const SEED_STATION = SESSION_DEFAULTS.fixture;
+
+const OPEN = ["open", "escalated"];
+
+function byName(a: string, b: string) {
+  return a.localeCompare(b);
 }
 
 export class NotConfigured extends Error {
@@ -51,8 +71,13 @@ function fromRow(r: typeof t.sessionActions.$inferSelect): Action {
 }
 
 function metaFromRow(r: typeof t.sessions.$inferSelect): SessionMeta {
-  return { id: r.id, part: r.part, sop: r.sop, fixture: r.fixture, operator: r.operatorLabel, createdAt: r.startedAt.getTime() };
+  return {
+    id: r.id, part: r.part, sop: r.sop, fixture: r.fixture, operator: r.operatorLabel, createdAt: r.startedAt.getTime(),
+    ...(r.station ? { station: r.station } : {}),
+  };
 }
+
+const stationExpr = sql<string>`coalesce(${t.sessions.station}, btrim(${t.sessions.fixture}))`;
 
 function pgRepo(db: Db): Repo {
   return {
@@ -65,7 +90,7 @@ function pgRepo(db: Db): Repo {
         .insert(t.sessions)
         .values({
           id: meta.id, startedAt: new Date(meta.createdAt), status: "running", part: meta.part, sop: meta.sop,
-          fixture: meta.fixture, operatorLabel: meta.operator, updatedAt: now,
+          fixture: meta.fixture, station: stationOf(meta), operatorLabel: meta.operator, updatedAt: now,
         })
         .onConflictDoNothing();
       if (actions.length) {
@@ -132,6 +157,51 @@ function pgRepo(db: Db): Repo {
         handoffs,
       };
     },
+
+    async stations() {
+      const [listed, used] = await Promise.all([
+        db.select({ name: t.stations.name }).from(t.stations),
+        db.selectDistinct({ name: stationExpr }).from(t.sessions),
+      ]);
+      return [...new Set([SEED_STATION, ...listed.map((r) => r.name), ...used.map((r) => r.name)])].sort(byName);
+    },
+
+    async addStation(name) {
+      await db.insert(t.stations).values({ name }).onConflictDoNothing();
+      return name;
+    },
+
+    async dashboard(station, since) {
+      const where = since
+        ? and(eq(stationExpr, station), gte(t.sessions.startedAt, since))
+        : eq(stationExpr, station);
+      const rows = await db.select().from(t.sessions).where(where).orderBy(desc(t.sessions.startedAt));
+      if (!rows.length) return [];
+      const ids = rows.map((r) => r.id);
+      const open = await db
+        .select({ sessionId: t.discrepancies.sessionId, n: count() })
+        .from(t.discrepancies)
+        .where(and(inArray(t.discrepancies.sessionId, ids), inArray(t.discrepancies.status, OPEN)))
+        .groupBy(t.discrepancies.sessionId);
+      const openBy = new Map(open.map((o) => [o.sessionId, Number(o.n)]));
+
+      // Sessions saved before check time was stored: work it out from their log.
+      const missing = rows.filter((r) => r.activeSeconds === null && r.conformance !== null);
+      const filled = new Map<string, number | null>();
+      if (missing.length) {
+        const acts = await db.select().from(t.sessionActions).where(inArray(t.sessionActions.sessionId, missing.map((r) => r.id)));
+        for (const r of missing) {
+          const s = reduce(acts.filter((a) => a.sessionId === r.id).map(fromRow), r.startedAt.getTime());
+          filled.set(r.id, activeSecondsOf(s));
+        }
+      }
+      return rows.map((r) => ({
+        ...r,
+        status: r.status as SessionRow["status"],
+        activeSeconds: r.activeSeconds ?? filled.get(r.id) ?? null,
+        openDiscrepancies: openBy.get(r.id) ?? 0,
+      }));
+    },
   };
 }
 
@@ -147,11 +217,14 @@ export async function pingDb(): Promise<boolean> {
 
 interface MemoryStore {
   sessions: Map<string, { meta: SessionMeta; actions: Map<string, Action> }>;
+  stations?: Set<string>;
 }
 
 function memoryRepo(): Repo {
   const g = globalThis as unknown as { __flMemory?: MemoryStore };
   g.__flMemory ??= { sessions: new Map() };
+  g.__flMemory.stations ??= new Set([SEED_STATION]);
+  const stationSet = g.__flMemory.stations;
   const store = g.__flMemory;
   const proj = (id: string) => {
     const s = store.sessions.get(id);
@@ -178,6 +251,24 @@ function memoryRepo(): Repo {
     },
     async detail(id) {
       return proj(id);
+    },
+    async stations() {
+      const used = [...store.sessions.values()].map((s) => stationOf(s.meta));
+      return [...new Set([...stationSet, ...used])].sort(byName);
+    },
+    async addStation(name) {
+      stationSet.add(name);
+      return name;
+    },
+    async dashboard(station, since) {
+      return [...store.sessions.keys()]
+        .map((id) => proj(id)!)
+        .filter((p) => p.session.station === station && (!since || p.session.startedAt >= since))
+        .sort((a, b) => b.session.startedAt.getTime() - a.session.startedAt.getTime())
+        .map((p) => ({
+          ...p.session,
+          openDiscrepancies: p.discrepancies.filter((d) => OPEN.includes(d.status)).length,
+        }));
     },
   };
 }

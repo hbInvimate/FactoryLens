@@ -1,0 +1,340 @@
+{
+ "note": "Proposed categories for the 54 issues in issues.json. Assumptions to confirm with quality. Add each as a \"category\" field on the matching issue.",
+ "categories": [
+  "Gauge or check pin",
+  "Fixture or tooling",
+  "Part form or damage",
+  "Laser cut quality",
+  "Setup, cleanliness and labelling",
+  "Safety and PPE",
+  "Camera, tablet or system",
+  "Procedure and sequence",
+  "Other"
+ ],
+ "issues": [
+  {
+   "step": 0,
+   "index": 0,
+   "label": "Camera or glasses not working",
+   "category": "Camera, tablet or system"
+  },
+  {
+   "step": 0,
+   "index": 1,
+   "label": "Tablet or quality tool not working",
+   "category": "Camera, tablet or system"
+  },
+  {
+   "step": 0,
+   "index": 2,
+   "label": "Something else",
+   "category": "Other"
+  },
+  {
+   "step": 1,
+   "index": 0,
+   "label": "Gloves or glasses missing",
+   "category": "Safety and PPE"
+  },
+  {
+   "step": 1,
+   "index": 1,
+   "label": "Gloves cut or damaged",
+   "category": "Safety and PPE"
+  },
+  {
+   "step": 1,
+   "index": 2,
+   "label": "Guard, clamp or edge looks unsafe",
+   "category": "Safety and PPE"
+  },
+  {
+   "step": 2,
+   "index": 0,
+   "label": "Swarf, dross or dust on pads or pins",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 2,
+   "index": 1,
+   "label": "Dirt will not come off, or coating has built up",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 2,
+   "index": 2,
+   "label": "Pad, pin or bushing looks worn or damaged",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 2,
+   "index": 3,
+   "label": "Fixture calibration label out of date or missing",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 2,
+   "index": 4,
+   "label": "Gauge or check pin missing or out of calibration",
+   "category": "Gauge or check pin"
+  },
+  {
+   "step": 3,
+   "index": 0,
+   "label": "Part rocks, or a gap shows at a pad",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 3,
+   "index": 1,
+   "label": "Part is still warm",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 3,
+   "index": 2,
+   "label": "Wrong part or variant on the fixture",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 3,
+   "index": 3,
+   "label": "Crack seen in the part",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 3,
+   "index": 4,
+   "label": "Part bent, dented or damaged",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 4,
+   "index": 0,
+   "label": "Round locator pin (RPS-1) will not enter",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 4,
+   "index": 1,
+   "label": "Slot pin (RPS-2) will not enter or binds",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 4,
+   "index": 2,
+   "label": "Pin enters but is loose",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 4,
+   "index": 3,
+   "label": "Part needs force to seat",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 4,
+   "index": 4,
+   "label": "Locator pin or bushing bent, loose or broken",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 5,
+   "index": 0,
+   "label": "A clamp will not close, or is stiff",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 5,
+   "index": 1,
+   "label": "A clamp is pulling the part down",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 5,
+   "index": 2,
+   "label": "Clamps were closed in the wrong order",
+   "category": "Procedure and sequence"
+  },
+  {
+   "step": 5,
+   "index": 3,
+   "label": "A clamp is broken or missing",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 6,
+   "index": 0,
+   "label": "A clamp will not close, or is stiff",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 6,
+   "index": 1,
+   "label": "Part moves when clamped fully",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 6,
+   "index": 2,
+   "label": "Clamps were closed in the wrong order",
+   "category": "Procedure and sequence"
+  },
+  {
+   "step": 7,
+   "index": 0,
+   "label": "Check pin is too small: it falls through or is loose",
+   "category": "Gauge or check pin"
+  },
+  {
+   "step": 7,
+   "index": 1,
+   "label": "Check pin will not enter one hole",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 7,
+   "index": 2,
+   "label": "Several holes will not take the pin, same direction",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 7,
+   "index": 3,
+   "label": "Check pin missing, wrong, damaged or out of calibration",
+   "category": "Gauge or check pin"
+  },
+  {
+   "step": 7,
+   "index": 4,
+   "label": "Burr, dross or slug in the hole",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 7,
+   "index": 5,
+   "label": "Hole is missing or not cut through",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 7,
+   "index": 6,
+   "label": "Hole cannot be reached with the pin",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 8,
+   "index": 0,
+   "label": "Gauge will not fit the slot",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 8,
+   "index": 1,
+   "label": "Slot or notch looks the wrong shape or size",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 8,
+   "index": 2,
+   "label": "Slot or notch missing or not cut through",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 8,
+   "index": 3,
+   "label": "Gauge missing or wrong",
+   "category": "Gauge or check pin"
+  },
+  {
+   "step": 9,
+   "index": 0,
+   "label": "Flush pin or gauge shows an edge out",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 9,
+   "index": 1,
+   "label": "Burr, dross or spatter on the edge",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 9,
+   "index": 2,
+   "label": "A point cannot be reached with the gauge",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 9,
+   "index": 3,
+   "label": "Edge position differs top to bottom of an angled wall",
+   "category": "Laser cut quality"
+  },
+  {
+   "step": 10,
+   "index": 0,
+   "label": "A flange gap is over the limit",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 10,
+   "index": 1,
+   "label": "Part rocks while measuring a gap",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 10,
+   "index": 2,
+   "label": "Taper gauge wrong or damaged",
+   "category": "Gauge or check pin"
+  },
+  {
+   "step": 11,
+   "index": 0,
+   "label": "Crack found",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 11,
+   "index": 1,
+   "label": "Coating damage, dent or handling mark",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 11,
+   "index": 2,
+   "label": "Part marking or traceability not readable",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 11,
+   "index": 3,
+   "label": "Hard to see: poor light",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 12,
+   "index": 0,
+   "label": "A clamp is stuck",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 12,
+   "index": 1,
+   "label": "Part is stuck on the pins",
+   "category": "Fixture or tooling"
+  },
+  {
+   "step": 12,
+   "index": 2,
+   "label": "Part damaged while removing",
+   "category": "Part form or damage"
+  },
+  {
+   "step": 12,
+   "index": 3,
+   "label": "Tag missing or part not labelled",
+   "category": "Setup, cleanliness and labelling"
+  }
+ ]
+}

@@ -33,9 +33,18 @@ export function parseMeta(v: unknown, id: string): SessionMeta {
     part: str(m.part, "part"),
     sop: str(m.sop, "sop"),
     fixture: str(m.fixture, "fixture"),
+    ...(m.station === undefined || m.station === null ? {} : { station: str(m.station, "station") }),
     operator: str(m.operator, "operator"),
     createdAt: time(m.createdAt, "createdAt"),
   };
+}
+
+/** A station name: plain text, 2 to 80 characters. */
+export function parseStationName(v: unknown): string {
+  const name = str(v, "name", 80).replace(/\s+/g, " ");
+  if (name.length < 2) throw new BadRequest("name must be at least 2 characters");
+  if (name.includes("|")) throw new BadRequest("name cannot contain |");
+  return name;
 }
 
 export function parseActions(v: unknown): Action[] {

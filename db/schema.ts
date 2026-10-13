@@ -12,7 +12,10 @@ export const sessions = pgTable(
     status: text("status").notNull(),
     part: text("part").notNull(),
     sop: text("sop").notNull(),
+    /** "Cell and fixture" as typed when the session started. Kept as is. */
     fixture: text("fixture").notNull(),
+    /** The station picked from the list. Older sessions: backfilled from fixture. */
+    station: text("station"),
     operatorLabel: text("operator_label").notNull(),
     /** Percent, steps correct first time / 12. Null until complete, and for a held part. */
     conformance: integer("conformance"),
@@ -22,10 +25,18 @@ export const sessions = pgTable(
     checkPoints: integer("check_points").notNull().default(0),
     deviations: integer("deviations").notNull().default(0),
     discrepancies: integer("discrepancies").notNull().default(0),
+    /** Check time: start to step 12 done, without paused time. Null unless complete. */
+    activeSeconds: integer("active_seconds"),
     updatedAt: ts("updated_at").notNull(),
   },
-  (t) => [index("sessions_started_idx").on(t.startedAt)],
+  (t) => [index("sessions_started_idx").on(t.startedAt), index("sessions_station_idx").on(t.station, t.startedAt)],
 );
+
+/** Stations: a cell and fixture where first-off checks are run. */
+export const stations = pgTable("stations", {
+  name: text("name").primaryKey(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+});
 
 /** Append-only log of what the Quality Technician did. The source of truth. */
 export const sessionActions = pgTable(

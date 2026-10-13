@@ -387,6 +387,26 @@ export function pausedMs(s: CheckState, now: number): number {
   return s.pauses.reduce((t, p) => t + ((p.to ?? now) - p.from), 0);
 }
 
+/** Time paused between two moments. */
+export function pausedBetween(s: CheckState, from: number, to: number): number {
+  return s.pauses.reduce((t, p) => t + Math.max(0, Math.min(p.to ?? to, to) - Math.max(p.from, from)), 0);
+}
+
+/**
+ * Check time of a completed check: start to step 12 done, without paused time.
+ * Holds after step 12 (waiting for the engineer) are not counted. Null if step 12 is not done.
+ */
+export function activeCheckMs(s: CheckState): number | null {
+  const end = s.steps[STEP_COUNT - 1].doneAt;
+  if (end === null) return null;
+  return Math.max(0, end - s.startedAt - pausedBetween(s, s.startedAt, end));
+}
+
+/** Active time from the start to a moment, without paused time ("Done at" in the report). */
+export function activeAt(s: CheckState, at: number): number {
+  return Math.max(0, at - s.startedAt - pausedBetween(s, s.startedAt, at));
+}
+
 export function elapsedMs(s: CheckState, now: number): number {
   const end = s.endedAt ?? (s.status === "complete" ? s.lastAt : now);
   return Math.max(0, end - s.startedAt - pausedMs(s, Math.min(now, end)));

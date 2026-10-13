@@ -1,5 +1,5 @@
 // Turns a session log into the rows stored in the summary tables.
-import { conformance, correctFirstTime, checkPointsDone, reduce, stepsDone } from "./reducer";
+import { activeCheckMs, conformance, correctFirstTime, checkPointsDone, reduce, stepsDone } from "./reducer";
 import type { Action, CheckState, SessionMeta, SessionStatus, StepEventKind } from "./types";
 
 export interface SessionRow {
@@ -10,6 +10,7 @@ export interface SessionRow {
   part: string;
   sop: string;
   fixture: string;
+  station: string | null;
   operatorLabel: string;
   conformance: number | null;
   correctFirstTime: number;
@@ -18,7 +19,13 @@ export interface SessionRow {
   checkPoints: number;
   deviations: number;
   discrepancies: number;
+  activeSeconds: number | null;
   updatedAt: Date;
+}
+
+/** The station a session belongs to: the one picked, else its "Cell and fixture" text. */
+export function stationOf(meta: Pick<SessionMeta, "station" | "fixture">): string {
+  return (meta.station ?? meta.fixture).trim();
 }
 
 export interface StepEventRow {
@@ -85,6 +92,13 @@ export function endedAt(s: CheckState): number | null {
   return Math.max(...times);
 }
 
+/** Check time in seconds, only for a completed check (never for a held or left part). */
+export function activeSecondsOf(s: CheckState): number | null {
+  if (s.status !== "complete" && s.status !== "on_hold") return null;
+  const ms = activeCheckMs(s);
+  return ms === null ? null : Math.round(ms / 1000);
+}
+
 export function project(meta: SessionMeta, actions: Action[], now: number): Projection {
   const s = reduce(actions, meta.createdAt);
   const sid = meta.id;
@@ -100,6 +114,7 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
       part: meta.part,
       sop: meta.sop,
       fixture: meta.fixture,
+      station: stationOf(meta),
       operatorLabel: meta.operator,
       conformance: conformance(s),
       correctFirstTime: correctFirstTime(s),
@@ -108,6 +123,7 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
       checkPoints: checkPointsDone(s),
       deviations: s.deviations.length,
       discrepancies: s.discrepancies.length,
+      activeSeconds: activeSecondsOf(s),
       updatedAt: new Date(now),
     },
     stepEvents: s.stepEvents.map((e) => ({

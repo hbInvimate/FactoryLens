@@ -21,6 +21,8 @@ export interface SessionMeta {
   part: string;
   sop: string;
   fixture: string;
+  /** The station picked on the start form. Older sessions have none; their fixture text is their station. */
+  station?: string;
   operator: string;
   createdAt: number;
 }

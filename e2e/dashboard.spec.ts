@@ -1,0 +1,153 @@
+// Supervisor dashboard, phase 1: stations, navigation, /dashboard tiles and table, /dashboard/[id] report.
+import { expect, test, type Page } from "@playwright/test";
+import { doSteps, lodge, tap, waitSaved } from "./helpers";
+
+const unique = (label: string) => `${label} ${Math.random().toString(36).slice(2, 7)}`;
+
+/** Starts a check at a station, adding the station first if it is not in the list. */
+async function startAt(page: Page, station: string): Promise<string> {
+  await page.goto("/");
+  const select = page.getByLabel("Cell and fixture", { exact: true });
+  const known = await select.locator("option", { hasText: station }).count();
+  if (known) {
+    await select.selectOption(station);
+  } else {
+    await select.selectOption("__add__");
+    await page.getByLabel("New station: cell and fixture").fill(station);
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(select).toHaveValue(station);
+  }
+  await page.getByRole("button", { name: "Start the check" }).click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  await expect(page.locator("li[aria-current=step]")).toBeVisible();
+  return page.url().split("/check/")[1];
+}
+
+/** Step 7: H9 to H12 skipped, then fixed. */
+async function skipHolesThenFix(page: Page) {
+  await tap(page, 7, ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H13", "H14"]);
+  await page.getByRole("button", { name: "Next step", exact: true }).click();
+  await tap(page, 7, ["H9", "H10", "H11", "H12"], "your view");
+  await page.getByRole("button", { name: "Fixed, continue" }).click();
+}
+
+/** Step 5: C4 before C3, then released and closed in order. */
+async function wrongClampsThenFix(page: Page) {
+  await tap(page, 5, ["C1", "C2", "C4"]);
+  await page.getByRole("button", { name: "Release all clamps" }).click();
+  await tap(page, 5, ["C1", "C2", "C3", "C4", "C5", "C6"], "your view");
+  await page.getByRole("button", { name: "Fixed, continue" }).click();
+}
+
+async function openDashboard(page: Page, station: string) {
+  await page.goto(`/dashboard?station=${encodeURIComponent(station)}&range=all`);
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByLabel("Station")).toHaveValue(station);
+}
+
+test("Navigation: Dashboard button on the first screen and in the top navigation", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("main").getByRole("link", { name: "Dashboard" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page.getByText("Anyone with the link can open this page. Use test data only.")).toBeVisible();
+  await page.goto("/sessions");
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboard" }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+});
+
+test("Station list: seeded station, Add a station, empty station on the dashboard", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Cell and fixture", { exact: true })).toHaveValue("Laser cell 3 · FX-014");
+  const name = unique("Laser cell 9 · FX-EMPTY");
+  await page.getByLabel("Cell and fixture", { exact: true }).selectOption("__add__");
+  await page.getByLabel("New station: cell and fixture").fill(name);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Cell and fixture", { exact: true })).toHaveValue(name);
+
+  await openDashboard(page, name);
+  await expect(page.getByTestId("dashboard-empty")).toHaveText("No sessions at this station yet.");
+});
+
+test("One deviation fixed scores 92% on the dashboard and in the report", async ({ page }) => {
+  const station = unique("Laser cell 4 · FX-ONE");
+  const id = await startAt(page, station);
+  await doSteps(page, 1, 6);
+  await skipHolesThenFix(page);
+  await doSteps(page, 8, 12);
+  await waitSaved(page);
+
+  await openDashboard(page, station);
+  await expect(page.getByTestId("tile-sessions")).toHaveText("1");
+  await expect(page.getByTestId("tile-conformance")).toHaveText("92%");
+  await expect(page.getByTestId("tile-no-deviation")).toHaveText("0%");
+  await expect(page.getByTestId("tile-check-time")).toHaveText(/^\d+:\d\d$/);
+  await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("row-conformance")).toHaveText("92%");
+
+  await page.locator(`tr[data-session="${id}"]`).click();
+  await expect(page).toHaveURL(new RegExp(`/dashboard/${id}$`));
+  await expect(page.getByTestId("report-conformance")).toHaveText("92%");
+  await expect(page.getByTestId("report-correct")).toHaveText("11 of 12");
+  await expect(page.getByTestId("report-deviations")).toHaveText("1");
+  await expect(page.getByTestId("report-outcome")).toContainText("Complete");
+  const step7 = page.locator('tr[data-step="7"]');
+  await expect(step7).toContainText("Check holes H1 to H14 with check pins");
+  await expect(step7).toContainText("Skipped");
+  await expect(step7).toContainText("Corrected after 1 correction");
+  await expect(page.locator('tr[data-step="6"]')).toContainText("Passed");
+  await expect(page.getByTestId("steps-table")).not.toContainText("SOP step");
+  await expect(page.getByRole("button", { name: "Send to quality system" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Replay this session" })).toBeDisabled();
+  await expect(page.getByText("Coming later")).toBeVisible();
+});
+
+test("Two deviations fixed score 83%", async ({ page }) => {
+  const station = unique("Laser cell 5 · FX-TWO");
+  const id = await startAt(page, station);
+  await doSteps(page, 1, 4);
+  await wrongClampsThenFix(page);
+  await doSteps(page, 6, 6);
+  await skipHolesThenFix(page);
+  await doSteps(page, 8, 12);
+  await waitSaved(page);
+
+  await openDashboard(page, station);
+  await expect(page.getByTestId("tile-conformance")).toHaveText("83%");
+  await page.locator(`tr[data-session="${id}"]`).click();
+  await expect(page.getByTestId("report-conformance")).toHaveText("83%");
+  await expect(page.getByTestId("report-correct")).toHaveText("10 of 12");
+  await expect(page.getByTestId("report-deviations")).toHaveText("2");
+  await expect(page.locator('tr[data-step="5"]')).toContainText("Incorrect");
+});
+
+test("A part-held session shows Not scored and is left out of conformance and check time", async ({ page }) => {
+  const station = unique("Laser cell 6 · FX-HELD");
+  const clean = await startAt(page, station);
+  await doSteps(page, 1, 12);
+  await waitSaved(page);
+
+  const held = await startAt(page, station);
+  await doSteps(page, 1, 2);
+  await lodge(page, /Lower the part onto pads P1 to P3/, "Crack seen in the part");
+  await page.getByRole("button", { name: "Next: mark and hand off" }).click();
+  await page.getByRole("button", { name: "Quality", exact: true }).click();
+  await page.getByRole("button", { name: "Part scrapped" }).click();
+  await page.getByLabel("Why (their words)").fill("Crack confirmed");
+  await page.getByRole("button", { name: "Record and end the check" }).click();
+  await expect(page.getByRole("heading", { name: "Part held, not checked" })).toBeVisible();
+  await waitSaved(page);
+
+  await openDashboard(page, station);
+  await expect(page.getByTestId("tile-sessions")).toHaveText("2");
+  await expect(page.getByText("1 complete · 1 part held · 0 left")).toBeVisible();
+  await expect(page.getByTestId("tile-conformance")).toHaveText("100%");
+  await expect(page.getByText("steps correct first time, 1 completed session")).toBeVisible();
+  await expect(page.getByText("completed sessions, without pauses and holds (1)")).toBeVisible();
+  await expect(page.locator(`tr[data-session="${held}"]`).getByTestId("row-conformance")).toHaveText("Not scored");
+  await expect(page.locator(`tr[data-session="${clean}"]`).getByTestId("row-conformance")).toHaveText("100%");
+
+  await page.locator(`tr[data-session="${held}"]`).click();
+  await expect(page.getByTestId("report-conformance")).toHaveText("Not scored");
+  await expect(page.getByTestId("report-outcome")).toContainText("Part held and not scored");
+  await expect(page.getByTestId("report-outcome")).toContainText("Crack seen in the part");
+  await expect(page.locator('tr[data-step="3"]')).toContainText("Stopped");
+});
