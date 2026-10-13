@@ -1,0 +1,167 @@
+import type { IssueEffect, IssueKind } from "@/lib/issues";
+import type { HandoffItem, TrialOutcome } from "@/lib/procedure";
+
+export type SessionStatus = "running" | "paused" | "on_hold" | "stopped" | "complete" | "part_held";
+
+export const STATUS_LABEL: Record<SessionStatus, string> = {
+  running: "Running",
+  paused: "Paused",
+  on_hold: "On hold",
+  stopped: "Stopped",
+  complete: "Complete",
+  part_held: "Part held, not checked",
+};
+
+export interface SessionMeta {
+  id: string;
+  part: string;
+  sop: string;
+  fixture: string;
+  operator: string;
+  createdAt: number;
+}
+
+/**
+ * Everything the Quality Technician does is one action in an append-only log.
+ * State is always rebuilt from the log (see reducer.ts), on the client and on the server.
+ * A future video model raises deviations through the same step state (see lib/integrations.ts).
+ */
+export type ActionBody =
+  | { type: "tap_point"; step: number; point: string }
+  | { type: "next_step"; step: number }
+  | { type: "release_clamps"; step: number }
+  | { type: "fix_continue"; deviation: string }
+  | { type: "call_trainer"; deviation: string }
+  | { type: "undo"; target: string }
+  | { type: "pause" }
+  | { type: "resume" }
+  | { type: "leave"; reason: string }
+  | { type: "fixed_on_spot"; did: string; step: number; issue: string; done: string[] }
+  | { type: "lodge"; did: string; step: number; issue: string; tried: string[] }
+  | { type: "call_marked"; did: string; who: string }
+  | { type: "todo_tick"; did: string; index: number }
+  | { type: "handoff"; did: string; item: HandoffItem }
+  | { type: "clear"; did: string; who: string; outcome: ClearOutcome; reason: string }
+  | { type: "proc_tick"; did: string; key: string }
+  | { type: "proc_holes"; did: string; holes: string[] }
+  | { type: "proc_parts"; did: string; count: number }
+  | { type: "trial_outcome"; did: string; outcome: TrialOutcome }
+  | { type: "proc_close"; did: string };
+
+export type ActionType = ActionBody["type"];
+export type Action = ActionBody & { id: string; seq: number; at: number };
+
+export const ACTION_TYPES: ActionType[] = [
+  "tap_point", "next_step", "release_clamps", "fix_continue", "call_trainer", "undo", "pause", "resume",
+  "leave", "fixed_on_spot", "lodge", "call_marked", "todo_tick", "handoff", "clear", "proc_tick",
+  "proc_holes", "proc_parts", "trial_outcome", "proc_close",
+];
+
+export type ClearOutcome = "cleared" | "scrapped";
+
+export interface PointMark {
+  id: string;
+  point: string;
+  at: number;
+  order: number;
+}
+
+export type StepOutcome = "pending" | "correct" | "corrected";
+
+export interface StepRun {
+  n: number;
+  confirmed: PointMark[];
+  /** Clamps tapped out of order, shown red until released. */
+  wrong: string[];
+  needsRelease: boolean;
+  startedAt: number | null;
+  doneAt: number | null;
+  outcome: StepOutcome;
+}
+
+export type DeviationKind = "wrong_order" | "skipped";
+
+export interface Deviation {
+  id: string;
+  step: number;
+  kind: DeviationKind;
+  /** Skipped: the points not confirmed when she moved on. */
+  missing: string[];
+  /** Wrong order: the clamp tapped, and the one that should have been. */
+  tapped?: string;
+  expected?: string;
+  /** Failed attempts on this step. The original mistake is attempt 1. */
+  failed: number;
+  raisedAt: number;
+  fixedAt: number | null;
+  trainerCalledAt: number | null;
+}
+
+export type DiscrepancyStatus = "fixed_on_spot" | "open" | "cleared" | "scrapped" | "escalated" | "released";
+
+export interface Handoff {
+  marks: boolean;
+  photos: number;
+  sheet: boolean;
+  handedOverAt: number | null;
+}
+
+export interface ProcState {
+  ticks: Record<string, boolean>;
+  holes: string[];
+  parts: number;
+  trials: { outcome: TrialOutcome; at: number }[];
+  trialStartedAt: number | null;
+  passedAt: number | null;
+}
+
+export interface Discrepancy {
+  id: string;
+  step: number;
+  issue: string;
+  kind: IssueKind;
+  effect: IssueEffect;
+  who: string[];
+  note: string;
+  status: DiscrepancyStatus;
+  loggedAt: number;
+  /** Fix steps done before it was fixed or lodged. */
+  done: string[];
+  called: string[];
+  todo: boolean[];
+  handoff: Handoff;
+  clearedBy: string | null;
+  clearReason: string | null;
+  closedAt: number | null;
+  /** Present when this issue follows the hole check procedure. */
+  proc: ProcState | null;
+}
+
+export type StepEventKind = "done" | "wrong_order" | "skipped" | "fixed" | "cannot_do";
+
+export interface StepEvent {
+  id: string;
+  step: number;
+  kind: StepEventKind;
+  attempt: number;
+  detail: string;
+  at: number;
+}
+
+export interface CheckState {
+  startedAt: number;
+  endedAt: number | null;
+  /** 1 to 12; 13 once step 12 is done. */
+  current: number;
+  steps: StepRun[];
+  deviations: Deviation[];
+  discrepancies: Discrepancy[];
+  paused: boolean;
+  pauses: { from: number; to: number | null }[];
+  leaves: { at: number; reason: string }[];
+  stepEvents: StepEvent[];
+  status: SessionStatus;
+  /** Actions that raised a deviation. They cannot be undone. */
+  raisers: Set<string>;
+  lastAt: number;
+}

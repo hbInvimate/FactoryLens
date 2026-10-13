@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* FactoryLens AI palette, taken from docs/screens. */
+@theme {
+  --color-bg: #0f1419;
+  --color-bar: #141b23;
+  --color-panel: #18202a;
+  --color-panel2: #141b23;
+  --color-deep: #0e1216;
+  --color-well: #0b1114;
+  --color-line: #243040;
+  --color-line2: #2b3a4c;
+  --color-edge: #4a5a6c;
+  --color-sel: #1b2a3d;
+  --color-ink: #e8edf1;
+  --color-ink2: #c9d3da;
+  --color-soft: #b7c3cd;
+  --color-muted: #8c9aa6;
+  --color-dim: #5e6b78;
+  --color-ring: #3a4857;
+  --color-blue: #378add;
+  --color-blue-ink: #06182e;
+  --color-blue-soft: #cfe2fb;
+  --color-blue-text: #8cb8f0;
+  --color-green: #3cc47a;
+  --color-green-ink: #06210f;
+  --color-green-soft: #bfebd0;
+  --color-green-bg: #16301f;
+  --color-amber: #e6b422;
+  --color-amber-ink: #1b1500;
+  --color-amber-soft: #ffe08a;
+  --color-amber-bg: #3a2f10;
+  --color-red: #f2705f;
+  --color-red-ink: #2a0a06;
+  --color-red-soft: #ffd9d3;
+  --color-red-bg: #3b1b17;
+  --color-rec: #e5484d;
+  --color-violet: #b6b0f5;
+  --color-violet-bg: #2b2650;
+  --color-teal: #5fd3c2;
+  --color-teal-bg: #13312e;
+  --font-sans: var(--font-barlow), "Segoe UI", Arial, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Gloved hands: every control is at least 56 px. */
+.tap {
+  min-height: 56px;
+  min-width: 56px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.eq-bar {
+  transform-origin: center;
+  animation: eq 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar {
+    animation: none;
+  }
 }
