@@ -21,7 +21,10 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sessions/[i
     }
     const meta = parseMeta(body.meta, id);
     const actions = parseActions(body.actions);
-    const result = await getRepo().save(meta, actions);
+    // Tests only: with the in-process database (FL_STORAGE=memory) a test may save a sample session.
+    // Against Neon this header is ignored: only `npm run db:seed-sample` creates sample data.
+    const sample = process.env.FL_STORAGE === "memory" && req.headers.get("x-fl-sample") === "1";
+    const result = await getRepo().save(meta, actions, sample ? { sample: true } : undefined);
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return errorResponse(e);

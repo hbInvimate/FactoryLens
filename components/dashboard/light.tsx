@@ -4,13 +4,15 @@ import { STATUS_LABEL, type SessionStatus } from "@/lib/check/types";
 import { cx } from "../ui";
 
 export function Page({ children }: { children: ReactNode }) {
-  return <div className="flex flex-1 flex-col bg-[#eef0f3] text-[#1b1f24]">{children}</div>;
+  return <div className="flex flex-1 flex-col bg-[#eef0f3] text-[#1b1f24] print:bg-white">{children}</div>;
 }
 
-export function Card({ children, className, accent }: { children: ReactNode; className?: string; accent?: "green" | "amber" | "red" | "gray" }) {
+export function Card({ children, className, accent, testId }: { children: ReactNode; className?: string; accent?: "green" | "amber" | "red" | "gray"; testId?: string }) {
   const bar = accent && { green: "border-l-[#2e9e5b]", amber: "border-l-[#d79a12]", red: "border-l-[#c9433a]", gray: "border-l-[#9aa3ad]" }[accent];
   return (
-    <div className={cx("rounded-xl border border-[#dfe3e8] bg-white", accent && "border-l-[5px]", bar, className)}>{children}</div>
+    <div data-testid={testId} className={cx("print-card rounded-xl border border-[#dfe3e8] bg-white", accent && "border-l-[5px]", bar, className)}>
+      {children}
+    </div>
   );
 }
 
@@ -57,7 +59,7 @@ export function StatusPill({ status }: { status: SessionStatus }) {
 
 export function Note() {
   return (
-    <p className="rounded-lg border border-[#f1d58a] bg-[#fff8e3] px-3 py-2 text-[14px] text-[#6b5200]">
+    <p className="rounded-lg border border-[#f1d58a] bg-[#fff8e3] px-3 py-2 text-[14px] text-[#6b5200] print:hidden">
       Anyone with the link can open this page. Use test data only.
     </p>
   );

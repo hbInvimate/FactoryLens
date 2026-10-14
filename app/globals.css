@@ -81,6 +81,35 @@ textarea:focus-visible {
   animation: eq 0.9s ease-in-out infinite;
 }
 
+/* Session report on paper: A4 portrait, white, no menus or buttons, cards never split across pages. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #1b1f24 !important;
+  }
+
+  .print-card,
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  .print-keep-heading {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .eq-bar {
     animation: none;

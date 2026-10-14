@@ -58,7 +58,7 @@ test("One deviation fixed scores 92% on the dashboard and in the report", async 
   await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("row-conformance")).toHaveText("92%");
 
   await page.locator(`tr[data-session="${id}"]`).click();
-  await expect(page).toHaveURL(new RegExp(`/dashboard/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/dashboard/${id}(\\?|$)`));
   await expect(page.getByTestId("report-conformance")).toHaveText("92%");
   await expect(page.getByTestId("report-correct")).toHaveText("11 of 12");
   await expect(page.getByTestId("report-deviations")).toHaveText("1");

@@ -3,15 +3,16 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Card, LChip, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
+import { ClipToggle, PrintButton, PrintedOn } from "@/components/dashboard/ReportParts";
+import { LiveWait } from "@/components/dashboard/SessionsTable";
+import { LocalTime } from "@/components/LocalTime";
 import { PageBar } from "@/components/PageBar";
 import { stationOf } from "@/lib/check/project";
-import { LocalTime } from "@/components/LocalTime";
-import { LiveWait } from "@/components/dashboard/SessionsTable";
 import {
   activeAt, activeCheckMs, conformance, correctFirstTime, openHoldsAll, reduce,
 } from "@/lib/check/reducer";
 import { HOLD_OUTCOMES, STATUS_LABEL, type CheckState, type Deviation, type Discrepancy } from "@/lib/check/types";
-import { categoryOf } from "@/lib/issues";
+import { deviationCards, discrepancyCards, TYPE_LABEL } from "@/lib/dashboard/report";
 import { fmtClock } from "@/lib/format";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
@@ -20,6 +21,19 @@ import { STEPS } from "@/lib/sop";
 export const metadata = { title: "FactoryLens AI: session report" };
 
 type Outcome = { tone: "green" | "red" | "gray" | "blue" | "amber"; title: string; detail: string };
+
+/** The dashboard filters the user came from, so "Back to the dashboard" returns to the same view. */
+const KEEP = ["station", "range", "shift", "sample", "dev"] as const;
+
+function backHref(sp: Record<string, string | string[] | undefined>): string {
+  const q = new URLSearchParams();
+  for (const k of KEEP) {
+    const v = sp[k];
+    if (typeof v === "string" && v) q.set(k, v);
+  }
+  const s = q.toString();
+  return s ? `/dashboard?${s}` : "/dashboard";
+}
 
 function decisionText(d: Discrepancy): string {
   if (d.decision) return `${HOLD_OUTCOMES.find((o) => o.id === d.decision!.outcome)?.label}, decided by ${d.decision.by}: ${d.decision.reason}`;
@@ -79,15 +93,19 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
   );
 }
 
-/** Why it was on hold, who was called, how long it waited, and what was decided. */
+const At = ({ s, at }: { s: CheckState; at: number }) => (
+  <>
+    {fmtClock(activeAt(s, at))} <span className="text-[#6b7480]">(<LocalTime iso={new Date(at).toISOString()} timeOnly />)</span>
+  </>
+);
+
+/** Why it was on hold, who was called, how long it waited, and what was decided. Only when there was a hold. */
 function HoldSection({ s }: { s: CheckState }) {
   const holds = s.discrepancies.filter((d) => d.status !== "fixed_on_spot");
+  if (!holds.length) return null;
   return (
     <section className="flex flex-col gap-3" data-testid="hold-section">
-      <h2 className="pt-2 text-[20px] font-semibold">Hold</h2>
-      {holds.length === 0 && (
-        <Card className="px-5 py-4 text-[15px] text-[#4b5563]">This session was never on hold.</Card>
-      )}
+      <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Hold</h2>
       {holds.map((d) => {
         const open = d.status === "open" || d.status === "escalated";
         return (
@@ -95,9 +113,9 @@ function HoldSection({ s }: { s: CheckState }) {
             <h3 className="pb-1 text-[17px] font-semibold">
               Step {d.step || "—"}: {d.issue}
             </h3>
-            <Row k="Why" v={`${d.issue} · ${categoryOf(d.step, d.issue)} · the check ${d.effect === "stop" ? "stopped" : "continued"}`} />
+            <Row k="Why" v={`${d.issue} · ${d.category} · the check ${d.effect === "stop" ? "stopped" : "continued"}`} />
             <Row k="Who was called" v={`${d.who.length ? d.who.join(", ") : "No call needed"}${d.called.length ? ` (marked called: ${d.called.join(", ")})` : ""}`} />
-            <Row k="Started at" v={<>{fmtClock(activeAt(s, d.loggedAt))} into the session · <LocalTime iso={new Date(d.loggedAt).toISOString()} timeOnly /></>} />
+            <Row k="Started at" v={<At s={s} at={d.loggedAt} />} />
             <Row
               k="Waiting time"
               v={open ? <LiveWait since={new Date(d.loggedAt).toISOString()} /> : d.closedAt ? fmtClock(d.closedAt - d.loggedAt) : "not recorded"}
@@ -139,13 +157,84 @@ function outcomeText(s: CheckState, n: number, dev: Deviation | undefined): stri
   return "Not done";
 }
 
-async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params"] }) {
-  const { id } = await params;
+const TYPE_TONE = { skipped: "amber", wrong_order: "red", cannot_do: "red" } as const;
+
+function WhatWentWrong({ cards }: { cards: ReturnType<typeof deviationCards> }) {
+  return (
+    <section className="flex flex-col gap-3" data-testid="what-went-wrong">
+      <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">What went wrong</h2>
+      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-[#4b5563]">No deviations. Every step was done correctly on the first attempt.</Card>}
+      {cards.map((c) => (
+        <Card key={c.key} className="flex flex-col gap-1 px-5 py-4" testId="deviation-card">
+          <h3 className="flex flex-wrap items-center gap-2 text-[17px] font-semibold">
+            Step {c.step}: {c.stepName} — {TYPE_LABEL[c.type]} at {fmtClock(c.sessionMs)}
+            <LChip tone={TYPE_TONE[c.type]}>{TYPE_LABEL[c.type]}</LChip>
+          </h3>
+          <p className="text-[15px]">
+            <b className="text-[#4b5563]">What happened:</b> <span data-testid="happened">{c.happened}</span>
+            {c.points === null && c.type !== "cannot_do" && <span className="text-[#6b7480]"> (points not recorded)</span>}
+          </p>
+          <p className="text-[15px]">
+            <b className="text-[#4b5563]">Expected:</b> {c.expected}
+          </p>
+          <p className="text-[14px] text-[#4b5563]">
+            Time {fmtClock(c.sessionMs)} (<LocalTime iso={new Date(c.at).toISOString()} timeOnly />)
+            {c.attempts !== null && <> · Attempt {c.attempts}</>}
+            {c.corrected !== null && (
+              <span data-testid="corrected">
+                {" "}
+                · {c.corrected ? `Corrected${c.attempts === 1 ? " on the first retry" : ` after ${c.attempts} failed attempts`}` : "Not corrected"}
+              </span>
+            )}
+            {c.trainerCalled && <> · Trainer called</>}
+          </p>
+          {c.clip && <ClipToggle clip={c.clip} />}
+        </Card>
+      ))}
+    </section>
+  );
+}
+
+function DiscrepanciesLodged({ s }: { s: CheckState }) {
+  const cards = discrepancyCards(s);
+  return (
+    <section className="flex flex-col gap-3" data-testid="discrepancies-lodged">
+      <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Discrepancies lodged</h2>
+      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-[#4b5563]">No discrepancies lodged.</Card>}
+      {cards.map((c) => (
+        <Card key={c.key} className="flex flex-col gap-1 px-5 py-4" testId="discrepancy-card">
+          <h3 className="flex flex-wrap items-center gap-2 text-[17px] font-semibold">
+            {c.step ? `Step ${c.step}: ${c.stepName}` : c.stepName} — {c.issue}
+            <LChip tone="blue">{c.category}</LChip>
+          </h3>
+          <p className="text-[15px] text-[#2b3138]">
+            <b className="text-[#4b5563]">{c.fixedOnSpot ? "Fixed by the Quality Technician" : "Lodged"}</b> at {fmtClock(c.sessionMs)} (
+            <LocalTime iso={new Date(c.loggedAt).toISOString()} timeOnly />).{" "}
+            {!c.fixedOnSpot && (
+              <>
+                Calls: {c.who.length ? c.who.join(", ") : "none"}
+                {c.called.length ? ` (marked called: ${c.called.join(", ")})` : ""}. {c.stopped ? "The check stopped." : "The check could continue."}
+              </>
+            )}
+            {c.fixedOnSpot && "The check carried on."}
+          </p>
+          <p className="text-[15px]">
+            <b className="text-[#4b5563]">Outcome:</b> <span data-testid="discrepancy-outcome">{c.outcome}</span>
+          </p>
+        </Card>
+      ))}
+    </section>
+  );
+}
+
+async function Report({ id }: { id: string }) {
   await connection();
   if (!isSessionId(id)) notFound();
   let journal;
+  let detail;
   try {
-    journal = await getRepo().journal(id);
+    const repo = getRepo();
+    [journal, detail] = await Promise.all([repo.journal(id), repo.detail(id)]);
   } catch (e) {
     if (e instanceof NotConfigured) {
       return (
@@ -157,7 +246,7 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
     }
     throw e;
   }
-  if (!journal) notFound();
+  if (!journal || !detail) notFound();
   const { meta, actions } = journal;
   const s = reduce(actions, meta.createdAt);
   const conf = conformance(s);
@@ -165,10 +254,18 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
   const outcome = outcomeOf(s);
   const end = s.current > 12 ? s.steps[11].doneAt : s.endedAt;
   const lengthMs = s.current > 12 ? activeCheckMs(s) : end !== null ? activeAt(s, end) : null;
+  const sample = detail.session.isSample === true;
+  const cards = deviationCards(s, detail.stepEvents, detail.points);
 
   return (
     <>
+      {sample && (
+        <p data-testid="sample-mark" className="print-card w-fit rounded-full border-2 border-[#d79a12] bg-[#fdeec8] px-4 py-1 text-[14px] font-bold tracking-wide text-[#6b4e00]">
+          SAMPLE DATA: this is a fake session for showing the dashboard
+        </p>
+      )}
       <div className="flex flex-col gap-1">
+        <p className="hidden text-[13px] text-[#4b5563] print:block">FactoryLens AI · Session report</p>
         <h1 className="text-[28px] font-semibold">Post-session review</h1>
         <p className="flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-[#4b5563]">
           <span>
@@ -183,10 +280,19 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
           <span>
             Part <b className="text-[#1b1f24]">{meta.part}</b>
           </span>
+          <span>
+            Session date{" "}
+            <b className="text-[#1b1f24]">
+              <LocalTime iso={new Date(meta.createdAt).toISOString()} />
+            </b>
+          </span>
+          <span className="hidden print:inline">
+            <PrintedOn />
+          </span>
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 print:grid-cols-4">
         <StatCard
           testId="report-conformance"
           value={conf !== null ? `${conf}%` : live ? "In progress" : "Not scored"}
@@ -203,12 +309,13 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
         />
       </div>
 
-      <div role="status" data-testid="report-outcome" className={`rounded-xl border px-5 py-3 ${BANNER[outcome.tone]}`}>
+      <div role="status" data-testid="report-outcome" className={`print-card rounded-xl border px-5 py-3 ${BANNER[outcome.tone]}`}>
         <span className="text-[19px] font-semibold">{outcome.title}</span>
         {outcome.detail && <span className="text-[16px]"> · {outcome.detail}</span>}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 print:hidden" data-testid="report-actions">
+        <PrintButton />
         <button type="button" disabled className="min-h-[56px] cursor-not-allowed rounded-lg border border-[#cfd5dc] bg-[#f4f5f7] px-5 text-[16px] font-semibold text-[#8a929c]">
           Send to quality system
         </button>
@@ -219,17 +326,15 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
         <span className="flex-1" />
         <Link
           href={`/check/${id}`}
-          className="inline-flex min-h-[56px] items-center rounded-lg bg-[#1f5fcf] px-5 text-[16px] font-semibold text-white hover:brightness-110"
+          className="inline-flex min-h-[56px] items-center rounded-lg border border-[#1f5fcf] px-5 text-[16px] font-semibold text-[#1f5fcf] hover:bg-[#eaf2fd]"
         >
           Open in the check app
         </Link>
       </div>
 
-      <HoldSection s={s} />
-
-      <h2 className="pt-2 text-[20px] font-semibold">Every step, in order</h2>
-      <div className="overflow-x-auto rounded-xl border border-[#dfe3e8] bg-white">
-        <table className="w-full min-w-[760px] text-left text-[15px]" data-testid="steps-table">
+      <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Every step, in order</h2>
+      <div className="overflow-x-auto rounded-xl border border-[#dfe3e8] bg-white print:overflow-visible">
+        <table className="w-full min-w-[640px] text-left text-[15px]" data-testid="steps-table">
           <thead className="bg-[#f6f7f9] text-[14px]">
             <tr>
               <th className="w-12 px-4 py-3 font-semibold">#</th>
@@ -259,9 +364,34 @@ async function Report({ params }: { params: PageProps<"/dashboard/[id]">["params
           </tbody>
         </table>
       </div>
-      <p className="text-[13px] text-[#6b7480]">
+
+      <WhatWentWrong cards={cards} />
+      <DiscrepanciesLodged s={s} />
+      <HoldSection s={s} />
+
+      <p className="text-[13px] text-[#6b7480]" data-testid="footnote">
         Sequence conformance = steps done correctly on the first attempt divided by 12. It measures the procedure, not the part. Readings and tolerances stay in the tablet quality data tool.
       </p>
+    </>
+  );
+}
+
+/** Reads the session id and the filters the user came from. */
+async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
+  const [{ id }, sp] = await Promise.all([props.params, props.searchParams]);
+  return (
+    <>
+      <Link
+        href={backHref(sp)}
+        className="inline-flex min-h-[56px] w-fit items-center text-[16px] font-medium text-[#1f5fcf] hover:underline print:hidden"
+        data-testid="back-to-dashboard"
+      >
+        ← Back to the dashboard
+      </Link>
+      <Note />
+      <Suspense fallback={<Skeleton rows={12} />}>
+        <Report id={id} />
+      </Suspense>
     </>
   );
 }
@@ -271,13 +401,9 @@ export default function ReportPage(props: PageProps<"/dashboard/[id]">) {
     <>
       <PageBar current="dashboard" />
       <Page>
-        <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-6 md:px-8">
-          <Link href="/dashboard" className="inline-flex min-h-[56px] w-fit items-center text-[16px] font-medium text-[#1f5fcf] hover:underline">
-            ← Dashboard
-          </Link>
-          <Note />
+        <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-6 md:px-8 print:block print:max-w-none print:px-0 print:py-0 print:[&>*]:mb-4">
           <Suspense fallback={<Skeleton rows={12} />}>
-            <Report params={props.params} />
+            <ReportPageBody {...props} />
           </Suspense>
         </main>
       </Page>

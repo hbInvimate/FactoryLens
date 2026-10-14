@@ -21,6 +21,8 @@ export interface SessionRow {
   discrepancies: number;
   activeSeconds: number | null;
   updatedAt: Date;
+  /** Set on rows read back from the database: a fake session from db:seed-sample. */
+  isSample?: boolean | null;
 }
 
 /** The station a session belongs to: the one picked, else its "Cell and fixture" text. */

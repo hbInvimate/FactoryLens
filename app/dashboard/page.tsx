@@ -43,6 +43,7 @@ async function SessionsSection({ f, params }: { f: DashFilter; params: DashParam
         <Card className="px-5 py-6 text-center text-[15px] text-[#6b7480]">No sessions match this filter.</Card>
       ) : (
         <SessionsTable
+          query={dashHref(params).split("?")[1]}
           rows={rows.map((r) => ({
             id: r.id,
             startedAt: r.startedAt.toISOString(),

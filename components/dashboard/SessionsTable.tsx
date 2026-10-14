@@ -78,7 +78,7 @@ export function OldestHoldAge({ since }: { since: string }) {
 }
 
 /** Newest first. Click a row to open the session report. */
-export function SessionsTable({ rows }: { rows: TableRow[] }) {
+export function SessionsTable({ rows, query = "" }: { rows: TableRow[]; /** The dashboard filters, carried to the report so its back link restores them. */ query?: string }) {
   const router = useRouter();
   const now = useNow(1000);
   return (
@@ -100,11 +100,11 @@ export function SessionsTable({ rows }: { rows: TableRow[] }) {
             <tr
               key={r.id}
               data-session={r.id}
-              onClick={() => router.push(`/dashboard/${r.id}`)}
+              onClick={() => router.push(`/dashboard/${r.id}${query ? `?${query}` : ""}`)}
               className="cursor-pointer border-t border-[#eceff3] align-top hover:bg-[#f3f7fe]"
             >
               <td className="px-4 py-1">
-                <Link href={`/dashboard/${r.id}`} className="inline-flex min-h-[56px] items-center font-medium text-[#1f5fcf] hover:underline" onClick={(e) => e.stopPropagation()}>
+                <Link href={`/dashboard/${r.id}${query ? `?${query}` : ""}`} className="inline-flex min-h-[56px] items-center font-medium text-[#1f5fcf] hover:underline" onClick={(e) => e.stopPropagation()}>
                   <LocalTime iso={r.startedAt} />
                 </Link>
               </td>
