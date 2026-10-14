@@ -27,6 +27,8 @@ export const sessions = pgTable(
     discrepancies: integer("discrepancies").notNull().default(0),
     /** Check time: start to step 12 done, without paused time. Null unless complete. */
     activeSeconds: integer("active_seconds"),
+    /** Fake sessions from `npm run db:seed-sample`. Removed by `npm run db:clear-sample`. */
+    isSample: boolean("is_sample").default(false),
     updatedAt: ts("updated_at").notNull(),
   },
   (t) => [index("sessions_started_idx").on(t.startedAt), index("sessions_station_idx").on(t.station, t.startedAt)],
@@ -63,6 +65,8 @@ export const stepEvents = pgTable(
     kind: text("kind").notNull(),
     attempt: integer("attempt").notNull(),
     detail: text("detail").notNull().default(""),
+    /** Feature IDs: missed points of a skipped step, or [tapped, expected] for a wrong order. */
+    points: jsonb("points").$type<string[]>(),
     at: ts("at").notNull(),
   },
   (t) => [index("step_events_session_idx").on(t.sessionId, t.at)],

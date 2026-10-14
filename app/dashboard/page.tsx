@@ -4,7 +4,7 @@ import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
 import { PageBar } from "@/components/PageBar";
-import { parseRange, rangeStart, summarise } from "@/lib/dashboard/metrics";
+import { includeSampleFor, parseRange, rangeStart, summarise } from "@/lib/dashboard/metrics";
 import { HOLD_WARN_MINUTES } from "@/lib/config";
 import { fmtClock } from "@/lib/format";
 import { getRepo, NotConfigured, SEED_STATION } from "@/lib/server/repo";
@@ -36,14 +36,21 @@ async function Body({ searchParams }: { searchParams: SP }) {
   const asked = typeof sp.station === "string" ? sp.station : "";
   const station = stations.includes(asked) ? asked : stations.includes(SEED_STATION) ? SEED_STATION : stations[0];
   const range = parseRange(sp.range);
-  const rows = await repo.dashboard(station, rangeStart(range));
+  const includeSample = includeSampleFor(sp.sample, (await repo.counts()).real);
+  const rows = await repo.dashboard(station, rangeStart(range), includeSample);
   const s = summarise(rows.map((r) => ({ ...r, holdStartedAt: r.hold?.startedAt ?? null })));
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <h1 className="text-[30px] font-semibold">Dashboard</h1>
-        <Filters stations={stations} station={station} range={range} />
+        <Filters stations={stations} station={station} range={range} includeSample={includeSample} />
+        <span className="flex-1" />
+        {includeSample && (
+          <span data-testid="sample-chip" className="rounded-full bg-[#fdeec8] px-4 py-1.5 text-[14px] font-bold tracking-wide text-[#6b4e00]">
+            SAMPLE DATA
+          </span>
+        )}
       </div>
       <Note />
 

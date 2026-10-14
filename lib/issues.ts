@@ -22,17 +22,19 @@ export interface Issue {
   who: string[];
   effect: IssueEffect;
   note: string;
+  /** From docs/dashboard/issue_categories.json. */
+  category: string;
 }
 
 function load(): Record<number, Issue[]> {
   const out: Record<number, Issue[]> = {};
   for (const [key, list] of Object.entries(raw as Record<string, unknown[]>)) {
     out[Number(key)] = list.map((x) => {
-      const i = x as Issue;
+      const i = x as Omit<Issue, "category">;
       if (!["self", "try", "lodge"].includes(i.kind) || !["stop", "continue"].includes(i.effect)) {
         throw new Error(`Bad issue in docs/issues.json: ${i.label}`);
       }
-      return i;
+      return { ...i, category: categoryOf(Number(key), i.label) };
     });
   }
   return out;

@@ -10,7 +10,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mts",
     "db:studio": "drizzle-kit studio",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:seed-sample": "node --env-file-if-exists=.env.local --import tsx scripts/seed-sample.mts",
+    "db:clear-sample": "node --env-file-if-exists=.env.local --import tsx scripts/clear-sample.mts",
+    "db:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/backfill.mts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -29,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

@@ -62,6 +62,20 @@ Push to GitHub. Vercel builds with `npm run build`. Before the first deploy (and
 
 `npm run db:studio` opens Drizzle Studio on the database.
 
+### Sample data and maintenance
+
+| Command | What it does |
+|---|---|
+| `npm run db:seed-sample` | Adds about 60 FAKE sessions over the last 30 days, flagged `is_sample`. Safe to run twice. |
+| `npm run db:clear-sample` | Removes only the sample sessions. Real sessions are never touched. Safe to run twice. |
+| `npm run db:backfill` | Rebuilds every session's summary rows from its own action log, so older sessions get missed points, categories and check time. Safe to run twice. |
+
+The dashboard's "Include sample data" switch is on by default while there are fewer than 10 real sessions.
+
+### Plant settings
+
+`lib/config.ts` holds the plant time zone, the shift times (A 06:00 to 14:00, B 14:00 to 22:00, C 22:00 to 06:00), the hold warning (30 minutes) and the sample-data threshold. Shifts are always worked out in the plant time zone; a session belongs to the shift in which it started.
+
 ## Tests
 
 The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry. They run against a production build with `FL_STORAGE=memory`, so they never touch the database.

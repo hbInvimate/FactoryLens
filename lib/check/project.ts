@@ -1,5 +1,4 @@
 // Turns a session log into the rows stored in the summary tables.
-import { categoryOf } from "@/lib/issues";
 import { activeCheckMs, conformance, correctFirstTime, checkPointsDone, reduce, stepsDone } from "./reducer";
 import type { Action, CheckState, SessionMeta, SessionStatus, StepEventKind } from "./types";
 
@@ -36,6 +35,8 @@ export interface StepEventRow {
   kind: StepEventKind;
   attempt: number;
   detail: string;
+  /** Missed point IDs of a skipped step, or [tapped, expected] for a wrong order. Null: not recorded. */
+  points: string[] | null;
   at: Date;
 }
 
@@ -133,7 +134,8 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
       updatedAt: new Date(now),
     },
     stepEvents: s.stepEvents.map((e) => ({
-      id: e.id, sessionId: sid, step: e.step, kind: e.kind, attempt: e.attempt, detail: e.detail, at: new Date(e.at),
+      id: e.id, sessionId: sid, step: e.step, kind: e.kind, attempt: e.attempt, detail: e.detail,
+      points: e.points.length ? e.points : null, at: new Date(e.at),
     })),
     points: s.steps.flatMap((r) =>
       r.confirmed.map((c) => ({
@@ -152,7 +154,7 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
         id: d.id, sessionId: sid, step: d.step, issueLabel: d.issue, kind: d.kind, whoToCall: d.who,
         effect: d.effect, status: d.status, loggedAt: new Date(d.loggedAt), whatWasDone: done.join("\n"),
         clearedBy: d.clearedBy, clearReason: d.clearReason, closedAt: d.closedAt === null ? null : new Date(d.closedAt),
-        category: categoryOf(d.step, d.issue),
+        category: d.category,
         decisionOutcome: d.decision?.outcome ?? null,
         decidedBy: d.decision?.by ?? null,
         decisionReason: d.decision?.reason ?? null,

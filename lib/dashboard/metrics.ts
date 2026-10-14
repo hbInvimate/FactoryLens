@@ -1,7 +1,7 @@
 // The numbers on /dashboard. Read-only, from saved sessions.
 // Conformance of a session = steps correct on the first attempt / 12 (stored per session).
 // Only complete sessions are scored. Held, scrapped, reworked, conceded and left sessions are left out of every average.
-import { HOLD_WARN_MINUTES } from "@/lib/config";
+import { HOLD_WARN_MINUTES, SAMPLE_DEFAULT_BELOW } from "@/lib/config";
 import { ENDED_WITHOUT_CHECK, ON_HOLD_STATUSES, type SessionStatus } from "@/lib/check/types";
 
 export interface DashSession {
@@ -33,7 +33,14 @@ export function rangeStart(range: Range, now: number = Date.now()): Date | null 
   return range === "all" ? null : new Date(now - Number(range) * 86_400_000);
 }
 
-export const isOnHold = (status: SessionStatus) => ON_HOLD_STATUSES.includes(status);
+/** "Include sample data" is on by default while there are few real sessions. ?sample=1 or 0 overrides. */
+export function includeSampleFor(param: unknown, realSessions: number): boolean {
+  if (param === "1") return true;
+  if (param === "0") return false;
+  return realSessions < SAMPLE_DEFAULT_BELOW;
+}
+
+export const isOnHold =(status: SessionStatus) => ON_HOLD_STATUSES.includes(status);
 
 /** A complete, scored session. */
 export function isScored(s: DashSession): boolean {

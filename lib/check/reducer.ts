@@ -98,8 +98,8 @@ export function undoCandidate(actions: Action[], s: CheckState, now: number): Ac
   return null;
 }
 
-function event(s: CheckState, a: Action, step: number, kind: StepEventKind, attempt: number, detail = "") {
-  s.stepEvents.push({ id: `${a.id}:${s.stepEvents.length}`, step, kind, attempt, detail, at: a.at });
+function event(s: CheckState, a: Action, step: number, kind: StepEventKind, attempt: number, detail = "", points: string[] = []) {
+  s.stepEvents.push({ id: `${a.id}:${s.stepEvents.length}`, step, kind, attempt, detail, points, at: a.at });
 }
 
 function completeStep(s: CheckState, run: StepRun, at: number) {
@@ -175,13 +175,13 @@ function apply(s: CheckState, a: Action) {
           run.needsRelease = true;
           if (dev) {
             dev.failed += 1;
-            event(s, a, a.step, "wrong_order", dev.failed, `Clamp ${a.point} closed before ${expected}`);
+            event(s, a, a.step, "wrong_order", dev.failed, `Clamp ${a.point} closed before ${expected}`, [a.point, expected]);
           } else {
             s.deviations.push({
               id: a.id, step: a.step, kind: "wrong_order", missing: [], tapped: a.point, expected,
               failed: 1, raisedAt: a.at, fixedAt: null, trainerCalledAt: null,
             });
-            event(s, a, a.step, "wrong_order", 1, `Clamp ${a.point} closed before ${expected}`);
+            event(s, a, a.step, "wrong_order", 1, `Clamp ${a.point} closed before ${expected}`, [a.point, expected]);
           }
           return;
         }
@@ -209,7 +209,7 @@ function apply(s: CheckState, a: Action) {
           id: a.id, step: a.step, kind: "skipped", missing, failed: 1,
           raisedAt: a.at, fixedAt: null, trainerCalledAt: null,
         });
-        event(s, a, a.step, "skipped", 1, `${describePoints(missing)} ${missingVerb(a.step)}`);
+        event(s, a, a.step, "skipped", 1, `${describePoints(missing)} ${missingVerb(a.step)}`, missing);
         return;
       }
       event(s, a, a.step, "done", 1);
@@ -247,7 +247,7 @@ function apply(s: CheckState, a: Action) {
       if (!issue) return;
       const lodged = a.type === "lodge";
       s.discrepancies.push({
-        id: a.did, step: a.step, issue: issue.label, kind: issue.kind, effect: issue.effect,
+        id: a.did, step: a.step, issue: issue.label, category: issue.category, kind: issue.kind, effect: issue.effect,
         who: issue.who, note: issue.note,
         status: lodged ? "open" : "fixed_on_spot",
         loggedAt: a.at,
@@ -430,14 +430,43 @@ export function pausedBetween(s: CheckState, from: number, to: number): number {
   return s.pauses.reduce((t, p) => t + Math.max(0, Math.min(p.to ?? to, to) - Math.max(p.from, from)), 0);
 }
 
+/** Total length of the union of intervals, clipped to [from, to]. Overlaps are counted once. */
+function unionMs(intervals: [number, number][], from: number, to: number): number {
+  const clipped = intervals
+    .map(([a, b]) => [Math.max(a, from), Math.min(b, to)] as [number, number])
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  let total = 0;
+  let cur: [number, number] | null = null;
+  for (const iv of clipped) {
+    if (cur && iv[0] <= cur[1]) cur[1] = Math.max(cur[1], iv[1]);
+    else {
+      if (cur) total += cur[1] - cur[0];
+      cur = [...iv];
+    }
+  }
+  return total + (cur ? cur[1] - cur[0] : 0);
+}
+
+/** Time the check could not go on: pauses, and stop holds (lodged until the decision was recorded). */
+function idleIntervals(s: CheckState, end: number): [number, number][] {
+  return [
+    ...s.pauses.map((p) => [p.from, p.to ?? end] as [number, number]),
+    ...s.discrepancies
+      .filter((d) => d.effect === "stop" && d.status !== "fixed_on_spot")
+      .map((d) => [d.loggedAt, d.closedAt ?? end] as [number, number]),
+  ];
+}
+
 /**
- * Check time of a completed check: start to step 12 done, without paused time.
- * Holds after step 12 (waiting for the engineer) are not counted. Null if step 12 is not done.
+ * Check time of a completed check: start to step 12 done, minus pauses and stop holds.
+ * Holds after step 12 (waiting for the engineer) are not counted either. Null if step 12 is not done.
+ * A "continue" hold is not subtracted: the check carries on during it.
  */
 export function activeCheckMs(s: CheckState): number | null {
   const end = s.steps[STEP_COUNT - 1].doneAt;
   if (end === null) return null;
-  return Math.max(0, end - s.startedAt - pausedBetween(s, s.startedAt, end));
+  return Math.max(0, end - s.startedAt - unionMs(idleIntervals(s, end), s.startedAt, end));
 }
 
 /** Active time from the start to a moment, without paused time ("Done at" in the report). */

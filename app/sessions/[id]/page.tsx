@@ -8,6 +8,7 @@ import { StatusChip } from "@/components/StatusChip";
 import { Chip, KV, Panel, Tick, Ring, Warn } from "@/components/ui";
 import type { Projection } from "@/lib/check/project";
 import { ENDED_STATUSES, STATUS_LABEL } from "@/lib/check/types";
+import { missedPoints } from "@/lib/dashboard/missed";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
 import { STEPS, stepLabel } from "@/lib/sop";
@@ -130,6 +131,11 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
                       Step {e.step}: {KIND_TEXT[e.kind] ?? e.kind}
                       {e.detail ? `, ${e.detail.charAt(0).toLowerCase()}${e.detail.slice(1)}` : ""}
                     </span>
+                    {e.kind === "skipped" && (
+                      <span className="text-[15px] text-soft" data-testid="missed-points">
+                        Missed points: {missedPoints(e, p!.points)?.join(", ") ?? "not recorded"}
+                      </span>
+                    )}
                     <span className="text-sm text-muted">
                       Attempt {e.attempt} · <LocalTime iso={e.at.toISOString()} timeOnly />
                     </span>

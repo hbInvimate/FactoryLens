@@ -166,6 +166,8 @@ export interface Discrepancy {
   id: string;
   step: number;
   issue: string;
+  /** The issue's category, stored with the discrepancy. */
+  category: string;
   kind: IssueKind;
   effect: IssueEffect;
   who: string[];
@@ -194,6 +196,8 @@ export interface StepEvent {
   kind: StepEventKind;
   attempt: number;
   detail: string;
+  /** Feature IDs: the missed points of a skipped step, or [tapped, expected] for a wrong order. */
+  points: string[];
   at: number;
 }
 

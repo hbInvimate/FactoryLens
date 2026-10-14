@@ -25,6 +25,12 @@ export interface DashRow extends SessionRow {
   openDiscrepancies: number;
   /** The oldest open hold: why the session or the cell is on hold. */
   hold: HoldInfo | null;
+  isSample: boolean;
+}
+
+export interface SaveOptions {
+  /** Only the sample-data script sets this. Browsers cannot. */
+  sample?: boolean;
 }
 
 export interface HoldInfo {
@@ -46,7 +52,7 @@ function oldestHold(rows: { step: number; issueLabel: string; category: string |
 
 export interface Repo {
   readonly kind: "postgres" | "memory";
-  save(meta: SessionMeta, actions: Action[]): Promise<SaveResult>;
+  save(meta: SessionMeta, actions: Action[], opts?: SaveOptions): Promise<SaveResult>;
   journal(id: string): Promise<Journal | null>;
   list(limit?: number): Promise<SessionRow[]>;
   detail(id: string): Promise<Projection | null>;
@@ -54,7 +60,11 @@ export interface Repo {
   stations(): Promise<string[]>;
   addStation(name: string): Promise<string>;
   /** Sessions at one station started on or after `since` (all if null), newest first. */
-  dashboard(station: string, since: Date | null): Promise<DashRow[]>;
+  dashboard(station: string, since: Date | null, includeSample: boolean): Promise<DashRow[]>;
+  /** How many real and sample sessions exist. */
+  counts(): Promise<{ real: number; sample: number }>;
+  /** Deletes every sample session and everything under it. Real sessions are never touched. */
+  clearSample(): Promise<number>;
 }
 
 export const SEED_STATION = SESSION_DEFAULTS.fixture;
@@ -103,7 +113,7 @@ function pgRepo(db: Db): Repo {
   return {
     kind: "postgres",
 
-    async save(meta, actions) {
+    async save(meta, actions, opts) {
       const now = new Date();
       // 1. Make sure the session exists, then append the new actions. Repeats are ignored (idempotent retries).
       await db
@@ -111,6 +121,7 @@ function pgRepo(db: Db): Repo {
         .values({
           id: meta.id, startedAt: new Date(meta.createdAt), status: "running", part: meta.part, sop: meta.sop,
           fixture: meta.fixture, station: stationOf(meta), operatorLabel: meta.operator, updatedAt: now,
+          isSample: opts?.sample === true,
         })
         .onConflictDoNothing();
       if (actions.length) {
@@ -191,10 +202,12 @@ function pgRepo(db: Db): Repo {
       return name;
     },
 
-    async dashboard(station, since) {
-      const where = since
-        ? and(eq(stationExpr, station), gte(t.sessions.startedAt, since))
-        : eq(stationExpr, station);
+    async dashboard(station, since, includeSample) {
+      const where = and(
+        eq(stationExpr, station),
+        since ? gte(t.sessions.startedAt, since) : undefined,
+        includeSample ? undefined : sql`coalesce(${t.sessions.isSample}, false) = false`,
+      );
       const rows = await db.select().from(t.sessions).where(where).orderBy(desc(t.sessions.startedAt));
       if (!rows.length) return [];
       const ids = rows.map((r) => r.id);
@@ -221,7 +234,24 @@ function pgRepo(db: Db): Repo {
         activeSeconds: r.activeSeconds ?? filled.get(r.id) ?? null,
         openDiscrepancies: openBy.get(r.id)?.length ?? 0,
         hold: oldestHold(openBy.get(r.id) ?? []),
+        isSample: r.isSample === true,
       }));
+    },
+
+    async counts() {
+      const [r] = await db
+        .select({
+          real: sql<number>`count(*) filter (where coalesce(${t.sessions.isSample}, false) = false)`,
+          sample: sql<number>`count(*) filter (where ${t.sessions.isSample} = true)`,
+        })
+        .from(t.sessions);
+      return { real: Number(r?.real ?? 0), sample: Number(r?.sample ?? 0) };
+    },
+
+    async clearSample() {
+      // Cascades to actions, step events, point confirmations, discrepancies and handoff items.
+      const gone = await db.delete(t.sessions).where(eq(t.sessions.isSample, true)).returning({ id: t.sessions.id });
+      return gone.length;
     },
   };
 }
@@ -237,7 +267,7 @@ export async function pingDb(): Promise<boolean> {
 // ---------- Memory (tests and demos only) ----------
 
 interface MemoryStore {
-  sessions: Map<string, { meta: SessionMeta; actions: Map<string, Action> }>;
+  sessions: Map<string, { meta: SessionMeta; actions: Map<string, Action>; sample?: boolean }>;
   stations?: Set<string>;
 }
 
@@ -254,8 +284,8 @@ function memoryRepo(): Repo {
 
   return {
     kind: "memory",
-    async save(meta, actions) {
-      const s = store.sessions.get(meta.id) ?? { meta, actions: new Map<string, Action>() };
+    async save(meta, actions, opts) {
+      const s = store.sessions.get(meta.id) ?? { meta, actions: new Map<string, Action>(), sample: opts?.sample === true };
       store.sessions.set(meta.id, s);
       for (const a of actions) if (!s.actions.has(a.id)) s.actions.set(a.id, a);
       return { saved: actions.length, status: proj(meta.id)!.session.status };
@@ -281,16 +311,32 @@ function memoryRepo(): Repo {
       stationSet.add(name);
       return name;
     },
-    async dashboard(station, since) {
-      return [...store.sessions.keys()]
-        .map((id) => proj(id)!)
-        .filter((p) => p.session.station === station && (!since || p.session.startedAt >= since))
-        .sort((a, b) => b.session.startedAt.getTime() - a.session.startedAt.getTime())
-        .map((p) => ({
+    async dashboard(station, since, includeSample) {
+      return [...store.sessions.entries()]
+        .filter(([, s]) => includeSample || !s.sample)
+        .map(([id, s]) => ({ p: proj(id)!, sample: s.sample === true }))
+        .filter(({ p }) => p.session.station === station && (!since || p.session.startedAt >= since))
+        .sort((a, b) => b.p.session.startedAt.getTime() - a.p.session.startedAt.getTime())
+        .map(({ p, sample }) => ({
           ...p.session,
           openDiscrepancies: p.discrepancies.filter((d) => OPEN.includes(d.status)).length,
           hold: oldestHold(p.discrepancies),
+          isSample: sample,
         }));
+    },
+    async counts() {
+      const all = [...store.sessions.values()];
+      return { real: all.filter((s) => !s.sample).length, sample: all.filter((s) => s.sample).length };
+    },
+    async clearSample() {
+      let n = 0;
+      for (const [id, s] of store.sessions) {
+        if (s.sample) {
+          store.sessions.delete(id);
+          n++;
+        }
+      }
+      return n;
     },
   };
 }
