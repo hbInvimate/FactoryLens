@@ -4,29 +4,45 @@ import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
-import { conformanceLabel } from "@/lib/dashboard/metrics";
+import { Chip } from "@/components/ui";
+import { conformanceLabel, includeSampleFor } from "@/lib/dashboard/metrics";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
+import { SampleSwitch } from "./SampleSwitch";
 import { NotConfiguredNotice, TableSkeleton } from "./shared";
 
 export const metadata = { title: "FactoryLens AI: session history" };
 
-async function SessionTable() {
+async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessions">["searchParams"] }) {
+  const sp = await searchParams;
   await connection();
   let rows;
+  let includeSample: boolean;
   try {
-    rows = await getRepo().list(200);
+    const repo = getRepo();
+    includeSample = includeSampleFor(sp.sample, (await repo.counts()).real);
+    rows = await repo.list(200, { includeSample });
   } catch (e) {
     if (e instanceof NotConfigured) return <NotConfiguredNotice />;
     throw e;
   }
+  const switchRow = (
+    <div className="flex flex-wrap items-center gap-3">
+      <SampleSwitch on={includeSample} />
+    </div>
+  );
   if (!rows.length) {
     return (
-      <p className="text-[19px] text-soft">
-        No checks yet. <Link href="/" className="text-blue-text underline">Start one</Link>.
-      </p>
+      <>
+        {switchRow}
+        <p className="text-[19px] text-soft">
+          No checks yet. <Link href="/" className="text-blue-text underline">Start one</Link>.
+        </p>
+      </>
     );
   }
   return (
+    <>
+    {switchRow}
     <div className="overflow-x-auto rounded-[14px] bg-panel2">
       <table className="w-full min-w-[1100px] text-left text-[17px]">
         <thead className="text-[15px] text-muted">
@@ -45,11 +61,20 @@ async function SessionTable() {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} className="border-b border-line last:border-0 hover:bg-panel">
+            <tr key={r.id} data-session={r.id} className="border-b border-line last:border-0 hover:bg-panel">
               <td className="px-5 py-1">
-                <Link href={`/sessions/${r.id}`} className="tap inline-flex items-center font-medium text-blue-text underline-offset-4 hover:underline">
-                  <LocalTime iso={r.startedAt.toISOString()} />
-                </Link>
+                <span className="flex flex-wrap items-center gap-2">
+                  <Link href={`/sessions/${r.id}`} className="tap inline-flex items-center font-medium text-blue-text underline-offset-4 hover:underline">
+                    <LocalTime iso={r.startedAt.toISOString()} />
+                  </Link>
+                  {r.isSample && (
+                    <span data-testid="sample-row-chip">
+                      <Chip tone="amber" small>
+                        SAMPLE
+                      </Chip>
+                    </span>
+                  )}
+                </span>
               </td>
               <td className="px-3">{r.part}</td>
               <td className="px-3">{r.fixture}</td>
@@ -65,17 +90,18 @@ async function SessionTable() {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
-export default function SessionsPage() {
+export default function SessionsPage(props: PageProps<"/sessions">) {
   return (
     <>
       <PageBar title="Session history" current="sessions" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
         <h1 className="text-[30px] font-semibold">Session history</h1>
         <Suspense fallback={<TableSkeleton />}>
-          <SessionTable />
+          <SessionTable searchParams={props.searchParams} />
         </Suspense>
       </main>
     </>

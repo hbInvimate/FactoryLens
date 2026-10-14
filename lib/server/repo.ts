@@ -58,7 +58,8 @@ export interface Repo {
   conn(): Promise<Conn>;
   save(meta: SessionMeta, actions: Action[], opts?: SaveOptions): Promise<SaveResult>;
   journal(id: string): Promise<Journal | null>;
-  list(limit?: number): Promise<SessionRow[]>;
+  /** Newest first. `includeSample: false` leaves out sessions from db:seed-sample. */
+  list(limit?: number, opts?: { includeSample?: boolean }): Promise<SessionRow[]>;
   detail(id: string): Promise<Projection | null>;
   /** Stations from the list, plus any station older sessions were saved with. Sorted by name. */
   stations(): Promise<string[]>;
@@ -176,9 +177,14 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
       return { meta: metaFromRow(s), actions: rows.map(fromRow) };
     },
 
-    async list(limit = 100) {
+    async list(limit = 100, opts = {}) {
       const { db } = await connect();
-      const rows = await db.select().from(t.sessions).orderBy(desc(t.sessions.startedAt)).limit(limit);
+      const rows = await db
+        .select()
+        .from(t.sessions)
+        .where(opts.includeSample === false ? sql`coalesce(${t.sessions.isSample}, false) = false` : undefined)
+        .orderBy(desc(t.sessions.startedAt))
+        .limit(limit);
       return rows.map((r) => ({ ...r, status: r.status as SessionRow["status"] }));
     },
 
