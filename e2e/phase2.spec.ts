@@ -218,8 +218,9 @@ test.describe("sample data", () => {
     expect((await repo.counts()).real).toBe(before.real);
 
     const station = "Laser cell 3 · FX-014";
-    expect((await repo.dashboard(station, null, true)).filter((r) => r.isSample)).toHaveLength(60);
-    expect((await repo.dashboard(station, null, false)).filter((r) => r.isSample)).toHaveLength(0);
+    const view = { station, since: null, shift: null };
+    expect((await repo.dashboard({ ...view, includeSample: true })).rows.filter((r) => r.isSample)).toHaveLength(60);
+    expect((await repo.dashboard({ ...view, includeSample: false })).rows.filter((r) => r.isSample)).toHaveLength(0);
 
     expect(await clearSample(repo)).toBe(60);
     expect(await clearSample(repo)).toBe(0);
@@ -240,7 +241,7 @@ test.describe("sample data", () => {
   test("dashboard shows the switch and the SAMPLE DATA chip when it is on", async ({ page }) => {
     await page.goto("/dashboard?sample=1&range=all");
     await expect(page.getByLabel("Include sample data")).toBeChecked();
-    await expect(page.getByTestId("sample-chip")).toHaveText("SAMPLE DATA");
+    await expect(page.getByTestId("sample-chip")).toHaveText(/^SAMPLE DATA · \d+ real, \d+ sample sessions?$/);
     await page.getByLabel("Include sample data").uncheck();
     await expect(page).toHaveURL(/sample=0/);
     await expect(page.getByTestId("sample-chip")).toHaveCount(0);

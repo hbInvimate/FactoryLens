@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     agentFeedback: true,
   },
   cacheComponents: true,
+  // PGlite (tests and demos only, FL_STORAGE=memory) loads its own WebAssembly files at run time.
+  serverExternalPackages: ["@electric-sql/pglite"],
   partialPrefetching: true,
   turbopack: {
     rules: {

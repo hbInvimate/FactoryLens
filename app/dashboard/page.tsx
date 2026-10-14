@@ -1,17 +1,25 @@
+import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlock } from "@/components/dashboard/blocks";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
 import { PageBar } from "@/components/PageBar";
-import { includeSampleFor, parseRange, rangeStart, summarise } from "@/lib/dashboard/metrics";
 import { HOLD_WARN_MINUTES } from "@/lib/config";
+import { includeSampleFor, parseRange, rangeStart } from "@/lib/dashboard/metrics";
+import { dashHref, parseDev, parseShift, type DashParams } from "@/lib/dashboard/params";
 import { fmtClock } from "@/lib/format";
+import { summary } from "@/lib/server/analytics";
 import { getRepo, NotConfigured, SEED_STATION } from "@/lib/server/repo";
+import type { DashFilter } from "@/lib/server/sqlparts";
+import { plantDay } from "@/lib/shifts";
 
 export const metadata = { title: "FactoryLens AI: dashboard" };
 
 type SP = PageProps<"/dashboard">["searchParams"];
+
+const TABLE_LIMIT = 200;
 
 function NotConfiguredCard() {
   return (
@@ -19,6 +27,41 @@ function NotConfiguredCard() {
       <h2 className="text-[18px] font-semibold">The database is not set up</h2>
       <p className="text-[15px] text-[#4b5563]">DATABASE_URL is not set on the server, so there is nothing to show. See the README: Set up the database.</p>
     </Card>
+  );
+}
+
+/** Today on the plant's clock (the right end of block 1). */
+function plantToday(): string {
+  return plantDay(Date.now());
+}
+
+async function SessionsSection({ f, params }: { f: DashFilter; params: DashParams }) {
+  const { rows, total } = await getRepo().dashboard(f, { devStep: params.dev, limit: TABLE_LIMIT });
+  return (
+    <>
+      {rows.length === 0 ? (
+        <Card className="px-5 py-6 text-center text-[15px] text-[#6b7480]">No sessions match this filter.</Card>
+      ) : (
+        <SessionsTable
+          rows={rows.map((r) => ({
+            id: r.id,
+            startedAt: r.startedAt.toISOString(),
+            operator: r.operatorLabel,
+            status: r.status,
+            conformance: r.conformance,
+            deviations: r.deviations,
+            discrepancies: r.discrepancies,
+            activeSeconds: r.activeSeconds,
+            hold: r.hold && { ...r.hold, startedAt: r.hold.startedAt.toISOString() },
+          }))}
+        />
+      )}
+      {total > rows.length && (
+        <p className="text-[13px] text-[#6b7480]">
+          Showing the newest {rows.length} of {total} sessions. Narrow the date range or shift to see older ones.
+        </p>
+      )}
+    </>
   );
 }
 
@@ -35,29 +78,34 @@ async function Body({ searchParams }: { searchParams: SP }) {
   }
   const asked = typeof sp.station === "string" ? sp.station : "";
   const station = stations.includes(asked) ? asked : stations.includes(SEED_STATION) ? SEED_STATION : stations[0];
-  const range = parseRange(sp.range);
-  const includeSample = includeSampleFor(sp.sample, (await repo.counts()).real);
-  const rows = await repo.dashboard(station, rangeStart(range), includeSample);
-  const s = summarise(rows.map((r) => ({ ...r, holdStartedAt: r.hold?.startedAt ?? null })));
+  const params: DashParams = {
+    station,
+    range: parseRange(sp.range),
+    shift: parseShift(sp.shift),
+    sample: includeSampleFor(sp.sample, (await repo.counts()).real),
+    dev: parseDev(sp.dev),
+  };
+  const f: DashFilter = { station, since: rangeStart(params.range), shift: params.shift, includeSample: params.sample };
+  const s = await summary(await repo.conn(), f);
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <h1 className="text-[30px] font-semibold">Dashboard</h1>
-        <Filters stations={stations} station={station} range={range} includeSample={includeSample} />
+        <Filters stations={stations} params={params} />
         <span className="flex-1" />
-        {includeSample && (
+        {params.sample && (
           <span data-testid="sample-chip" className="rounded-full bg-[#fdeec8] px-4 py-1.5 text-[14px] font-bold tracking-wide text-[#6b4e00]">
-            SAMPLE DATA
+            SAMPLE DATA · {s.real} real, {s.sample} sample {s.real + s.sample === 1 ? "session" : "sessions"}
           </span>
         )}
       </div>
       <Note />
 
-      {rows.length === 0 ? (
+      {s.total === 0 ? (
         <Card className="px-5 py-8 text-center">
           <p className="text-[18px] font-semibold" data-testid="dashboard-empty">No sessions at this station yet.</p>
-          <p className="text-[15px] text-[#6b7480]">Try a longer date range, or start a check at this station.</p>
+          <p className="text-[15px] text-[#6b7480]">Try a longer date range, another shift, or start a check at this station.</p>
         </Card>
       ) : (
         <>
@@ -86,7 +134,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
             />
             <StatCard
               testId="tile-no-deviation"
-              value={s.noDeviationShare === null ? "not recorded" : `${s.noDeviationShare}%`}
+              value={s.scored ? `${Math.round((s.noDeviation / s.scored) * 100)}%` : "not recorded"}
               label="Sessions with no deviation"
               sub={s.scored ? `${s.noDeviation} of ${s.scored} complete` : "no complete sessions yet"}
             />
@@ -94,25 +142,47 @@ async function Body({ searchParams }: { searchParams: SP }) {
               testId="tile-check-time"
               value={s.avgCheckSeconds === null ? "not recorded" : fmtClock(s.avgCheckSeconds * 1000)}
               label="Average check time"
-              sub={s.timed ? `complete sessions, without pauses and holds (${s.timed})` : "no complete sessions yet"}
+              sub={
+                s.timed
+                  ? `complete sessions, without pauses and holds (${s.timed})${s.untimed ? `; ${s.untimed} without a recorded time` : ""}`
+                  : "no complete sessions yet"
+              }
             />
             <StatCard testId="tile-open" value={s.openDiscrepancies} label="Open discrepancies" sub="lodged, not yet cleared" />
           </div>
 
-          <h2 className="pt-2 text-[20px] font-semibold">Sessions</h2>
-          <SessionsTable
-            rows={rows.map((r) => ({
-              id: r.id,
-              startedAt: r.startedAt.toISOString(),
-              operator: r.operatorLabel,
-              status: r.status,
-              conformance: r.conformance,
-              deviations: r.deviations,
-              discrepancies: r.discrepancies,
-              activeSeconds: r.activeSeconds,
-              hold: r.hold && { ...r.hold, startedAt: r.hold.startedAt.toISOString() },
-            }))}
-          />
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+            <Block n={1} title="Conformance, all previous sessions" sub="Each bar is one day (plant time). Hover a bar for the date, conformance and count." testId="block-conformance">
+              <ConformanceBlock f={f} today={plantToday()} />
+            </Block>
+            <Block n={2} title="Average check time by shift" sub="Active time from start to finish, without pauses or holds. Completed sessions only." testId="block-shifts">
+              <CheckTimeBlock f={f} />
+            </Block>
+            <Block n={3} title="Steps that cause most deviations" sub="Top steps, with the exact point under each: which hole, clamp or edge point." testId="block-deviations">
+              <DeviationsBlock f={f} active={params.dev} devHref={(step) => `${dashHref(params, { dev: step })}#sessions`} />
+            </Block>
+            <Block n={4} title="Lodged discrepancies by category and shift" sub="Count of issues lodged on the monitor. Darker means more." testId="block-categories">
+              <CategoriesBlock f={f} />
+            </Block>
+          </div>
+
+          <div id="sessions" className="flex flex-wrap items-center gap-3 pt-2">
+            <h2 className="text-[20px] font-semibold">Sessions</h2>
+            {params.dev && (
+              <Link
+                href={dashHref(params, { dev: null })}
+                scroll={false}
+                data-testid="dev-filter-chip"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#e3edfc] px-4 text-[14px] font-semibold text-[#1f5fcf] hover:brightness-95"
+                aria-label={`Remove filter: Step ${params.dev} deviations`}
+              >
+                Filter: Step {params.dev} deviations <span aria-hidden>✕</span>
+              </Link>
+            )}
+          </div>
+          <Suspense fallback={<Skeleton rows={4} />}>
+            <SessionsSection f={f} params={params} />
+          </Suspense>
           <p className="text-[13px] text-[#6b7480]">
             Conformance = steps correct on the first attempt ÷ 12, averaged over complete sessions. Sessions on hold, ended without a check, or left are not scored and are left out of averages. Waiting turns red after {HOLD_WARN_MINUTES} minutes.
           </p>

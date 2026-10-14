@@ -30,6 +30,27 @@ export function shiftOf(startTime: Date | number, timeZone = PLANT_TIME_ZONE): S
   return SHIFTS[0].id; // the config leaves a gap: fall back rather than guess wrong silently
 }
 
+/** Minutes the plant clock is ahead of UTC at an instant. */
+function offsetMinutes(at: number, timeZone: string): number {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date(at)).map((x) => [x.type, x.value]),
+  );
+  const local = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
+  return Math.round((local - Math.floor(at / 60_000) * 60_000) / 60_000);
+}
+
+/** The instant of a plant-local date and time, for example ("2026-09-21", "23:30"). */
+export function fromPlantLocal(day: string, hhmm: string, timeZone = PLANT_TIME_ZONE): number {
+  const [y, mo, d] = day.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  let at = wall;
+  for (let i = 0; i < 3; i++) at = wall - offsetMinutes(at, timeZone) * 60_000;
+  return at;
+}
+
 export function shiftLabel(id: ShiftId): string {
   const s = SHIFTS.find((x) => x.id === id)!;
   return `Shift ${s.id} ${s.start} to ${s.end}`;

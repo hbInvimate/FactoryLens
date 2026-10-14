@@ -1,5 +1,6 @@
 // Supervisor dashboard, phase 1: stations, navigation, /dashboard tiles and table, /dashboard/[id] report.
 import { expect, test, type Page } from "@playwright/test";
+import { shiftOf } from "../lib/shifts";
 import { decideHold, doSteps, lodge, openDashboard, startAt, tap, unique, waitSaved } from "./helpers";
 
 /** Step 7: H9 to H12 skipped, then fixed. */
@@ -90,6 +91,49 @@ test("Two deviations fixed score 83%", async ({ page }) => {
   await expect(page.getByTestId("report-correct")).toHaveText("10 of 12");
   await expect(page.getByTestId("report-deviations")).toHaveText("2");
   await expect(page.locator('tr[data-step="5"]')).toContainText("Incorrect");
+});
+
+test("Blocks: click a step to filter the sessions table, remove the chip, shift filter, sample chip counts", async ({ page }) => {
+  const station = unique("Laser cell 2 · FX-BLOCKS");
+  const skipped = await startAt(page, station);
+  await doSteps(page, 1, 6);
+  await skipHolesThenFix(page);
+  await doSteps(page, 8, 12);
+  await waitSaved(page);
+  const clean = await startAt(page, station);
+  await doSteps(page, 1, 12);
+  await waitSaved(page);
+
+  await page.goto(`/dashboard?station=${encodeURIComponent(station)}&range=7&sample=1`);
+  await expect(page.getByTestId("sample-chip")).toHaveText("SAMPLE DATA · 2 real, 0 sample sessions");
+  await expect(page.getByTestId("conformance-overall")).toContainText("Overall 96% over 2 completed sessions");
+
+  const block3 = page.getByTestId("block-deviations");
+  const step7 = block3.locator('[data-step="7"]');
+  await expect(step7.getByTestId("step-count")).toHaveText("1");
+  for (const h of ["H9", "H10", "H11", "H12"]) await expect(step7.locator(`[data-item="${h} not checked"]`)).toContainText("1");
+
+  await step7.getByRole("link").click();
+  await expect(page).toHaveURL(/dev=7/);
+  await expect(page.getByTestId("dev-filter-chip")).toHaveText(/Filter: Step 7 deviations/);
+  await expect(page.locator(`tr[data-session="${skipped}"]`)).toBeVisible();
+  await expect(page.locator(`tr[data-session="${clean}"]`)).toHaveCount(0);
+  await page.getByTestId("dev-filter-chip").click();
+  await expect(page).not.toHaveURL(/dev=7/);
+  await expect(page.locator(`tr[data-session="${clean}"]`)).toBeVisible();
+
+  // Shift filter: the shift these sessions started in, then another one.
+  const mine = shiftOf(Date.now() - 2 * 60_000);
+  const other = mine === "A" ? "B" : "A";
+  await page.getByLabel("Shift", { exact: true }).selectOption(mine);
+  await expect(page).toHaveURL(new RegExp(`shift=${mine}`));
+  await expect(page.getByTestId("tile-sessions")).toHaveText("2");
+  // Block 2 still shows all three shifts, the others dimmed.
+  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${other}"]`)).toHaveClass(/opacity-40/);
+  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${mine}"]`)).not.toHaveClass(/opacity-40/);
+  await page.getByLabel("Shift", { exact: true }).selectOption(other);
+  await expect(page).toHaveURL(new RegExp(`shift=${other}`));
+  await expect(page.getByTestId("dashboard-empty")).toBeVisible();
 });
 
 test("A scrapped session shows Not scored and is left out of conformance and check time", async ({ page }) => {

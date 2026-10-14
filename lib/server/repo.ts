@@ -1,13 +1,16 @@
-// Storage for sessions. Postgres (Neon, via Drizzle) in production.
-// FL_STORAGE=memory gives a throwaway in-process store for tests and demos without a database.
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+// Storage for sessions: Postgres via Drizzle. Neon in production.
+// FL_STORAGE=memory runs the same code on PGlite, a Postgres inside the process, for tests and demos.
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { categoryOf } from "@/lib/issues";
-import { getDb, type Db } from "@/db/client";
+import { getDb, memoryConnection, neonConnection, type Conn } from "@/db/client";
 import * as t from "@/db/schema";
 import { activeSecondsOf, project, stationOf, type Projection, type SessionRow } from "@/lib/check/project";
-import { reduce, sortActions } from "@/lib/check/reducer";
+import { reduce } from "@/lib/check/reducer";
 import type { Action, SessionMeta } from "@/lib/check/types";
 import { SESSION_DEFAULTS } from "@/lib/sop";
+import { DEVIATION_KINDS, sessionWhere, stationExpr, type DashFilter } from "./sqlparts";
+
+export type { DashFilter } from "./sqlparts";
 
 export interface Journal {
   meta: SessionMeta;
@@ -42,16 +45,17 @@ export interface HoldInfo {
   startedAt: Date;
 }
 
-function oldestHold(rows: { step: number; issueLabel: string; category: string | null; effect: string; whoToCall: string[]; loggedAt: Date; status: string }[]): HoldInfo | null {
-  const open = rows.filter((r) => OPEN.includes(r.status)).sort((a, b) => a.loggedAt.getTime() - b.loggedAt.getTime());
-  const h = open[0];
-  return h
-    ? { step: h.step, issue: h.issueLabel, category: h.category ?? categoryOf(h.step, h.issueLabel), effect: h.effect, who: h.whoToCall, startedAt: h.loggedAt }
-    : null;
+export interface DashboardOptions {
+  /** Only sessions with a deviation (skipped, wrong order, cannot do) at this step. */
+  devStep?: number | null;
+  /** At most this many rows, newest first. */
+  limit?: number;
 }
 
 export interface Repo {
   readonly kind: "postgres" | "memory";
+  /** The database connection, for the dashboard queries. */
+  conn(): Promise<Conn>;
   save(meta: SessionMeta, actions: Action[], opts?: SaveOptions): Promise<SaveResult>;
   journal(id: string): Promise<Journal | null>;
   list(limit?: number): Promise<SessionRow[]>;
@@ -59,8 +63,8 @@ export interface Repo {
   /** Stations from the list, plus any station older sessions were saved with. Sorted by name. */
   stations(): Promise<string[]>;
   addStation(name: string): Promise<string>;
-  /** Sessions at one station started on or after `since` (all if null), newest first. */
-  dashboard(station: string, since: Date | null, includeSample: boolean): Promise<DashRow[]>;
+  /** Sessions in a dashboard view, newest first, and how many there are in all. */
+  dashboard(f: DashFilter, opts?: DashboardOptions): Promise<{ rows: DashRow[]; total: number }>;
   /** How many real and sample sessions exist. */
   counts(): Promise<{ real: number; sample: number }>;
   /** Deletes every sample session and everything under it. Real sessions are never touched. */
@@ -75,6 +79,14 @@ function byName(a: string, b: string) {
   return a.localeCompare(b);
 }
 
+function oldestHold(rows: { step: number; issueLabel: string; category: string | null; effect: string; whoToCall: string[]; loggedAt: Date; status: string }[]): HoldInfo | null {
+  const open = rows.filter((r) => OPEN.includes(r.status)).sort((a, b) => a.loggedAt.getTime() - b.loggedAt.getTime());
+  const h = open[0];
+  return h
+    ? { step: h.step, issue: h.issueLabel, category: h.category ?? categoryOf(h.step, h.issueLabel), effect: h.effect, who: h.whoToCall, startedAt: h.loggedAt }
+    : null;
+}
+
 export class NotConfigured extends Error {
   constructor() {
     super("DATABASE_URL is not set. See README: Set up the database.");
@@ -82,13 +94,11 @@ export class NotConfigured extends Error {
 }
 
 export function getRepo(): Repo {
-  if (process.env.FL_STORAGE === "memory") return memoryRepo();
-  const db = getDb();
-  if (!db) throw new NotConfigured();
-  return pgRepo(db);
+  if (process.env.FL_STORAGE === "memory") return pgRepo(memoryConnection, "memory");
+  const c = neonConnection();
+  if (!c) throw new NotConfigured();
+  return pgRepo(async () => c, "postgres");
 }
-
-// ---------- Postgres ----------
 
 function toPayload(a: Action): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...a };
@@ -107,13 +117,13 @@ function metaFromRow(r: typeof t.sessions.$inferSelect): SessionMeta {
   };
 }
 
-const stationExpr = sql<string>`coalesce(${t.sessions.station}, btrim(${t.sessions.fixture}))`;
-
-function pgRepo(db: Db): Repo {
+function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
   return {
-    kind: "postgres",
+    kind,
+    conn: connect,
 
     async save(meta, actions, opts) {
+      const { db, batch } = await connect();
       const now = new Date();
       // 1. Make sure the session exists, then append the new actions. Repeats are ignored (idempotent retries).
       await db
@@ -133,14 +143,14 @@ function pgRepo(db: Db): Repo {
           .onConflictDoNothing();
       }
 
-      // 2. Rebuild the summary tables from the full log, in one batch.
+      // 2. Rebuild the summary tables from the full log, together.
       const [sessionRow] = await db.select().from(t.sessions).where(eq(t.sessions.id, meta.id));
       const rows = await db.select().from(t.sessionActions).where(eq(t.sessionActions.sessionId, meta.id));
       const p = project(metaFromRow(sessionRow), rows.map(fromRow), now.getTime());
       const sessionUpdate: Partial<SessionRow> = { ...p.session };
       delete sessionUpdate.id;
 
-      await db.batch([
+      await batch([
         db.update(t.sessions).set(sessionUpdate).where(eq(t.sessions.id, meta.id)),
         db.delete(t.stepEvents).where(eq(t.stepEvents.sessionId, meta.id)),
         db.delete(t.pointConfirmations).where(eq(t.pointConfirmations.sessionId, meta.id)),
@@ -155,6 +165,7 @@ function pgRepo(db: Db): Repo {
     },
 
     async journal(id) {
+      const { db } = await connect();
       const [s] = await db.select().from(t.sessions).where(eq(t.sessions.id, id));
       if (!s) return null;
       const rows = await db
@@ -166,11 +177,13 @@ function pgRepo(db: Db): Repo {
     },
 
     async list(limit = 100) {
+      const { db } = await connect();
       const rows = await db.select().from(t.sessions).orderBy(desc(t.sessions.startedAt)).limit(limit);
       return rows.map((r) => ({ ...r, status: r.status as SessionRow["status"] }));
     },
 
     async detail(id) {
+      const { db } = await connect();
       const [s] = await db.select().from(t.sessions).where(eq(t.sessions.id, id));
       if (!s) return null;
       const [stepEvents, points, discrepancies, handoffs] = await Promise.all([
@@ -190,6 +203,7 @@ function pgRepo(db: Db): Repo {
     },
 
     async stations() {
+      const { db } = await connect();
       const [listed, used] = await Promise.all([
         db.select({ name: t.stations.name }).from(t.stations),
         db.selectDistinct({ name: stationExpr }).from(t.sessions),
@@ -198,18 +212,23 @@ function pgRepo(db: Db): Repo {
     },
 
     async addStation(name) {
+      const { db } = await connect();
       await db.insert(t.stations).values({ name }).onConflictDoNothing();
       return name;
     },
 
-    async dashboard(station, since, includeSample) {
+    async dashboard(f, opts = {}) {
+      const { db } = await connect();
       const where = and(
-        eq(stationExpr, station),
-        since ? gte(t.sessions.startedAt, since) : undefined,
-        includeSample ? undefined : sql`coalesce(${t.sessions.isSample}, false) = false`,
+        sessionWhere(f),
+        opts.devStep
+          ? sql`exists (select 1 from ${t.stepEvents} se where se.session_id = ${t.sessions.id} and se.step = ${opts.devStep}
+              and se.kind in (${sql.join(DEVIATION_KINDS.map((k) => sql`${k}`), sql`, `)}))`
+          : undefined,
       );
-      const rows = await db.select().from(t.sessions).where(where).orderBy(desc(t.sessions.startedAt));
-      if (!rows.length) return [];
+      const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(t.sessions).where(where);
+      const rows = await db.select().from(t.sessions).where(where).orderBy(desc(t.sessions.startedAt)).limit(opts.limit ?? 200);
+      if (!rows.length) return { rows: [], total: Number(total) };
       const ids = rows.map((r) => r.id);
       const open = await db
         .select()
@@ -218,8 +237,8 @@ function pgRepo(db: Db): Repo {
       const openBy = new Map<string, typeof open>();
       for (const o of open) openBy.set(o.sessionId, [...(openBy.get(o.sessionId) ?? []), o]);
 
-      // Sessions saved before check time was stored: work it out from their log.
-      const missing = rows.filter((r) => r.activeSeconds === null && r.conformance !== null);
+      // Complete sessions saved before check time was stored: work it out from their log.
+      const missing = rows.filter((r) => r.activeSeconds === null && r.status === "complete");
       const filled = new Map<string, number | null>();
       if (missing.length) {
         const acts = await db.select().from(t.sessionActions).where(inArray(t.sessionActions.sessionId, missing.map((r) => r.id)));
@@ -228,17 +247,21 @@ function pgRepo(db: Db): Repo {
           filled.set(r.id, activeSecondsOf(s));
         }
       }
-      return rows.map((r) => ({
-        ...r,
-        status: r.status as SessionRow["status"],
-        activeSeconds: r.activeSeconds ?? filled.get(r.id) ?? null,
-        openDiscrepancies: openBy.get(r.id)?.length ?? 0,
-        hold: oldestHold(openBy.get(r.id) ?? []),
-        isSample: r.isSample === true,
-      }));
+      return {
+        total: Number(total),
+        rows: rows.map((r) => ({
+          ...r,
+          status: r.status as SessionRow["status"],
+          activeSeconds: r.activeSeconds ?? filled.get(r.id) ?? null,
+          openDiscrepancies: openBy.get(r.id)?.length ?? 0,
+          hold: oldestHold(openBy.get(r.id) ?? []),
+          isSample: r.isSample === true,
+        })),
+      };
     },
 
     async counts() {
+      const { db } = await connect();
       const [r] = await db
         .select({
           real: sql<number>`count(*) filter (where coalesce(${t.sessions.isSample}, false) = false)`,
@@ -249,6 +272,7 @@ function pgRepo(db: Db): Repo {
     },
 
     async clearSample() {
+      const { db } = await connect();
       // Cascades to actions, step events, point confirmations, discrepancies and handoff items.
       const gone = await db.delete(t.sessions).where(eq(t.sessions.isSample, true)).returning({ id: t.sessions.id });
       return gone.length;
@@ -262,81 +286,4 @@ export async function pingDb(): Promise<boolean> {
   if (!db) return false;
   await db.execute(sql`select 1`);
   return true;
-}
-
-// ---------- Memory (tests and demos only) ----------
-
-interface MemoryStore {
-  sessions: Map<string, { meta: SessionMeta; actions: Map<string, Action>; sample?: boolean }>;
-  stations?: Set<string>;
-}
-
-function memoryRepo(): Repo {
-  const g = globalThis as unknown as { __flMemory?: MemoryStore };
-  g.__flMemory ??= { sessions: new Map() };
-  g.__flMemory.stations ??= new Set([SEED_STATION]);
-  const stationSet = g.__flMemory.stations;
-  const store = g.__flMemory;
-  const proj = (id: string) => {
-    const s = store.sessions.get(id);
-    return s ? project(s.meta, [...s.actions.values()], Date.now()) : null;
-  };
-
-  return {
-    kind: "memory",
-    async save(meta, actions, opts) {
-      const s = store.sessions.get(meta.id) ?? { meta, actions: new Map<string, Action>(), sample: opts?.sample === true };
-      store.sessions.set(meta.id, s);
-      for (const a of actions) if (!s.actions.has(a.id)) s.actions.set(a.id, a);
-      return { saved: actions.length, status: proj(meta.id)!.session.status };
-    },
-    async journal(id) {
-      const s = store.sessions.get(id);
-      return s ? { meta: s.meta, actions: sortActions([...s.actions.values()]) } : null;
-    },
-    async list(limit = 100) {
-      return [...store.sessions.keys()]
-        .map((id) => proj(id)!.session)
-        .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
-        .slice(0, limit);
-    },
-    async detail(id) {
-      return proj(id);
-    },
-    async stations() {
-      const used = [...store.sessions.values()].map((s) => stationOf(s.meta));
-      return [...new Set([...stationSet, ...used])].sort(byName);
-    },
-    async addStation(name) {
-      stationSet.add(name);
-      return name;
-    },
-    async dashboard(station, since, includeSample) {
-      return [...store.sessions.entries()]
-        .filter(([, s]) => includeSample || !s.sample)
-        .map(([id, s]) => ({ p: proj(id)!, sample: s.sample === true }))
-        .filter(({ p }) => p.session.station === station && (!since || p.session.startedAt >= since))
-        .sort((a, b) => b.p.session.startedAt.getTime() - a.p.session.startedAt.getTime())
-        .map(({ p, sample }) => ({
-          ...p.session,
-          openDiscrepancies: p.discrepancies.filter((d) => OPEN.includes(d.status)).length,
-          hold: oldestHold(p.discrepancies),
-          isSample: sample,
-        }));
-    },
-    async counts() {
-      const all = [...store.sessions.values()];
-      return { real: all.filter((s) => !s.sample).length, sample: all.filter((s) => s.sample).length };
-    },
-    async clearSample() {
-      let n = 0;
-      for (const [id, s] of store.sessions) {
-        if (s.sample) {
-          store.sessions.delete(id);
-          n++;
-        }
-      }
-      return n;
-    },
-  };
 }

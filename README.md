@@ -78,7 +78,7 @@ The dashboard's "Include sample data" switch is on by default while there are fe
 
 ## Tests
 
-The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry. They run against a production build with `FL_STORAGE=memory`, so they never touch the database.
+The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry. They run against a production build with `FL_STORAGE=memory`, which uses PGlite, a real Postgres running inside the process and migrated from `drizzle/`. So the tests run the same SQL as Neon (including the dashboard's group-by queries and plant time zone) and never touch the database. `e2e/analytics.spec.ts` checks every dashboard number against a small fixed dataset.
 
 ```bash
 npx playwright install chromium   # once
