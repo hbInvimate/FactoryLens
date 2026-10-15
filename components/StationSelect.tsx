@@ -98,7 +98,7 @@ export function StationSelect({ value, onChange }: { value: string; onChange: (v
             onChange(e.target.value);
           }
         }}
-        className="tap rounded-xl border-2 border-line2 bg-deep px-4 text-[22px] text-ink"
+        className="tap rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 text-[22px] text-ink"
       >
         {options.map((s) => (
           <option key={s} value={s}>
@@ -108,7 +108,7 @@ export function StationSelect({ value, onChange }: { value: string; onChange: (v
         <option value={ADD}>Add a station…</option>
       </select>
       {adding && (
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border-2 border-line2 bg-panel2 p-3">
+        <div className="flex flex-wrap items-end gap-3 rounded-[var(--fl-radius-md)] border border-line-strong bg-surface p-3">
           <label className="flex min-w-[280px] flex-1 flex-col gap-1.5">
             <span className="text-base text-muted">New station: cell and fixture</span>
             <input
@@ -122,7 +122,7 @@ export function StationSelect({ value, onChange }: { value: string; onChange: (v
                   void add();
                 }
               }}
-              className="tap rounded-xl border-2 border-line2 bg-deep px-4 text-[20px] text-ink"
+              className="tap rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 text-[20px] text-ink"
             />
           </label>
           <Btn variant="primary" disabled={busy} onClick={() => void add()}>
@@ -137,7 +137,7 @@ export function StationSelect({ value, onChange }: { value: string; onChange: (v
             Cancel
           </Btn>
           {error && (
-            <p role="alert" className="w-full text-[17px] text-red-soft">
+            <p role="alert" className="w-full text-[17px] text-red-ink">
               {error}
             </p>
           )}

@@ -13,12 +13,12 @@ import { PointGrid, type PointLook } from "./PointGrid";
 export const TRAINER_AFTER = 3;
 
 function Pane({ title, tone, children, caption }: { title: string; tone: "red" | "amber" | "green"; children: React.ReactNode; caption: string }) {
-  const border = { red: "border-red", amber: "border-amber", green: "border-green" }[tone];
+  const border = { red: "border-red", amber: "border-amber", green: "border-primary" }[tone];
   return (
-    <section className={cx("flex min-w-0 flex-1 flex-col gap-3 rounded-xl border-[3px] bg-panel p-4", border)}>
+    <section className={cx("flex min-w-0 flex-1 flex-col gap-3 rounded-xl border-[3px] bg-surface p-4", border)}>
       <h2 className="text-[22px] font-semibold">{title}</h2>
-      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-lg bg-well px-5 py-5">{children}</div>
-      <p className="text-[18px] text-ink2">{caption}</p>
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-lg bg-surface-3 px-5 py-5">{children}</div>
+      <p className="text-[18px] text-ink-2">{caption}</p>
     </section>
   );
 }
@@ -43,7 +43,7 @@ export function DeviationView({
   const missing = missingPoints(run);
   const fixedNow = missing.length === 0 && !run.needsRelease;
   const conf = conformanceSoFar(state);
-  const ink = tone === "red" ? "text-red-soft" : "text-amber-soft";
+  const ink = tone === "red" ? "text-red-ink" : "text-amber-ink";
   const [nudge, setNudge] = useState(false);
   const notYet = run.needsRelease
     ? "Release all clamps first, then tap C1 to C6 in order."
@@ -71,7 +71,7 @@ export function DeviationView({
       <Frame tone={tone} />
       <Banner tone={tone} title={t.title} sub={t.sub} chip={`Attempt ${dev.failed}`} />
       <div className="flex min-h-0 flex-1 gap-6 px-8 py-6">
-        <aside className="flex w-[290px] flex-none flex-col gap-2 rounded-[14px] bg-panel2 px-2 py-3.5">
+        <aside className="flex w-[290px] flex-none flex-col gap-2 rounded-[14px] bg-surface px-2 py-3.5">
           <span className="px-3 pb-1 text-[19px] font-semibold">SOP · Step {dev.step} of 12</span>
           <MiniStepList state={state} flag={dev.step} />
         </aside>
@@ -87,7 +87,7 @@ export function DeviationView({
                 disabled={run.needsRelease}
                 onTap={(p) => onTap(dev.step, p)}
               />
-              <span className={cx("text-[30px]", fixedNow ? "text-green" : ink)} data-testid="dev-status">
+              <span className={cx("text-[30px]", fixedNow ? "text-primary-ink" : ink)} data-testid="dev-status">
                 {status}
               </span>
             </Pane>
@@ -98,18 +98,18 @@ export function DeviationView({
                 ordered={def.ordered}
                 look={(p) => (dev.kind === "wrong_order" ? (def.points.indexOf(p) < def.points.indexOf(dev.expected!) + 1 ? "done" : "open") : "done")}
               />
-              <span className="text-[30px] text-green">
+              <span className="text-[30px] text-primary-ink">
                 {dev.kind === "wrong_order" ? `${dev.expected} closes next` : `all ${def.points.length} ${def.ordered ? "closed" : "checked"}`}
               </span>
             </Pane>
           </div>
 
-          <div className={cx("flex items-center gap-5 rounded-xl border-2 bg-deep px-6 py-4", tone === "red" ? "border-red" : "border-amber")}>
+          <div className={cx("flex items-center gap-5 rounded-[var(--fl-radius-md)] border bg-surface-2 px-6 py-4", tone === "red" ? "border-red" : "border-amber")}>
             <Speaker />
             <Bars />
             <span className={cx("text-[40px] font-semibold leading-tight", ink)}>{t.correction}</span>
             <span className="flex-1" />
-            <span className="flex items-center gap-2 whitespace-nowrap text-base text-ink2" data-testid="clip-saved">
+            <span className="flex items-center gap-2 whitespace-nowrap text-base text-ink-2" data-testid="clip-saved">
               <Dot color="red" />
               Clip saved
             </span>
@@ -121,7 +121,7 @@ export function DeviationView({
                 Release all clamps
               </Btn>
             )}
-            <span className={cx("text-[18px]", nudge && !fixedNow ? cx("font-semibold text-[22px]", ink) : "text-soft")} data-testid="dev-hint">
+            <span className={cx("text-[18px]", nudge && !fixedNow ? cx("font-semibold text-[22px]", ink) : "text-ink-2")} data-testid="dev-hint">
               {nudge && !fixedNow
                 ? notYet
                 : run.needsRelease
@@ -140,16 +140,16 @@ export function DeviationView({
           </div>
 
           {dev.failed >= TRAINER_AFTER && (
-            <div className="flex items-center gap-5 rounded-xl border-2 border-amber bg-panel px-5 py-3" data-testid="expert-clip">
-              <div className="flex h-[72px] w-[128px] flex-none items-center justify-center rounded-lg bg-well text-sm text-muted">
+            <div className="flex items-center gap-5 rounded-[var(--fl-radius-md)] border-2 border-amber bg-surface px-5 py-3" data-testid="expert-clip">
+              <div className="flex h-[72px] w-[128px] flex-none items-center justify-center rounded-lg bg-surface-3 text-sm text-muted">
                 Expert clip
               </div>
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="text-[19px] font-semibold">Three attempts on this step. Watch the expert clip.</span>
-                <span className="text-[16px] text-soft">Placeholder: expert clips are added with video capture. A trainer can help now.</span>
+                <span className="text-[16px] text-ink-2">Placeholder: expert clips are added with video capture. A trainer can help now.</span>
               </div>
               {dev.trainerCalledAt ? (
-                <span className="text-[18px] text-amber-soft">Trainer called. Keep the part as it is.</span>
+                <span className="text-[18px] text-amber-ink">Trainer called. Keep the part as it is.</span>
               ) : (
                 <Btn variant="amber" onClick={() => onTrainer(dev.id)}>
                   Call a trainer

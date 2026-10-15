@@ -33,10 +33,10 @@ export function PointGrid({
             className={cx(
               "tap flex items-center justify-center border-[3px] text-[20px] font-semibold transition",
               ordered ? "rounded-lg" : "rounded-full",
-              l === "done" && "border-green bg-green text-green-ink",
-              l === "wrong" && "border-red bg-red text-red-ink",
-              l === "missing" && "border-amber bg-transparent text-amber-soft",
-              l === "open" && "border-edge bg-deep text-ink hover:border-blue",
+              l === "done" && "border-primary bg-primary text-on-strong",
+              l === "wrong" && "border-red bg-red text-on-strong",
+              l === "missing" && "border-amber bg-transparent text-amber-ink",
+              l === "open" && "border-line-strong bg-surface-2 text-ink hover:border-blue",
               "disabled:cursor-default",
             )}
           >

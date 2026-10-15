@@ -43,13 +43,13 @@ export function LodgeFlow({
                   type="button"
                   onClick={() => setStage({ at: "issues", step: s.n })}
                   className={cx(
-                    "tap flex min-h-[62px] items-center gap-3.5 rounded-xl border-2 px-4 py-3 text-left",
-                    cur ? "border-blue bg-sel" : "border-line bg-panel hover:border-edge",
+                    "tap flex min-h-[62px] items-center gap-3.5 rounded-[var(--fl-radius-md)] border px-4 py-3 text-left",
+                    cur ? "border-blue bg-blue-soft" : "border-line bg-surface hover:border-line-strong",
                   )}
                 >
                   <Ring n={s.n} size={30} active={cur} />
                   <span className={cx("flex-1 text-[20px]", cur && "font-semibold")}>{s.name}</span>
-                  {cur && <span className="text-[17px] text-blue-text">You are here</span>}
+                  {cur && <span className="text-[17px] text-blue-ink">You are here</span>}
                 </button>
               );
             })}
@@ -57,7 +57,7 @@ export function LodgeFlow({
           <button
             type="button"
             onClick={() => setStage({ at: "issues", step: 0 })}
-            className="tap flex items-center gap-3 rounded-xl border-2 border-line bg-panel px-[18px] py-3.5 text-left hover:border-edge"
+            className="tap flex items-center gap-3 rounded-[var(--fl-radius-md)] border border-line bg-surface px-[18px] py-3.5 text-left hover:border-line-strong"
           >
             <span className="text-[20px] font-semibold">Not about a step</span>
             <span className="text-base text-muted">Camera, tablet, fixture, safety or something else</span>
@@ -89,7 +89,7 @@ export function LodgeFlow({
                       ? onLodge(stage.step, i, [])
                       : setStage({ at: "fix", step: stage.step, issue: i, ticks: i.fix.map(() => false) })
                   }
-                  className="tap flex items-center gap-3.5 rounded-xl border-2 border-line bg-panel px-4 py-2.5 text-left hover:border-edge"
+                  className="tap flex items-center gap-3.5 rounded-[var(--fl-radius-md)] border border-line bg-surface px-4 py-2.5 text-left hover:border-line-strong"
                 >
                   <span className="flex flex-1 flex-col gap-0.5">
                     <span className="text-[20px] font-medium">{i.label}</span>
@@ -101,14 +101,14 @@ export function LodgeFlow({
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-3.5">
               <Panel title="How this works">
-                <p className="text-base text-soft">You pick what is wrong. The screen then tells you one of three things:</p>
+                <p className="text-base text-ink-2">You pick what is wrong. The screen then tells you one of three things:</p>
                 <div className="flex flex-col items-start gap-2">
                   <KindChip kind="self" />
-                  <p className="text-base text-soft">Do the steps, then check again and carry on.</p>
+                  <p className="text-base text-ink-2">Do the steps, then check again and carry on.</p>
                   <KindChip kind="try" />
-                  <p className="text-base text-soft">Do the steps. If it works, carry on. If not, lodge it.</p>
+                  <p className="text-base text-ink-2">Do the steps. If it works, carry on. If not, lodge it.</p>
                   <KindChip kind="lodge" />
-                  <p className="text-base text-soft">It is logged and the people are called. The screen says if the check stops.</p>
+                  <p className="text-base text-ink-2">It is logged and the people are called. The screen says if the check stops.</p>
                 </div>
               </Panel>
             </div>
@@ -140,7 +140,7 @@ export function LodgeFlow({
                   type="button"
                   aria-pressed={ticks[k]}
                   onClick={() => setStage({ ...stage, ticks: ticks.map((t, j) => (j === k ? !t : t)) })}
-                  className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3.5 py-1.5 text-left", ticks[k] ? "bg-transparent" : "bg-sel")}
+                  className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3.5 py-1.5 text-left", ticks[k] ? "bg-transparent" : "bg-blue-soft")}
                 >
                   {ticks[k] ? <Tick /> : <Ring n={k + 1} active />}
                   <span className={cx("text-[20px]", ticks[k] ? "text-muted" : "text-ink")}>{f}</span>
@@ -150,14 +150,14 @@ export function LodgeFlow({
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-3.5">
             <Panel title="What happens next">
-              <p className="text-base text-soft">
+              <p className="text-base text-ink-2">
                 {isTry
                   ? 'If it works, tap "Fixed, check again". You go back to the check and carry on from where you were. If not, lodge it and the people below are called.'
                   : 'Tap "Fixed, check again" when done. You go back to the check and carry on from where you were.'}
               </p>
-              {issue.who.length > 0 && <p className="text-base text-soft">If lodged, calls: {issue.who.join(", ")}.</p>}
+              {issue.who.length > 0 && <p className="text-base text-ink-2">If lodged, calls: {issue.who.join(", ")}.</p>}
             </Panel>
-            {issue.note && <Panel title="Good to know"><p className="text-base text-soft">{issue.note}</p></Panel>}
+            {issue.note && <Panel title="Good to know"><p className="text-base text-ink-2">{issue.note}</p></Panel>}
           </div>
         </div>
         <Bottom>

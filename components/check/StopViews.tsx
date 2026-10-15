@@ -44,7 +44,7 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className={cx("tap rounded-xl border-2 px-5 text-left text-[19px]", on ? "border-blue bg-sel" : "border-edge")}
+      className={cx("tap rounded-[var(--fl-radius-md)] border px-5 text-left text-[19px]", on ? "border-blue bg-blue-soft" : "border-line-strong")}
     >
       {children}
     </button>
@@ -66,7 +66,7 @@ export function HoldDecisionForm({ onSubmit, onCancel }: { onSubmit: (d: Decisio
         if (ready) onSubmit({ outcome: outcome!, by: by!, reason: reason.trim(), decidedAt: timeToMs(time) });
       }}
     >
-      <p className="text-base text-soft">Record what the people called decided. You do not decide, and neither does the app.</p>
+      <p className="text-base text-ink-2">Record what the people called decided. You do not decide, and neither does the app.</p>
       <fieldset className="flex flex-col gap-2">
         <legend className="pb-1.5 text-base text-muted">Outcome</legend>
         <div className="flex flex-wrap gap-2.5">
@@ -99,7 +99,7 @@ export function HoldDecisionForm({ onSubmit, onCancel }: { onSubmit: (d: Decisio
           maxLength={1000}
           rows={3}
           onChange={(e) => setReason(e.target.value)}
-          className="rounded-xl border-2 border-line2 bg-deep px-4 py-3 text-[20px]"
+          className="rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 py-3 text-[20px]"
         />
       </label>
       <label className="flex flex-col gap-1.5">
@@ -108,7 +108,7 @@ export function HoldDecisionForm({ onSubmit, onCancel }: { onSubmit: (d: Decisio
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="tap w-[200px] rounded-xl border-2 border-line2 bg-deep px-4 text-[20px]"
+          className="tap w-[200px] rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 text-[20px]"
         />
       </label>
       <div className="flex flex-wrap justify-end gap-3">
@@ -172,7 +172,7 @@ export function HandoffChecklist({ d, onItem }: { d: Discrepancy; onItem: (item:
             aria-pressed={done}
             disabled={done && !photo}
             onClick={() => onItem(h.item)}
-            className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3 py-1.5 text-left", k === next && "bg-sel")}
+            className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3 py-1.5 text-left", k === next && "bg-blue-soft")}
           >
             {done ? <Tick size={26} /> : <Ring n={k + 1} size={26} active={k === next} />}
             <span className="flex flex-1 flex-col">
@@ -207,7 +207,7 @@ export function StoppedView({
       <Frame tone="red" />
       <Banner tone="red" title="On hold: the check is stopped" sub={`${d.issue}. Do not force anything. Keep the part clamped.`} chip={`Waiting ${fmtClock(Math.max(0, now - d.loggedAt))}`} />
       <div className="flex min-h-0 flex-1 gap-5 overflow-y-auto px-8 py-5">
-        <aside className="flex w-[290px] flex-none flex-col gap-2 rounded-[14px] bg-panel2 px-2 py-3.5">
+        <aside className="flex w-[290px] flex-none flex-col gap-2 rounded-[14px] bg-surface px-2 py-3.5">
           <span className="px-3 text-[19px] font-semibold">SOP · locked</span>
           <span className="px-3 text-[15px] text-muted">The steps are locked until the decision is recorded.</span>
           <MiniStepList state={state} flag={d.step || undefined} />
@@ -231,7 +231,7 @@ export function StoppedView({
             <HoldDecisionForm onSubmit={onDecision} />
           </Panel>
           <Panel title="If no one comes">
-            <p className="text-base text-soft">After [set by plant] minutes, call the shift supervisor. Hand over to the next shift at shift end.</p>
+            <p className="text-base text-ink-2">After [set by plant] minutes, call the shift supervisor. Hand over to the next shift at shift end.</p>
           </Panel>
         </div>
       </div>
@@ -277,16 +277,16 @@ export function EndedView({ state, meta, sync }: { state: CheckState; meta: Sess
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
           <Panel title="Where the check ended">
-            <p className="text-[18px] text-soft">
+            <p className="text-[18px] text-ink-2">
               {meta.part} · {meta.fixture} · {meta.operator}. {stepsDone(state)} of 12 steps done.
             </p>
             <MiniStepList state={state} short={false} />
           </Panel>
           <div className="flex gap-3">
-            <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+            <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
               Start a new check
             </Link>
-            <Link href="/sessions" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
+            <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Session history
             </Link>
           </div>

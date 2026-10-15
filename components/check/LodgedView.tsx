@@ -17,12 +17,12 @@ export function sessionTime(state: CheckState, at: number): string {
 export function CallList({ d, onCalled }: { d: Discrepancy; onCalled: (who: string) => void }) {
   return (
     <Panel title="Call">
-      {d.who.length === 0 && <p className="text-[18px] text-soft">No call needed.</p>}
+      {d.who.length === 0 && <p className="text-[18px] text-ink-2">No call needed.</p>}
       {d.who.map((w) => {
         const called = d.called.includes(w);
         return (
           <div key={w} className="flex items-center gap-3">
-            <span aria-hidden className={cx("size-3 flex-none rounded-full", called ? "bg-green" : "bg-amber")} />
+            <span aria-hidden className={cx("size-3 flex-none rounded-full", called ? "bg-primary" : "bg-amber")} />
             <span className="flex-1 text-[20px]">{w}</span>
             <button
               type="button"
@@ -54,7 +54,7 @@ export function TodoList({ d, onTick }: { d: Discrepancy; onTick: (i: number) =>
           type="button"
           aria-pressed={d.todo[k]}
           onClick={() => onTick(k)}
-          className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3 py-1 text-left", k === next && "bg-sel")}
+          className={cx("tap flex items-center gap-3.5 rounded-[10px] px-3 py-1 text-left", k === next && "bg-blue-soft")}
         >
           {d.todo[k] ? <Tick size={26} /> : <Ring n={k + 1} size={26} active={k === next} />}
           <span className={cx("text-[19px]", d.todo[k] && "text-muted")}>{x}</span>
@@ -109,12 +109,12 @@ export function LodgedView({
             <TodoList d={d} onTick={onTodo} />
             {(d.note || stop) && (
               <Panel title={stop ? "Why it stops" : "Note"}>
-                <p className="text-base text-soft">{d.note || "The part cannot be checked until someone clears it."}</p>
+                <p className="text-base text-ink-2">{d.note || "The part cannot be checked until someone clears it."}</p>
               </Panel>
             )}
             {d.done.length > 0 && (
               <Panel title="Already tried">
-                <ul className="list-disc pl-6 text-base text-soft">
+                <ul className="list-disc pl-6 text-base text-ink-2">
                   {d.done.map((x) => (
                     <li key={x}>{x}</li>
                   ))}

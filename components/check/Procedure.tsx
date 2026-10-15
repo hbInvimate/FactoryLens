@@ -31,8 +31,8 @@ function sectionDone(d: Discrepancy, p: ProcState, id: string): boolean {
 
 function HoleStrip({ confirmed, reported, onToggle }: { confirmed: Set<string>; reported: Set<string>; onToggle?: (h: string) => void }) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-well p-3">
-      <div className="grid grid-cols-7 gap-1.5 rounded-md border border-[#2F6C55] bg-[#1D4A3B] p-2.5 xl:grid-cols-14">
+    <div className="flex flex-col gap-2 rounded-lg bg-surface-3 p-3">
+      <div className="grid grid-cols-7 gap-1.5 rounded-md border border-[var(--fl-draw-fixture-line)] bg-[var(--fl-draw-fixture)] p-2.5 xl:grid-cols-14">
         {HOLES.map((h) => {
           const out = reported.has(h);
           const ok = !out && confirmed.has(h);
@@ -46,19 +46,19 @@ function HoleStrip({ confirmed, reported, onToggle }: { confirmed: Set<string>; 
               onClick={() => onToggle?.(h)}
               className={cx(
                 "flex min-h-[56px] flex-col items-center justify-center gap-0.5 rounded-md text-[13px] disabled:cursor-default",
-                onToggle && "hover:bg-[#245a48]",
+                onToggle && "hover:bg-surface",
               )}
             >
               <span
                 aria-hidden
                 className={cx(
                   "flex size-6 items-center justify-center rounded-full border-2 text-[13px] font-bold",
-                  out ? "border-red bg-red-ink text-red" : ok ? "border-green bg-green" : "border-[#6B7A88]",
+                  out ? "border-red bg-surface text-red-ink" : ok ? "border-primary bg-primary" : "border-[var(--fl-draw-part-dark)] bg-surface",
                 )}
               >
                 {out ? "✕" : ""}
               </span>
-              <span className={out ? "text-red" : "text-ink2"}>{h.slice(1)}</span>
+              <span className={out ? "text-red-ink" : "text-ink-2"}>{h.slice(1)}</span>
             </button>
           );
         })}
@@ -74,22 +74,22 @@ function HoleStrip({ confirmed, reported, onToggle }: { confirmed: Set<string>; 
 function MarkingDrawing({ holes }: { holes: string[] }) {
   const shown = (holes.length ? holes : ["H5", "H6", "H7", "H8"]).slice(0, 4);
   return (
-    <svg viewBox="0 0 320 120" role="img" aria-label="How to mark each hole. Illustration only." className="block h-auto w-full rounded-lg bg-well">
-      <rect x="6" y="14" width="308" height="76" rx="6" fill="#1D4A3B" stroke="#2F6C55" />
+    <svg viewBox="0 0 320 120" role="img" aria-label="How to mark each hole. Illustration only." className="block h-auto w-full rounded-lg bg-surface-3">
+      <rect x="6" y="14" width="308" height="76" rx="6" fill="var(--fl-draw-fixture)" stroke="var(--fl-draw-fixture-line)" />
       {shown.map((h, i) => {
         const x = 40 + i * 78;
         return (
           <g key={h}>
-            <circle cx={x} cy="52" r="13" fill="none" stroke="#3CC47A" strokeWidth="1.8" strokeDasharray="3 3" />
-            <circle cx={x + 12} cy="52" r="13" fill="#2A0A06" fillOpacity="0.6" stroke="#F2705F" strokeWidth="2" />
-            <path d={`M${x - 3} 49 l6 6 M${x + 3} 49 l-6 6`} stroke="#3CC47A" strokeWidth="1.8" />
-            <path d={`M${x + 9} 49 l6 6 M${x + 15} 49 l-6 6`} stroke="#F2705F" strokeWidth="1.8" />
-            <path d={`M${x + 17} 70 L${x + 2} 70`} stroke="#FFE08A" strokeWidth="1.8" />
-            <text x={x + 6} y="84" textAnchor="middle" fontSize="9" fill="#C9D3DA">{h}</text>
+            <circle cx={x} cy="52" r="13" fill="none" stroke="var(--fl-primary)" strokeWidth="1.8" strokeDasharray="3 3" />
+            <circle cx={x + 12} cy="52" r="13" fill="var(--fl-red-soft)" fillOpacity="0.6" stroke="var(--fl-red)" strokeWidth="2" />
+            <path d={`M${x - 3} 49 l6 6 M${x + 3} 49 l-6 6`} stroke="var(--fl-primary)" strokeWidth="1.8" />
+            <path d={`M${x + 9} 49 l6 6 M${x + 15} 49 l-6 6`} stroke="var(--fl-red)" strokeWidth="1.8" />
+            <path d={`M${x + 17} 70 L${x + 2} 70`} stroke="var(--fl-draw-highlight)" strokeWidth="1.8" />
+            <text x={x + 6} y="84" textAnchor="middle" fontSize="9" fill="var(--fl-text-2)">{h}</text>
           </g>
         );
       })}
-      <text x="160" y="110" textAnchor="middle" fontSize="10" fill="#8C9AA6">Green: target. Red: actual. Illustration only.</text>
+      <text x="160" y="110" textAnchor="middle" fontSize="10" fill="var(--fl-text-muted)">Green: target. Red: actual. Illustration only.</text>
     </svg>
   );
 }
@@ -102,11 +102,11 @@ function ItemRow({ it, done, current, sub, onTap, disabled }: { it: ProcItem; do
       aria-pressed={done}
       disabled={disabled || (done && it.handoff !== undefined && !repeatable)}
       onClick={onTap}
-      className={cx("tap flex w-full items-center gap-3.5 rounded-[10px] px-3 py-1.5 text-left disabled:cursor-default", current && "bg-sel")}
+      className={cx("tap flex w-full items-center gap-3.5 rounded-[10px] px-3 py-1.5 text-left disabled:cursor-default", current && "bg-blue-soft")}
     >
       {done ? <Tick size={26} /> : current ? <Current /> : <Ring size={26} />}
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={cx("text-[19px]", done ? "text-muted" : current ? "font-semibold text-ink" : "text-ink2")}>{it.text}</span>
+        <span className={cx("text-[19px]", done ? "text-muted" : current ? "font-semibold text-ink" : "text-ink-2")}>{it.text}</span>
         {sub && <span className="text-[15px] text-muted">{sub}</span>}
       </span>
       <Chip small tone={SEEN_TONE[it.seen]}>
@@ -199,17 +199,17 @@ export function Procedure({
       <Frame tone={tone} />
       <Banner tone={tone} title={title} sub={subtitle} chip={chip} />
       <div className="flex min-h-0 flex-1 gap-5 px-8 pb-3 pt-5">
-        <aside className="flex w-[300px] flex-none flex-col gap-0.5 rounded-[14px] bg-panel2 px-2 py-4">
+        <aside className="flex w-[300px] flex-none flex-col gap-0.5 rounded-[14px] bg-surface px-2 py-4">
           <span className="px-3 pb-2 text-[19px] font-semibold">Part does not fit</span>
           {phases.map((ph, i) => (
             <button
               key={ph.id}
               type="button"
               onClick={() => onScreen(PROC_SCREENS.findIndex((s) => s.sections.includes(ph.id)))}
-              className={cx("tap flex items-center gap-3 rounded-[10px] px-3 text-left", ph.here && !ph.done && "border-2 border-blue bg-sel")}
+              className={cx("tap flex items-center gap-3 rounded-[10px] px-3 text-left", ph.here && !ph.done && "border-2 border-blue bg-blue-soft")}
             >
               {ph.done ? <Tick size={26} /> : ph.here ? <Current /> : <Ring n={i + 1} size={26} />}
-              <span className={cx("text-[18px]", ph.done ? "text-muted" : ph.here ? "font-semibold" : "text-ink2")}>{ph.name}</span>
+              <span className={cx("text-[18px]", ph.done ? "text-muted" : ph.here ? "font-semibold" : "text-ink-2")}>{ph.name}</span>
             </button>
           ))}
           <div className="flex-1" />
@@ -222,7 +222,7 @@ export function Procedure({
               {def.sections.map((id) => {
                 const s = section(id);
                 return (
-                  <section key={id} className="flex flex-col gap-0.5 rounded-[14px] bg-panel px-3 py-3.5">
+                  <section key={id} className="flex flex-col gap-0.5 rounded-[14px] bg-surface px-3 py-3.5">
                     <h2 className="px-3 pb-1.5 text-[20px] font-semibold">{s.title}</h2>
                     {s.items.map((it) => (
                       <ItemRow
@@ -245,11 +245,11 @@ export function Procedure({
                 <>
                   <Panel title="Where the check stands">
                     <HoleStrip confirmed={confirmed} reported={reported} />
-                    <span className="text-base text-soft">Feature IDs only. Measured values stay on the tablet.</span>
+                    <span className="text-base text-ink-2">Feature IDs only. Measured values stay on the tablet.</span>
                   </Panel>
-                  <div className="flex items-center gap-4 rounded-[14px] border-2 border-red bg-deep px-[22px] py-4">
+                  <div className="flex items-center gap-4 rounded-[14px] border-2 border-red bg-surface-2 px-[22px] py-4">
                     <Bars />
-                    <span className="text-[30px] font-semibold text-red-soft">Do not force the pin</span>
+                    <span className="text-[30px] font-semibold text-red-ink">Do not force the pin</span>
                   </div>
                   <Panel title="Not this branch?">
                     <p className="text-[15px] text-muted">A pad gap over limit, or a locator pin that will not enter, is a seating failure. Stop the check and escalate.</p>
@@ -261,7 +261,7 @@ export function Procedure({
                   <Panel title="Reported out so far">
                     <span className="text-[15px] text-muted">Tap the holes that will not take the pin.</span>
                     <HoleStrip confirmed={confirmed} reported={reported} onToggle={toggleHole} />
-                    <span className="text-base text-soft">
+                    <span className="text-base text-ink-2">
                       {p.holes.length ? `${p.holes.length} ${p.holes.length === 1 ? "hole" : "holes"} reported out. The check continues.` : "None reported yet."}
                     </span>
                   </Panel>
@@ -274,7 +274,7 @@ export function Procedure({
                       <Btn onClick={() => onParts(p.parts + 1)} aria-label="One more part on hold">
                         +
                       </Btn>
-                      <span className="text-base text-soft">Parts cut since the last good check, tagged and quarantined.</span>
+                      <span className="text-base text-ink-2">Parts cut since the last good check, tagged and quarantined.</span>
                     </div>
                   </Panel>
                   <Panel title="Customer notice">
@@ -286,7 +286,7 @@ export function Procedure({
                 <>
                   <Panel title="Marking each hole">
                     <MarkingDrawing holes={p.holes} />
-                    <span className="text-base text-soft">The photos and marks are the evidence. Do not scratch the part.</span>
+                    <span className="text-base text-ink-2">The photos and marks are the evidence. Do not scratch the part.</span>
                   </Panel>
                   <Panel title="If no one comes">
                     <p className="text-[15px] text-muted">After [set by plant] minutes, call the shift supervisor. Hand over to the next shift at shift end.</p>
@@ -301,25 +301,25 @@ export function Procedure({
                       type="button"
                       disabled={passed || escalated || d.status !== "open"}
                       onClick={() => onTrial(o.id)}
-                      className="tap flex items-center gap-3 rounded-[10px] bg-deep px-3.5 py-2.5 text-left hover:bg-sel disabled:cursor-default disabled:opacity-60"
+                      className="tap flex items-center gap-3 rounded-[10px] bg-surface-2 px-3.5 py-2.5 text-left hover:bg-blue-soft disabled:cursor-default disabled:opacity-60"
                     >
-                      <span aria-hidden className={cx("size-3 flex-none rounded-full", o.tone === "ok" ? "bg-green" : o.tone === "warn" ? "bg-amber" : "bg-red")} />
+                      <span aria-hidden className={cx("size-3 flex-none rounded-full", o.tone === "ok" ? "bg-primary" : o.tone === "warn" ? "bg-amber" : "bg-red")} />
                       <span className="flex flex-col">
                         <span className="text-[17px] font-semibold">{o.title}</span>
-                        <span className="text-[15px] text-soft">{o.next}</span>
+                        <span className="text-[15px] text-ink-2">{o.next}</span>
                       </span>
                     </button>
                   ))}
-                  <div className="flex items-center gap-3 rounded-[10px] bg-deep px-3.5 py-2.5">
+                  <div className="flex items-center gap-3 rounded-[10px] bg-surface-2 px-3.5 py-2.5">
                     <span aria-hidden className="size-3 flex-none rounded-full bg-red" />
                     <span className="flex flex-col">
                       <span className="text-[17px] font-semibold">Two failed trials (assumed limit)</span>
-                      <span className="text-[15px] text-soft">Stop correcting and escalate</span>
+                      <span className="text-[15px] text-ink-2">Stop correcting and escalate</span>
                     </span>
                   </div>
-                  <span className="text-base text-soft">The Quality Technician decides. FactoryLens AI does not read the readings.</span>
+                  <span className="text-base text-ink-2">The Quality Technician decides. FactoryLens AI does not read the readings.</span>
                   {p.trials.length > 0 && (
-                    <ul className="flex flex-col gap-1 text-base text-ink2" data-testid="trials">
+                    <ul className="flex flex-col gap-1 text-base text-ink-2" data-testid="trials">
                       {p.trials.map((t, i) => (
                         <li key={t.at}>
                           Trial {i + 1}: {TRIAL_OUTCOMES.find((o) => o.id === t.outcome)?.title}
@@ -339,9 +339,9 @@ export function Procedure({
                     <KV k="Time on hold" v={fmtClock(holdMs)} />
                     <KV k="Clips and photos" v={`${d.handoff.photos} photos, ${state.deviations.length} clips saved`} />
                   </div>
-                  <span className="text-base text-soft">Shown on the supervisor dashboard later.</span>
+                  <span className="text-base text-ink-2">Shown on the supervisor dashboard later.</span>
                   {released ? (
-                    <span className="text-[18px] font-semibold text-green" data-testid="hold-closed">The hold is closed.</span>
+                    <span className="text-[18px] font-semibold text-primary-ink" data-testid="hold-closed">The hold is closed.</span>
                   ) : (
                     <Btn
                       variant="success"
@@ -389,7 +389,7 @@ export function Procedure({
             <Btn variant="primary" onClick={() => onScreen(screen + 1)} disabled={screen === PROC_SCREENS.length - 1}>
               Next
             </Btn>
-            <span className="text-[17px] text-soft" data-testid="proc-screen">
+            <span className="text-[17px] text-ink-2" data-testid="proc-screen">
               {screen + 1} of {PROC_SCREENS.length}: {def.title}
             </span>
             <span className="flex-1" />

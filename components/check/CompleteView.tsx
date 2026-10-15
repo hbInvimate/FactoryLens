@@ -40,7 +40,7 @@ export function CompleteView({
         <Banner tone="green" title="Check complete" sub="Sign off on the tablet to release the cell" chip={savedChip(sync)} />
       )}
       <div className="flex min-h-0 flex-1 gap-6 overflow-y-auto px-8 py-6">
-        <section className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-[14px] bg-panel2 px-4 py-5">
+        <section className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-[14px] bg-surface px-4 py-5">
           <div className="flex items-baseline justify-between px-3.5 pb-3">
             <h2 className="text-2xl font-semibold">Every step, in order</h2>
             <span className="text-[18px] text-muted">12 of 12 done</span>
@@ -60,9 +60,9 @@ export function CompleteView({
 
         <div className="flex min-w-0 flex-[1.1] flex-col gap-4">
           <div className="flex gap-4">
-            <div className="flex flex-[1.2] flex-col gap-1 rounded-[14px] bg-panel px-[22px] py-[18px]">
+            <div className="flex flex-[1.2] flex-col gap-1 rounded-[14px] bg-surface px-[22px] py-[18px]">
               <span className="text-[17px] text-muted">Sequence conformance</span>
-              <span className="text-[96px] font-semibold leading-none text-green" data-testid="conformance">
+              <span className="text-[96px] font-semibold leading-none text-primary-ink" data-testid="conformance">
                 {conf === null ? "Not scored" : `${conf}%`}
               </span>
               <span className="text-base text-muted">
@@ -84,7 +84,7 @@ export function CompleteView({
           </div>
 
           {holds.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-xl border-2 border-amber bg-panel px-5 py-3">
+            <div className="flex flex-col gap-2 rounded-[var(--fl-radius-md)] border-2 border-amber bg-surface px-5 py-3">
               {holds.map((d) => (
                 <div key={d.id} className="flex flex-wrap items-center gap-3">
                   <Warn size={24} />
@@ -100,15 +100,15 @@ export function CompleteView({
           )}
 
           <h2 className="pt-1 text-[22px] font-semibold">What went wrong</h2>
-          {state.deviations.length === 0 && <p className="text-[18px] text-soft">No deviations. Every step was correct first time.</p>}
+          {state.deviations.length === 0 && <p className="text-[18px] text-ink-2">No deviations. Every step was correct first time.</p>}
           {state.deviations.map((d) => {
             const t = deviationText(d);
             return (
-              <div key={d.id} className="flex items-center gap-4 rounded-xl bg-panel px-[18px] py-3.5">
+              <div key={d.id} className="flex items-center gap-4 rounded-xl bg-surface px-[18px] py-3.5">
                 <Warn size={26} />
                 <div className="flex flex-1 flex-col gap-0.5">
                   <span className="text-[19px] font-semibold">{t.log}</span>
-                  <span className="text-base text-soft">{t.must}</span>
+                  <span className="text-base text-ink-2">{t.must}</span>
                   <span className="text-[15px] text-muted">{fixedLine(d)}</span>
                 </div>
                 <Btn className="rounded-full text-base" onClick={() => setClip(t.log)}>
@@ -122,7 +122,7 @@ export function CompleteView({
             <>
               <h2 className="pt-1 text-[22px] font-semibold">Lodged discrepancies</h2>
               {lodged.map((d) => (
-                <div key={d.id} className="flex items-center gap-4 rounded-xl bg-panel px-[18px] py-3">
+                <div key={d.id} className="flex items-center gap-4 rounded-xl bg-surface px-[18px] py-3">
                   <span className="flex-1 text-[18px]">
                     Step {d.step || "—"}: {d.issue}
                   </span>
@@ -133,20 +133,20 @@ export function CompleteView({
           )}
 
           <div className="flex-1" />
-          <div className="flex items-center gap-4 rounded-xl bg-panel px-5 py-4">
+          <div className="flex items-center gap-4 rounded-xl bg-surface px-5 py-4">
             <TabletIcon />
             <div className="flex flex-col gap-0.5">
               <span className="text-[18px] font-medium">Next, on the tablet</span>
-              <span className="text-base text-soft">Enter any remaining readings, then sign off. FactoryLens AI does not release the cell.</span>
+              <span className="text-base text-ink-2">Enter any remaining readings, then sign off. FactoryLens AI does not release the cell.</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
             <LodgeButton onClick={onLodge} />
             <span className="flex-1" />
-            <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+            <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
               Start a new check
             </Link>
-            <Link href="/sessions" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
+            <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Session history
             </Link>
           </div>

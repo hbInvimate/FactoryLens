@@ -1,0 +1,75 @@
+/*
+ * FactoryLens AI design tokens: the single source of colour.
+ * Sampled from the AI platform the app is built on (platform-home.png, platform-content.png).
+ * The app imports this file (app/globals.css). Components use these through Tailwind names
+ * (bg-page, text-ink, bg-primary, ...) or var(--fl-...) in SVG. No hex colours in components.
+ */
+:root {
+  /* Surfaces */
+  --fl-bg: #f1f3f2; /* page: light grey with a hint of green */
+  --fl-surface: #ffffff; /* cards, sidebar, top bar */
+  --fl-surface-2: #f8faf9; /* table heads, inputs at rest, quiet fills */
+  --fl-surface-3: #eef1f0; /* wells, empty bars, drawing backgrounds */
+  --fl-border: #e5e7eb; /* 1px dividers and card borders */
+  --fl-border-strong: #d1d5db; /* inputs, secondary buttons */
+
+  /* Text */
+  --fl-text: #111827;
+  --fl-text-2: #374151;
+  --fl-text-muted: #6b7280;
+  --fl-text-subtle: #9ca3af;
+  --fl-on-strong: #ffffff; /* text on a strong state colour */
+
+  /* Brand: green */
+  --fl-primary: #16a34a; /* buttons, active tab line, complete */
+  --fl-primary-hover: #15803d;
+  --fl-primary-ink: #15803d; /* green TEXT on white (readable) */
+  --fl-primary-soft: #ecfdf3; /* active nav item, success fills */
+  --fl-primary-border: #86efac; /* thin green border of the active nav item */
+
+  /* States: amber = skipped / warning */
+  --fl-amber: #f59e0b;
+  --fl-amber-ink: #92400e;
+  --fl-amber-soft: #fffbeb;
+  --fl-amber-border: #fcd34d;
+  --fl-on-amber: #3b2402; /* text on the strong amber banner */
+
+  /* States: red = wrong action, stop, hold */
+  --fl-red: #dc2626;
+  --fl-red-ink: #b91c1c;
+  --fl-red-soft: #fef2f2;
+  --fl-red-border: #fca5a5;
+
+  /* States: blue = in progress, current */
+  --fl-blue: #2563eb;
+  --fl-blue-ink: #1d4ed8;
+  --fl-blue-soft: #eff6ff;
+  --fl-blue-border: #bfdbfe;
+
+  /* Pastel icon tiles (stat tiles, folders) */
+  --fl-tile-green: #e7f7ee;
+  --fl-tile-blue: #eaf0fd;
+  --fl-tile-amber: #fef3d2;
+  --fl-tile-violet: #f3e8fd;
+  --fl-violet-ink: #7e22ce;
+  --fl-teal-ink: #0f766e;
+  --fl-teal-soft: #f0fdfa;
+  --fl-pink: #ec4899;
+
+  /* Drawings (camera placeholder, clips) */
+  --fl-draw-bg: #eef1f0;
+  --fl-draw-part: #94a3b8;
+  --fl-draw-part-dark: #64748b;
+  --fl-draw-part-light: #cbd5e1;
+  --fl-draw-hole: #475569;
+  --fl-draw-fixture: #dcfce7;
+  --fl-draw-fixture-line: #86efac;
+  --fl-draw-highlight: #f59e0b;
+
+  /* Shape */
+  --fl-radius-sm: 8px;
+  --fl-radius-md: 10px;
+  --fl-radius-lg: 14px;
+  --fl-shadow: 0 1px 2px rgb(17 24 39 / 0.05);
+  --fl-shadow-raised: 0 8px 24px rgb(17 24 39 / 0.08);
+}

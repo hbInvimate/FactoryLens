@@ -6,7 +6,8 @@ import { Card, LChip, Note, Page, Skeleton, StatCard } from "@/components/dashbo
 import { ClipToggle, PrintButton, PrintedOn } from "@/components/dashboard/ReportParts";
 import { LiveWait } from "@/components/dashboard/SessionsTable";
 import { LocalTime } from "@/components/LocalTime";
-import { PageBar } from "@/components/PageBar";
+import { Button, ButtonLink, StateBanner, Table, Td, Th } from "@/components/ds";
+import { IconAlert, IconArrowLeft, IconChecklist, IconClock, IconTarget } from "@/components/ds/icons";
 import { stationOf } from "@/lib/check/project";
 import {
   activeAt, activeCheckMs, conformance, correctFirstTime, openHoldsAll, reduce,
@@ -76,18 +77,10 @@ function outcomeOf(s: CheckState): Outcome {
   }
 }
 
-const BANNER = {
-  green: "border-[#9fd9b6] bg-[#e9f7ef] text-[#17673a]",
-  red: "border-[#efb1ab] bg-[#fdeceb] text-[#9b2c22]",
-  gray: "border-[#cfd5dc] bg-[#f1f3f5] text-[#3b424a]",
-  blue: "border-[#b3cdf3] bg-[#eaf2fd] text-[#1d4f9f]",
-  amber: "border-[#f1d58a] bg-[#fff8e3] text-[#7a5600]",
-};
-
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap gap-x-3 border-t border-[#eceff3] py-2 text-[15px] first:border-t-0">
-      <span className="w-40 flex-none text-[#6b7480]">{k}</span>
+    <div className="flex flex-wrap gap-x-3 border-t border-line py-2 text-[15px] first:border-t-0">
+      <span className="w-40 flex-none text-muted">{k}</span>
       <span className="min-w-0 flex-1">{v}</span>
     </div>
   );
@@ -95,7 +88,7 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
 
 const At = ({ s, at }: { s: CheckState; at: number }) => (
   <>
-    {fmtClock(activeAt(s, at))} <span className="text-[#6b7480]">(<LocalTime iso={new Date(at).toISOString()} timeOnly />)</span>
+    {fmtClock(activeAt(s, at))} <span className="text-muted">(<LocalTime iso={new Date(at).toISOString()} timeOnly />)</span>
   </>
 );
 
@@ -163,7 +156,7 @@ function WhatWentWrong({ cards }: { cards: ReturnType<typeof deviationCards> }) 
   return (
     <section className="flex flex-col gap-3" data-testid="what-went-wrong">
       <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">What went wrong</h2>
-      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-[#4b5563]">No deviations. Every step was done correctly on the first attempt.</Card>}
+      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-ink-2">No deviations. Every step was done correctly on the first attempt.</Card>}
       {cards.map((c) => (
         <Card key={c.key} className="flex flex-col gap-1 px-5 py-4" testId="deviation-card">
           <h3 className="flex flex-wrap items-center gap-2 text-[17px] font-semibold">
@@ -171,13 +164,13 @@ function WhatWentWrong({ cards }: { cards: ReturnType<typeof deviationCards> }) 
             <LChip tone={TYPE_TONE[c.type]}>{TYPE_LABEL[c.type]}</LChip>
           </h3>
           <p className="text-[15px]">
-            <b className="text-[#4b5563]">What happened:</b> <span data-testid="happened">{c.happened}</span>
-            {c.points === null && c.type !== "cannot_do" && <span className="text-[#6b7480]"> (points not recorded)</span>}
+            <b className="text-ink-2">What happened:</b> <span data-testid="happened">{c.happened}</span>
+            {c.points === null && c.type !== "cannot_do" && <span className="text-muted"> (points not recorded)</span>}
           </p>
           <p className="text-[15px]">
-            <b className="text-[#4b5563]">Expected:</b> {c.expected}
+            <b className="text-ink-2">Expected:</b> {c.expected}
           </p>
-          <p className="text-[14px] text-[#4b5563]">
+          <p className="text-[14px] text-ink-2">
             Time {fmtClock(c.sessionMs)} (<LocalTime iso={new Date(c.at).toISOString()} timeOnly />)
             {c.attempts !== null && <> · Attempt {c.attempts}</>}
             {c.corrected !== null && (
@@ -200,15 +193,15 @@ function DiscrepanciesLodged({ s }: { s: CheckState }) {
   return (
     <section className="flex flex-col gap-3" data-testid="discrepancies-lodged">
       <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Discrepancies lodged</h2>
-      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-[#4b5563]">No discrepancies lodged.</Card>}
+      {cards.length === 0 && <Card className="px-5 py-4 text-[15px] text-ink-2">No discrepancies lodged.</Card>}
       {cards.map((c) => (
         <Card key={c.key} className="flex flex-col gap-1 px-5 py-4" testId="discrepancy-card">
           <h3 className="flex flex-wrap items-center gap-2 text-[17px] font-semibold">
             {c.step ? `Step ${c.step}: ${c.stepName}` : c.stepName} — {c.issue}
             <LChip tone="blue">{c.category}</LChip>
           </h3>
-          <p className="text-[15px] text-[#2b3138]">
-            <b className="text-[#4b5563]">{c.fixedOnSpot ? "Fixed by the Quality Technician" : "Lodged"}</b> at {fmtClock(c.sessionMs)} (
+          <p className="text-[15px] text-ink-2">
+            <b className="text-ink-2">{c.fixedOnSpot ? "Fixed by the Quality Technician" : "Lodged"}</b> at {fmtClock(c.sessionMs)} (
             <LocalTime iso={new Date(c.loggedAt).toISOString()} timeOnly />).{" "}
             {!c.fixedOnSpot && (
               <>
@@ -219,7 +212,7 @@ function DiscrepanciesLodged({ s }: { s: CheckState }) {
             {c.fixedOnSpot && "The check carried on."}
           </p>
           <p className="text-[15px]">
-            <b className="text-[#4b5563]">Outcome:</b> <span data-testid="discrepancy-outcome">{c.outcome}</span>
+            <b className="text-ink-2">Outcome:</b> <span data-testid="discrepancy-outcome">{c.outcome}</span>
           </p>
         </Card>
       ))}
@@ -240,7 +233,7 @@ async function Report({ id }: { id: string }) {
       return (
         <Card className="px-5 py-4">
           <h2 className="text-[18px] font-semibold">The database is not set up</h2>
-          <p className="text-[15px] text-[#4b5563]">See the README: Set up the database.</p>
+          <p className="text-[15px] text-ink-2">See the README: Set up the database.</p>
         </Card>
       );
     }
@@ -260,29 +253,29 @@ async function Report({ id }: { id: string }) {
   return (
     <>
       {sample && (
-        <p data-testid="sample-mark" className="print-card w-fit rounded-full border-2 border-[#d79a12] bg-[#fdeec8] px-4 py-1 text-[14px] font-bold tracking-wide text-[#6b4e00]">
+        <p data-testid="sample-mark" className="print-card w-fit rounded-full border-2 border-amber bg-amber-soft px-4 py-1 text-[14px] font-bold tracking-wide text-amber-ink">
           SAMPLE DATA: this is a fake session for showing the dashboard
         </p>
       )}
       <div className="flex flex-col gap-1">
-        <p className="hidden text-[13px] text-[#4b5563] print:block">FactoryLens AI · Session report</p>
-        <h1 className="text-[28px] font-semibold">Post-session review</h1>
-        <p className="flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-[#4b5563]">
+        <p className="hidden text-[13px] text-ink-2 print:block">FactoryLens AI · Session report</p>
+        <h1 className="text-[28px] font-bold">Post-session review</h1>
+        <p className="flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-ink-2">
           <span>
-            Quality Technician <b className="text-[#1b1f24]">{meta.operator}</b>
+            Quality Technician <b className="text-ink">{meta.operator}</b>
           </span>
           <span>
-            Station <b className="text-[#1b1f24]">{stationOf(meta)}</b>
+            Station <b className="text-ink">{stationOf(meta)}</b>
           </span>
           <span>
-            SOP <b className="text-[#1b1f24]">{meta.sop}</b>
+            SOP <b className="text-ink">{meta.sop}</b>
           </span>
           <span>
-            Part <b className="text-[#1b1f24]">{meta.part}</b>
+            Part <b className="text-ink">{meta.part}</b>
           </span>
           <span>
             Session date{" "}
-            <b className="text-[#1b1f24]">
+            <b className="text-ink">
               <LocalTime iso={new Date(meta.createdAt).toISOString()} />
             </b>
           </span>
@@ -294,14 +287,18 @@ async function Report({ id }: { id: string }) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 print:grid-cols-4">
         <StatCard
+          icon={<IconTarget />}
+          tone="green"
           testId="report-conformance"
           value={conf !== null ? `${conf}%` : live ? "In progress" : "Not scored"}
           label="Sequence conformance"
-          accent={conf === null ? "gray" : conf === 100 ? "green" : "amber"}
+          valueTone={conf === null ? undefined : conf === 100 ? "green" : "amber"}
         />
-        <StatCard testId="report-correct" value={`${correctFirstTime(s)} of 12`} label="Steps correct first time" />
-        <StatCard testId="report-deviations" value={s.deviations.length} label="Deviations" />
+        <StatCard icon={<IconChecklist />} tone="blue" testId="report-correct" value={`${correctFirstTime(s)} of 12`} label="Steps correct first time" />
+        <StatCard icon={<IconAlert />} tone="amber" testId="report-deviations" value={s.deviations.length} label="Deviations" />
         <StatCard
+          icon={<IconClock />}
+          tone="violet"
           testId="report-length"
           value={lengthMs === null ? "not recorded" : fmtClock(lengthMs)}
           label="Session length"
@@ -309,39 +306,32 @@ async function Report({ id }: { id: string }) {
         />
       </div>
 
-      <div role="status" data-testid="report-outcome" className={`print-card rounded-xl border px-5 py-3 ${BANNER[outcome.tone]}`}>
-        <span className="text-[19px] font-semibold">{outcome.title}</span>
-        {outcome.detail && <span className="text-[16px]"> · {outcome.detail}</span>}
-      </div>
+      <StateBanner tone={outcome.tone} testId="report-outcome" title={outcome.title}>
+        {outcome.detail || undefined}
+      </StateBanner>
 
       <div className="flex flex-wrap items-center gap-3 print:hidden" data-testid="report-actions">
         <PrintButton />
-        <button type="button" disabled className="min-h-[56px] cursor-not-allowed rounded-lg border border-[#cfd5dc] bg-[#f4f5f7] px-5 text-[16px] font-semibold text-[#8a929c]">
+        <Button disabled>
           Send to quality system
-        </button>
-        <button type="button" disabled className="min-h-[56px] cursor-not-allowed rounded-lg border border-[#cfd5dc] bg-[#f4f5f7] px-5 text-[16px] font-semibold text-[#8a929c]">
+        </Button>
+        <Button disabled>
           Replay this session
-        </button>
-        <span className="text-[14px] text-[#6b7480]">Coming later</span>
+        </Button>
+        <span className="text-[14px] text-muted">Coming later</span>
         <span className="flex-1" />
-        <Link
-          href={`/check/${id}`}
-          className="inline-flex min-h-[56px] items-center rounded-lg border border-[#1f5fcf] px-5 text-[16px] font-semibold text-[#1f5fcf] hover:bg-[#eaf2fd]"
-        >
-          Open in the check app
-        </Link>
+        <ButtonLink href={`/check/${id}`}>Open in the check app</ButtonLink>
       </div>
 
       <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Every step, in order</h2>
-      <div className="overflow-x-auto rounded-xl border border-[#dfe3e8] bg-white print:overflow-visible">
-        <table className="w-full min-w-[640px] text-left text-[15px]" data-testid="steps-table">
-          <thead className="bg-[#f6f7f9] text-[14px]">
+      <Table testId="steps-table" minWidth={640}>
+          <thead>
             <tr>
-              <th className="w-12 px-4 py-3 font-semibold">#</th>
-              <th className="px-3 py-3 font-semibold">Step</th>
-              <th className="px-3 py-3 font-semibold">First attempt</th>
-              <th className="px-3 py-3 font-semibold">Outcome</th>
-              <th className="px-4 py-3 font-semibold">Done at</th>
+              <Th className="w-12">#</Th>
+              <Th>Step</Th>
+              <Th>First attempt</Th>
+              <Th>Outcome</Th>
+              <Th>Done at</Th>
             </tr>
           </thead>
           <tbody>
@@ -350,26 +340,25 @@ async function Report({ id }: { id: string }) {
               const fa = firstAttempt(s, st.n, dev);
               const done = s.steps[st.n - 1].doneAt;
               return (
-                <tr key={st.n} className="border-t border-[#eceff3]" data-step={st.n}>
-                  <td className="px-4 py-3">{st.n}</td>
-                  <td className="px-3">{st.name}</td>
-                  <td className="px-3">
+                <tr key={st.n} data-step={st.n}>
+                  <Td>{st.n}</Td>
+                  <Td>{st.name}</Td>
+                  <Td>
                     <LChip tone={fa.tone}>{fa.text}</LChip>
-                  </td>
-                  <td className="px-3">{outcomeText(s, st.n, dev)}</td>
-                  <td className="px-4">{done === null ? "—" : fmtClock(activeAt(s, done))}</td>
+                  </Td>
+                  <Td>{outcomeText(s, st.n, dev)}</Td>
+                  <Td>{done === null ? "—" : fmtClock(activeAt(s, done))}</Td>
                 </tr>
               );
             })}
           </tbody>
-        </table>
-      </div>
+      </Table>
 
       <WhatWentWrong cards={cards} />
       <DiscrepanciesLodged s={s} />
       <HoldSection s={s} />
 
-      <p className="text-[13px] text-[#6b7480]" data-testid="footnote">
+      <p className="text-[13px] text-muted" data-testid="footnote">
         Sequence conformance = steps done correctly on the first attempt divided by 12. It measures the procedure, not the part. Readings and tolerances stay in the tablet quality data tool.
       </p>
     </>
@@ -383,10 +372,10 @@ async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
     <>
       <Link
         href={backHref(sp)}
-        className="inline-flex min-h-[56px] w-fit items-center text-[16px] font-medium text-[#1f5fcf] hover:underline print:hidden"
+        className="inline-flex min-h-[56px] w-fit items-center gap-2 text-[16px] font-semibold text-primary-ink hover:underline print:hidden"
         data-testid="back-to-dashboard"
       >
-        ← Back to the dashboard
+        <IconArrowLeft /> Back to the dashboard
       </Link>
       <Note />
       <Suspense fallback={<Skeleton rows={12} />}>
@@ -398,15 +387,12 @@ async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
 
 export default function ReportPage(props: PageProps<"/dashboard/[id]">) {
   return (
-    <>
-      <PageBar current="dashboard" />
-      <Page>
-        <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-6 md:px-8 print:block print:max-w-none print:px-0 print:py-0 print:[&>*]:mb-4">
-          <Suspense fallback={<Skeleton rows={12} />}>
-            <ReportPageBody {...props} />
-          </Suspense>
-        </main>
-      </Page>
-    </>
+    <Page>
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-6 md:px-8 print:block print:max-w-none print:px-0 print:py-0 print:[&>*]:mb-4">
+        <Suspense fallback={<Skeleton rows={12} />}>
+          <ReportPageBody {...props} />
+        </Suspense>
+      </main>
+    </Page>
   );
 }

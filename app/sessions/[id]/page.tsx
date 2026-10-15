@@ -64,7 +64,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
         <StatusChip status={s.status} />
         <span className="flex-1" />
         {open && (
-          <Link href={`/check/${s.id}`} className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+          <Link href={`/check/${s.id}`} className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
             Resume this check
           </Link>
         )}
@@ -121,7 +121,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
 
         <div className="flex flex-col gap-5">
           <Panel title={`Deviations and step events (${deviations.length})`}>
-            {deviations.length === 0 && <p className="text-[18px] text-soft">None. Every step was correct first time.</p>}
+            {deviations.length === 0 && <p className="text-[18px] text-ink-2">None. Every step was correct first time.</p>}
             <ol className="flex flex-col">
               {deviations.map((e) => (
                 <li key={e.id} className="flex items-start gap-3 border-b border-line py-2 last:border-0">
@@ -132,7 +132,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
                       {e.detail ? `, ${e.detail.charAt(0).toLowerCase()}${e.detail.slice(1)}` : ""}
                     </span>
                     {e.kind === "skipped" && (
-                      <span className="text-[15px] text-soft" data-testid="missed-points">
+                      <span className="text-[15px] text-ink-2" data-testid="missed-points">
                         Missed points: {missedPoints(e, p!.points)?.join(", ") ?? "not recorded"}
                       </span>
                     )}
@@ -146,11 +146,11 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
           </Panel>
 
           <Panel title={`Lodged discrepancies (${p.discrepancies.length})`}>
-            {p.discrepancies.length === 0 && <p className="text-[18px] text-soft">None lodged.</p>}
+            {p.discrepancies.length === 0 && <p className="text-[18px] text-ink-2">None lodged.</p>}
             {p.discrepancies.map((d) => {
               const h = p!.handoffs.find((x) => x.discrepancyId === d.id);
               return (
-                <div key={d.id} className="flex flex-col gap-1 rounded-xl bg-panel2 px-4 py-3">
+                <div key={d.id} className="flex flex-col gap-1 rounded-card border border-line bg-surface px-4 py-3 shadow-card">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="flex-1 text-[19px] font-semibold">{d.issueLabel}</span>
                     <Chip small tone={d.effect === "stop" ? "red" : "amber"}>{d.effect === "stop" ? "Check stops" : "Check continues"}</Chip>
@@ -159,16 +159,16 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
                   <span className="text-[15px] text-muted">
                     {stepLabel(d.step)} · logged at {since(s.startedAt, d.loggedAt)} · {d.kind} · calls: {d.whoToCall.join(", ") || "none"}
                   </span>
-                  {d.whatWasDone && <p className="whitespace-pre-line text-[15px] text-soft">{d.whatWasDone}</p>}
+                  {d.whatWasDone && <p className="whitespace-pre-line text-[15px] text-ink-2">{d.whatWasDone}</p>}
                   {h && (
-                    <p className="text-[15px] text-soft">
+                    <p className="text-[15px] text-ink-2">
                       Handoff: marks {h.marks ? "done" : "not done"}, {h.photos} photos, sheet {h.sheet ? "done" : "not done"},{" "}
                       {h.handedOverAt ? `handed over, waited ${Math.floor(h.waitingSeconds / 60)} min ${h.waitingSeconds % 60} s` : "not handed over"}
                       {h.outcome ? `. Outcome: ${h.outcome}` : ""}
                     </p>
                   )}
                   {d.clearedBy && (
-                    <p className="text-[15px] text-soft">
+                    <p className="text-[15px] text-ink-2">
                       Closed by {d.clearedBy}: {d.clearReason}
                     </p>
                   )}
@@ -187,7 +187,7 @@ export default function SessionPage(props: PageProps<"/sessions/[id]">) {
     <>
       <PageBar title="Session" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
-        <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-text">
+        <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
           ← All sessions
         </Link>
         <Suspense fallback={<TableSkeleton />}>

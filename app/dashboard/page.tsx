@@ -5,7 +5,7 @@ import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlo
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
-import { PageBar } from "@/components/PageBar";
+import { IconAlert, IconChecklist, IconClock, IconPause, IconTarget, IconUsers } from "@/components/ds/icons";
 import { HOLD_WARN_MINUTES } from "@/lib/config";
 import { includeSampleFor, parseRange, rangeStart } from "@/lib/dashboard/metrics";
 import { dashHref, parseDev, parseShift, type DashParams } from "@/lib/dashboard/params";
@@ -25,7 +25,7 @@ function NotConfiguredCard() {
   return (
     <Card className="px-5 py-4">
       <h2 className="text-[18px] font-semibold">The database is not set up</h2>
-      <p className="text-[15px] text-[#4b5563]">DATABASE_URL is not set on the server, so there is nothing to show. See the README: Set up the database.</p>
+      <p className="text-[15px] text-ink-2">DATABASE_URL is not set on the server, so there is nothing to show. See the README: Set up the database.</p>
     </Card>
   );
 }
@@ -40,7 +40,7 @@ async function SessionsSection({ f, params }: { f: DashFilter; params: DashParam
   return (
     <>
       {rows.length === 0 ? (
-        <Card className="px-5 py-6 text-center text-[15px] text-[#6b7480]">No sessions match this filter.</Card>
+        <Card className="px-5 py-6 text-center text-[15px] text-muted">No sessions match this filter.</Card>
       ) : (
         <SessionsTable
           query={dashHref(params).split("?")[1]}
@@ -58,7 +58,7 @@ async function SessionsSection({ f, params }: { f: DashFilter; params: DashParam
         />
       )}
       {total > rows.length && (
-        <p className="text-[13px] text-[#6b7480]">
+        <p className="text-[13px] text-muted">
           Showing the newest {rows.length} of {total} sessions. Narrow the date range or shift to see older ones.
         </p>
       )}
@@ -92,11 +92,11 @@ async function Body({ searchParams }: { searchParams: SP }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <h1 className="text-[30px] font-semibold">Dashboard</h1>
+        <h1 className="text-[30px] font-bold">Dashboard</h1>
         <Filters stations={stations} params={params} />
         <span className="flex-1" />
         {params.sample && (
-          <span data-testid="sample-chip" className="rounded-full bg-[#fdeec8] px-4 py-1.5 text-[14px] font-bold tracking-wide text-[#6b4e00]">
+          <span data-testid="sample-chip" className="rounded-full border border-amber-line bg-amber-soft px-4 py-1.5 text-[14px] font-bold tracking-wide text-amber-ink">
             SAMPLE DATA · {s.real} real, {s.sample} sample {s.real + s.sample === 1 ? "session" : "sessions"}
           </span>
         )}
@@ -106,12 +106,14 @@ async function Body({ searchParams }: { searchParams: SP }) {
       {s.total === 0 ? (
         <Card className="px-5 py-8 text-center">
           <p className="text-[18px] font-semibold" data-testid="dashboard-empty">No sessions at this station yet.</p>
-          <p className="text-[15px] text-[#6b7480]">Try a longer date range, another shift, or start a check at this station.</p>
+          <p className="text-[15px] text-muted">Try a longer date range, another shift, or start a check at this station.</p>
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 min-[1760px]:grid-cols-6">
             <StatCard
+              icon={<IconUsers />}
+              tone="green"
               testId="tile-sessions"
               value={s.total}
               label="Sessions"
@@ -122,24 +124,32 @@ async function Body({ searchParams }: { searchParams: SP }) {
               }
             />
             <StatCard
+              icon={<IconPause />}
+              tone="amber"
               testId="tile-open-holds"
               value={s.onHold}
               label="Open holds"
               sub={s.oldestHold ? <OldestHoldAge since={s.oldestHold.toISOString()} /> : "none waiting"}
             />
             <StatCard
+              icon={<IconTarget />}
+              tone="green"
               testId="tile-conformance"
               value={s.conformance === null ? "not recorded" : `${s.conformance}%`}
               label="Station conformance"
               sub={s.scored ? `steps correct first time, ${s.scored} complete ${s.scored === 1 ? "session" : "sessions"}` : "no complete sessions yet"}
             />
             <StatCard
+              icon={<IconChecklist />}
+              tone="blue"
               testId="tile-no-deviation"
               value={s.scored ? `${Math.round((s.noDeviation / s.scored) * 100)}%` : "not recorded"}
               label="Sessions with no deviation"
               sub={s.scored ? `${s.noDeviation} of ${s.scored} complete` : "no complete sessions yet"}
             />
             <StatCard
+              icon={<IconClock />}
+              tone="violet"
               testId="tile-check-time"
               value={s.avgCheckSeconds === null ? "not recorded" : fmtClock(s.avgCheckSeconds * 1000)}
               label="Average check time"
@@ -149,7 +159,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
                   : "no complete sessions yet"
               }
             />
-            <StatCard testId="tile-open" value={s.openDiscrepancies} label="Open discrepancies" sub="lodged, not yet cleared" />
+            <StatCard icon={<IconAlert />} tone="red" testId="tile-open" value={s.openDiscrepancies} label="Open discrepancies" sub="lodged, not yet cleared" />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
@@ -174,7 +184,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
                 href={dashHref(params, { dev: null })}
                 scroll={false}
                 data-testid="dev-filter-chip"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-[#e3edfc] px-4 text-[14px] font-semibold text-[#1f5fcf] hover:brightness-95"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-blue-line bg-blue-soft px-4 text-[14px] font-semibold text-blue-ink hover:bg-tile-blue"
                 aria-label={`Remove filter: Step ${params.dev} deviations`}
               >
                 Filter: Step {params.dev} deviations <span aria-hidden>✕</span>
@@ -184,7 +194,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
           <Suspense fallback={<Skeleton rows={4} />}>
             <SessionsSection f={f} params={params} />
           </Suspense>
-          <p className="text-[13px] text-[#6b7480]">
+          <p className="text-[13px] text-muted">
             Conformance = steps correct on the first attempt ÷ 12, averaged over complete sessions. Sessions on hold, ended without a check, or left are not scored and are left out of averages. Waiting turns red after {HOLD_WARN_MINUTES} minutes.
           </p>
         </>
@@ -195,15 +205,12 @@ async function Body({ searchParams }: { searchParams: SP }) {
 
 export default function DashboardPage(props: PageProps<"/dashboard">) {
   return (
-    <>
-      <PageBar current="dashboard" />
-      <Page>
-        <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-6 md:px-8">
-          <Suspense fallback={<Skeleton />}>
-            <Body searchParams={props.searchParams} />
-          </Suspense>
-        </main>
-      </Page>
-    </>
+    <Page>
+      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-6 md:px-8">
+        <Suspense fallback={<Skeleton />}>
+          <Body searchParams={props.searchParams} />
+        </Suspense>
+      </main>
+    </Page>
   );
 }

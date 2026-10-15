@@ -1,51 +1,64 @@
 @import "tailwindcss";
+/* The single source of colour (the AI platform's palette). */
+@import "../docs/theme/tokens.css";
 
-/* FactoryLens AI palette, taken from docs/screens. */
+/* Tailwind names for the tokens. Components use only these (or var(--fl-...) in SVG). */
 @theme {
-  --color-bg: #0f1419;
-  --color-bar: #141b23;
-  --color-panel: #18202a;
-  --color-panel2: #141b23;
-  --color-deep: #0e1216;
-  --color-well: #0b1114;
-  --color-line: #243040;
-  --color-line2: #2b3a4c;
-  --color-edge: #4a5a6c;
-  --color-sel: #1b2a3d;
-  --color-ink: #e8edf1;
-  --color-ink2: #c9d3da;
-  --color-soft: #b7c3cd;
-  --color-muted: #8c9aa6;
-  --color-dim: #5e6b78;
-  --color-ring: #3a4857;
-  --color-blue: #378add;
-  --color-blue-ink: #06182e;
-  --color-blue-soft: #cfe2fb;
-  --color-blue-text: #8cb8f0;
-  --color-green: #3cc47a;
-  --color-green-ink: #06210f;
-  --color-green-soft: #bfebd0;
-  --color-green-bg: #16301f;
-  --color-amber: #e6b422;
-  --color-amber-ink: #1b1500;
-  --color-amber-soft: #ffe08a;
-  --color-amber-bg: #3a2f10;
-  --color-red: #f2705f;
-  --color-red-ink: #2a0a06;
-  --color-red-soft: #ffd9d3;
-  --color-red-bg: #3b1b17;
-  --color-rec: #e5484d;
-  --color-violet: #b6b0f5;
-  --color-violet-bg: #2b2650;
-  --color-teal: #5fd3c2;
-  --color-teal-bg: #13312e;
-  --font-sans: var(--font-barlow), "Segoe UI", Arial, sans-serif;
+  --color-page: var(--fl-bg);
+  --color-surface: var(--fl-surface);
+  --color-surface-2: var(--fl-surface-2);
+  --color-surface-3: var(--fl-surface-3);
+  --color-line: var(--fl-border);
+  --color-line-strong: var(--fl-border-strong);
+
+  --color-ink: var(--fl-text);
+  --color-ink-2: var(--fl-text-2);
+  --color-muted: var(--fl-text-muted);
+  --color-subtle: var(--fl-text-subtle);
+  --color-on-strong: var(--fl-on-strong);
+
+  --color-primary: var(--fl-primary);
+  --color-primary-hover: var(--fl-primary-hover);
+  --color-primary-ink: var(--fl-primary-ink);
+  --color-primary-soft: var(--fl-primary-soft);
+  --color-primary-line: var(--fl-primary-border);
+
+  --color-amber: var(--fl-amber);
+  --color-amber-ink: var(--fl-amber-ink);
+  --color-amber-soft: var(--fl-amber-soft);
+  --color-amber-line: var(--fl-amber-border);
+  --color-on-amber: var(--fl-on-amber);
+
+  --color-red: var(--fl-red);
+  --color-red-ink: var(--fl-red-ink);
+  --color-red-soft: var(--fl-red-soft);
+  --color-red-line: var(--fl-red-border);
+
+  --color-blue: var(--fl-blue);
+  --color-blue-ink: var(--fl-blue-ink);
+  --color-blue-soft: var(--fl-blue-soft);
+  --color-blue-line: var(--fl-blue-border);
+
+  --color-tile-green: var(--fl-tile-green);
+  --color-tile-blue: var(--fl-tile-blue);
+  --color-tile-amber: var(--fl-tile-amber);
+  --color-tile-violet: var(--fl-tile-violet);
+  --color-violet-ink: var(--fl-violet-ink);
+  --color-teal-ink: var(--fl-teal-ink);
+  --color-teal-soft: var(--fl-teal-soft);
+  --color-pink: var(--fl-pink);
+
+  --radius-card: var(--fl-radius-lg);
+  --shadow-card: var(--fl-shadow);
+  --shadow-raised: var(--fl-shadow-raised);
+
+  --font-sans: var(--font-inter), "Segoe UI", Arial, sans-serif;
 }
 
 html,
 body {
-  background: var(--color-bg);
-  color: var(--color-ink);
+  background: var(--fl-bg);
+  color: var(--fl-text);
 }
 
 body {
@@ -61,8 +74,9 @@ body {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid var(--color-blue);
+  outline: 3px solid var(--fl-blue);
   outline-offset: 2px;
 }
 
@@ -90,8 +104,8 @@ textarea:focus-visible {
 
   html,
   body {
-    background: #fff !important;
-    color: #1b1f24 !important;
+    background: var(--fl-surface) !important;
+    color: var(--fl-text) !important;
   }
 
   .print-card,

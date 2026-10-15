@@ -61,7 +61,7 @@ function Field({ id, label, value, onChange }: { id: string; label: string; valu
         maxLength={120}
         required
         onChange={(e) => onChange(e.target.value)}
-        className="tap rounded-xl border-2 border-line2 bg-deep px-4 text-[22px] text-ink"
+        className="tap rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 text-[22px] text-ink"
       />
     </label>
   );
@@ -128,7 +128,7 @@ export function StartForm() {
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-6">
       {active && (
         <Panel title="A check is in progress on this device">
-          <p className="text-[18px] text-soft">
+          <p className="text-[18px] text-ink-2">
             {active.label}. Step {active.step} of 12.
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -137,7 +137,7 @@ export function StartForm() {
             <Btn onClick={() => setLeaving(true)}>Leave this check and start a new one</Btn>
             <Link
               href={`/check/${active.id}`}
-              className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink"
+              className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover"
             >
               Resume the check
             </Link>
@@ -147,14 +147,14 @@ export function StartForm() {
 
       <Panel title="Start a first-off check">
         <form onSubmit={submit} className="flex flex-col gap-5">
-          <p className="text-[17px] text-soft">
+          <p className="text-[17px] text-ink-2">
             SOP: {SESSION_DEFAULTS.sop}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
           <StationSelect value={fixture} onChange={setFixture} />
           <Field id="operator" label="Quality Technician" value={operator} onChange={setOperator} />
           {error && (
-            <div role="alert" className="flex flex-wrap items-center gap-4 rounded-xl border-2 border-red bg-red-bg px-4 py-2 text-[18px] text-red-soft">
+            <div role="alert" className="flex flex-wrap items-center gap-4 rounded-[var(--fl-radius-md)] border-2 border-red bg-red-soft px-4 py-2 text-[18px] text-red-ink">
               <span className="flex-1">{error}</span>
               <Btn variant="danger" onClick={startNew}>
                 Retry
@@ -167,10 +167,10 @@ export function StartForm() {
             </Btn>
             {active && <span className="text-base text-muted">Resume or leave the check in progress first.</span>}
             <span className="flex-1" />
-            <Link href="/sessions" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
+            <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Session history
             </Link>
-            <Link href="/dashboard" className="tap inline-flex items-center rounded-xl border-2 border-edge px-6 text-[20px] font-semibold">
+            <Link href="/dashboard" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Dashboard
             </Link>
           </div>

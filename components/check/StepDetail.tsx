@@ -8,7 +8,7 @@ import { MiniStepList } from "./StepList";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl bg-panel px-4 py-3">
+    <div className="flex flex-col gap-1 rounded-xl bg-surface px-4 py-3">
       <span className="text-[15px] font-medium text-muted">{title}</span>
       <div className="text-[18px] leading-snug">{children}</div>
     </div>
@@ -45,7 +45,7 @@ export function StepDetail({
 
   return (
     <div className="flex min-h-0 flex-1 gap-6 px-8 py-6">
-      <aside className="flex w-[520px] flex-none flex-col gap-1 overflow-y-auto rounded-[14px] bg-panel2 px-3 py-[18px]">
+      <aside className="flex w-[520px] flex-none flex-col gap-1 overflow-y-auto rounded-[14px] bg-surface px-3 py-[18px]">
         <div className="flex items-baseline justify-between px-3.5 pb-2.5">
           <span className="text-[22px] font-semibold">SOP: first-off check</span>
           <span className="text-base text-muted">Step {Math.min(state.current, 12)} of 12</span>
@@ -53,7 +53,7 @@ export function StepDetail({
         <MiniStepList state={state} selected={n} onPick={onPick} short={false} />
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto rounded-[14px] bg-panel2 px-6 py-[22px]">
+      <section className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto rounded-[14px] bg-surface px-6 py-[22px]">
         <div className="flex flex-wrap items-center gap-4">
           <span className="flex size-10 items-center justify-center rounded-full border-2 border-blue text-xl">{n}</span>
           <h1 className="text-[34px] font-semibold leading-tight">{s.name}</h1>
@@ -69,8 +69,8 @@ export function StepDetail({
           <div className="flex w-[520px] max-w-full flex-col gap-3">
             <div className="relative">
               <PartDrawing step={n} className="block h-auto w-full rounded-xl" />
-              <span aria-hidden className="absolute left-1/2 top-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-deep/75">
-                <svg width="24" height="24" viewBox="0 0 24 24"><path d="M7 4 l13 8 l-13 8 z" fill="#E8EDF1" /></svg>
+              <span aria-hidden className="absolute left-1/2 top-1/2 flex size-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-surface-2/75">
+                <svg width="24" height="24" viewBox="0 0 24 24"><path d="M7 4 l13 8 l-13 8 z" fill="currentColor" /></svg>
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -79,9 +79,9 @@ export function StepDetail({
               <Chip tone="green">{s.camera}</Chip>
             </div>
             {s.rule && (
-              <div className="flex items-center gap-3.5 rounded-xl border-2 border-amber bg-amber-bg px-4 py-3">
+              <div className="flex items-center gap-3.5 rounded-[var(--fl-radius-md)] border-2 border-amber bg-amber-soft px-4 py-3">
                 <Warn />
-                <span className="text-[18px] font-medium text-amber-soft">{s.rule}</span>
+                <span className="text-[18px] font-medium text-amber-ink">{s.rule}</span>
               </div>
             )}
           </div>
@@ -97,7 +97,7 @@ export function StepDetail({
                 onClick={() => onSay(s.spoken)}
                 disabled={!voice}
                 title={voice ? "Play the line" : "Turn the voice on to hear it"}
-                className="tap mt-1.5 flex w-full items-center gap-3 rounded-[10px] bg-deep px-3.5 py-2.5 text-left"
+                className="tap mt-1.5 flex w-full items-center gap-3 rounded-[10px] bg-surface-2 px-3.5 py-2.5 text-left"
               >
                 <Speaker size={30} />
                 <Bars live={false} />
@@ -108,7 +108,7 @@ export function StepDetail({
         </div>
 
         <div className="flex-1" />
-        <div className="flex flex-wrap items-center gap-9 rounded-xl bg-panel px-5 py-3.5">
+        <div className="flex flex-wrap items-center gap-9 rounded-xl bg-surface px-5 py-3.5">
           <Fact label="First attempt" value={first} />
           <Fact label="Time on step" value={onStep} />
           <Fact label="Status" value={status} />

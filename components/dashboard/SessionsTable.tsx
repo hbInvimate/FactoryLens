@@ -5,6 +5,7 @@ import { ENDED_WITHOUT_CHECK, type SessionStatus } from "@/lib/check/types";
 import { useNow } from "@/lib/client/hooks";
 import { conformanceLabel, isOnHold, waitTone } from "@/lib/dashboard/metrics";
 import { fmtClock } from "@/lib/format";
+import { Table, Td, Th } from "../ds";
 import { cx } from "../ui";
 import { LocalTime } from "../LocalTime";
 import { StatusPill } from "./light";
@@ -35,7 +36,7 @@ function timeText(r: TableRow): string {
   return r.activeSeconds === null ? "not recorded" : fmtClock(r.activeSeconds * 1000);
 }
 
-const WAIT = { amber: "text-[#a36f00]", red: "font-semibold text-[#c0392b]" };
+const WAIT = { amber: "text-amber-ink", red: "font-semibold text-red-ink" };
 
 /** The hold reason and its waiting time, amber, then red once over the limit in lib/config.ts. */
 export function HoldCell({ hold, now }: { hold: TableHold; now: number }) {
@@ -43,7 +44,7 @@ export function HoldCell({ hold, now }: { hold: TableHold; now: number }) {
   const tone = waited === null ? "amber" : waitTone(waited);
   return (
     <div className="flex flex-col gap-0.5 pt-1 text-[13px]">
-      <span className="text-[#4b5563]">
+      <span className="text-ink-2">
         Step {hold.step || "—"}: {hold.issue} · {hold.effect === "stop" ? "check stopped" : "check continues"}
       </span>
       <span data-testid="hold-wait" data-tone={tone} className={WAIT[tone]}>
@@ -82,17 +83,16 @@ export function SessionsTable({ rows, query = "" }: { rows: TableRow[]; /** The 
   const router = useRouter();
   const now = useNow(1000);
   return (
-    <div className="overflow-x-auto rounded-xl border border-[#dfe3e8] bg-white">
-      <table className="w-full min-w-[980px] text-left text-[15px]">
-        <thead className="bg-[#f6f7f9] text-[14px] text-[#4b5563]">
+    <Table minWidth={980}>
+        <thead>
           <tr>
-            <th className="px-4 py-3 font-semibold">Date and time</th>
-            <th className="px-3 py-3 font-semibold">Quality Technician</th>
-            <th className="px-3 py-3 font-semibold">Status</th>
-            <th className="px-3 py-3 font-semibold">Conformance</th>
-            <th className="px-3 py-3 font-semibold">Deviations</th>
-            <th className="px-3 py-3 font-semibold">Discrepancies</th>
-            <th className="px-4 py-3 font-semibold">Check time</th>
+            <Th>Date and time</Th>
+            <Th>Quality Technician</Th>
+            <Th>Status</Th>
+            <Th>Conformance</Th>
+            <Th>Deviations</Th>
+            <Th>Discrepancies</Th>
+            <Th>Check time</Th>
           </tr>
         </thead>
         <tbody>
@@ -101,28 +101,27 @@ export function SessionsTable({ rows, query = "" }: { rows: TableRow[]; /** The 
               key={r.id}
               data-session={r.id}
               onClick={() => router.push(`/dashboard/${r.id}${query ? `?${query}` : ""}`)}
-              className="cursor-pointer border-t border-[#eceff3] align-top hover:bg-[#f3f7fe]"
+              className="cursor-pointer align-top hover:bg-primary-soft"
             >
-              <td className="px-4 py-1">
-                <Link href={`/dashboard/${r.id}${query ? `?${query}` : ""}`} className="inline-flex min-h-[56px] items-center font-medium text-[#1f5fcf] hover:underline" onClick={(e) => e.stopPropagation()}>
+              <Td className="py-1">
+                <Link href={`/dashboard/${r.id}${query ? `?${query}` : ""}`} className="inline-flex min-h-[56px] items-center font-semibold text-primary-ink hover:underline" onClick={(e) => e.stopPropagation()}>
                   <LocalTime iso={r.startedAt} />
                 </Link>
-              </td>
-              <td className="px-3 py-4">{r.operator}</td>
-              <td className="max-w-[360px] px-3 py-3.5">
+              </Td>
+              <Td className="py-4">{r.operator}</Td>
+              <Td className="max-w-[360px] py-3.5">
                 <StatusPill status={r.status} />
                 {isOnHold(r.status) && r.hold && <HoldCell hold={r.hold} now={now} />}
-              </td>
-              <td className={cx("px-3 py-4", ENDED_WITHOUT_CHECK.includes(r.status) && "text-[#6b7480]")} data-testid="row-conformance">
+              </Td>
+              <Td className={cx("py-4", ENDED_WITHOUT_CHECK.includes(r.status) && "text-muted")} data-testid="row-conformance">
                 {conformanceLabel(r.status, r.conformance)}
-              </td>
-              <td className="px-3 py-4">{r.deviations}</td>
-              <td className="px-3 py-4">{r.discrepancies}</td>
-              <td className="px-4 py-4">{timeText(r)}</td>
+              </Td>
+              <Td className="py-4">{r.deviations}</Td>
+              <Td className="py-4">{r.discrepancies}</Td>
+              <Td className="py-4">{timeText(r)}</Td>
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+    </Table>
   );
 }

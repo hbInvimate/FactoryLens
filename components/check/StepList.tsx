@@ -21,9 +21,9 @@ export function MiniStepList({
         const name = short ? s.short : s.name;
         if (flag === s.n) {
           return (
-            <li key={s.n} className="flex min-h-[52px] items-center gap-3 rounded-[10px] border-2 border-amber bg-amber-bg px-3">
+            <li key={s.n} className="flex min-h-[52px] items-center gap-3 rounded-[10px] border-2 border-amber bg-amber-soft px-3">
               <Warn size={24} />
-              <span className="text-[18px] font-semibold text-amber-soft">{name}</span>
+              <span className="text-[18px] font-semibold text-amber-ink">{name}</span>
             </li>
           );
         }
@@ -41,7 +41,7 @@ export function MiniStepList({
                 onClick={() => onPick(s.n)}
                 className={cx(
                   "tap flex w-full items-center gap-3 rounded-[10px] px-3",
-                  selected === s.n ? "border-2 border-blue bg-sel" : "hover:bg-panel",
+                  selected === s.n ? "border-2 border-blue bg-blue-soft" : "hover:bg-surface",
                 )}
               >
                 {body}

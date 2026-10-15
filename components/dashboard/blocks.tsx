@@ -20,7 +20,7 @@ export function Block({ n, title, sub, children, testId }: { n: number; title: s
   return (
     <Card className="flex min-w-0 flex-col px-5 py-4">
       <h2 className="text-[19px] font-semibold">{full}</h2>
-      <p className="pb-2 text-[13px] text-[#6b7480]">{sub}</p>
+      <p className="pb-2 text-[13px] text-muted">{sub}</p>
       <section data-testid={testId} aria-label={full} className="flex min-h-[180px] flex-col">
         <BlockBoundary title={title}>
           <Suspense fallback={<BlockSkeleton />}>{children}</Suspense>
@@ -34,7 +34,7 @@ function BlockSkeleton() {
   return (
     <div role="status" aria-label="Loading" className="flex flex-1 flex-col gap-2 py-2">
       {Array.from({ length: 5 }, (_, i) => (
-        <div key={i} className="h-6 animate-pulse rounded bg-[#eef0f3]" style={{ width: `${90 - i * 12}%` }} />
+        <div key={i} className="h-6 animate-pulse rounded bg-surface-3" style={{ width: `${90 - i * 12}%` }} />
       ))}
       <span className="sr-only">Loading…</span>
     </div>
@@ -43,7 +43,7 @@ function BlockSkeleton() {
 
 function Empty({ children }: { children: ReactNode }) {
   return (
-    <p className="flex flex-1 items-center justify-center py-8 text-[15px] text-[#6b7480]" data-testid="block-empty">
+    <p className="flex flex-1 items-center justify-center py-8 text-[15px] text-muted" data-testid="block-empty">
       {children}
     </p>
   );
@@ -79,7 +79,7 @@ export async function ConformanceBlock({ f, today }: { f: DashFilter; today: str
   return (
     <>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Conformance per day. Overall ${c.overall}% over ${c.count} sessions.`}>
-        <line x1="0" x2={W} y1={H - bottom} y2={H - bottom} stroke="#c9cfd6" />
+        <line x1="0" x2={W} y1={H - bottom} y2={H - bottom} stroke="var(--fl-border-strong)" />
         {days.map((d, i) => {
           const b = byDay.get(d);
           const x = i * slot + (slot - bw) / 2;
@@ -89,37 +89,37 @@ export async function ConformanceBlock({ f, today }: { f: DashFilter; today: str
               <title>{tip}</title>
               {b ? (
                 <>
-                  <rect x={x} y={y(b.conformance)} width={bw} height={H - bottom - y(b.conformance)} rx="2" fill="#1f5fcf" />
+                  <rect x={x} y={y(b.conformance)} width={bw} height={H - bottom - y(b.conformance)} rx="2" fill="var(--fl-primary)" />
                   <text
                     x={x + bw / 2}
                     y={y(b.conformance) - 4}
                     textAnchor={narrow ? "start" : "middle"}
                     fontSize={narrow ? 8 : 11}
-                    fill="#1b1f24"
+                    fill="var(--fl-text)"
                     transform={narrow ? `rotate(-90 ${x + bw / 2} ${y(b.conformance) - 4})` : undefined}
                   >
                     {b.conformance}
                   </text>
                 </>
               ) : (
-                <rect x={x} y={H - bottom - 2} width={bw} height="2" fill="#dfe3e8" />
+                <rect x={x} y={H - bottom - 2} width={bw} height="2" fill="var(--fl-border)" />
               )}
             </g>
           );
         })}
         {c.overall !== null && (
-          <line x1="0" x2={W} y1={y(c.overall)} y2={y(c.overall)} stroke="#d79a12" strokeDasharray="6 4" strokeWidth="1.5">
+          <line x1="0" x2={W} y1={y(c.overall)} y2={y(c.overall)} stroke="var(--fl-amber)" strokeDasharray="6 4" strokeWidth="1.5">
             <title>{`Overall ${c.overall}%`}</title>
           </line>
         )}
-        <text x="0" y={H - 6} fontSize="10" fill="#6b7480">{fmtDay(days[0])}</text>
-        <text x={W} y={H - 6} fontSize="10" fill="#6b7480" textAnchor="end">{fmtDay(days[days.length - 1])}</text>
+        <text x="0" y={H - 6} fontSize="10" fill="var(--fl-text-muted)">{fmtDay(days[0])}</text>
+        <text x={W} y={H - 6} fontSize="10" fill="var(--fl-text-muted)" textAnchor="end">{fmtDay(days[days.length - 1])}</text>
       </svg>
-      <p className="text-[14px] text-[#2b3138]" data-testid="conformance-overall">
+      <p className="text-[14px] text-ink-2" data-testid="conformance-overall">
         Overall <b>{c.overall}%</b> over {c.count} completed {c.count === 1 ? "session" : "sessions"}{" "}
-        <span className="text-[#7a5600]">(dashed line)</span>.
+        <span className="text-amber-ink">(dashed line)</span>.
       </p>
-      <p className="pt-1 text-[12px] text-[#6b7480]">
+      <p className="pt-1 text-[12px] text-muted">
         Conformance = steps correct on the first attempt ÷ 12, averaged across completed sessions. Held, scrapped, left and running sessions are not scored.
       </p>
     </>
@@ -143,22 +143,22 @@ export async function CheckTimeBlock({ f }: { f: DashFilter }) {
               <span className="text-[15px]">
                 Shift {s.shift} {def.start} to {def.end}
               </span>
-              <span className="h-7 rounded bg-[#e6e9ee]" aria-hidden>
-                {s.average !== null && <span className="block h-7 rounded bg-[#1f5fcf]" style={{ width: `${(s.average / max) * 100}%` }} />}
+              <span className="h-7 rounded bg-surface-3" aria-hidden>
+                {s.average !== null && <span className="block h-7 rounded bg-blue" style={{ width: `${(s.average / max) * 100}%` }} />}
               </span>
               <span className="flex min-w-[190px] flex-col text-[15px]">
                 {s.average === null ? (
-                  <span className="text-[#6b7480]">not recorded</span>
+                  <span className="text-muted">not recorded</span>
                 ) : (
                   <>
                     <span>
                       <b data-testid="shift-average">{fmtClock(s.average * 1000)}</b>{" "}
-                      <span className="text-[#6b7480]">
+                      <span className="text-muted">
                         ({s.count} {s.count === 1 ? "session" : "sessions"})
                       </span>{" "}
                       {s.count < 5 && <LChip tone="amber">Low volume</LChip>}
                     </span>
-                    <span className="text-[13px] text-[#4b5563]" data-testid="shift-median">
+                    <span className="text-[13px] text-ink-2" data-testid="shift-median">
                       median {fmtClock((s.median ?? 0) * 1000)}
                     </span>
                   </>
@@ -168,7 +168,7 @@ export async function CheckTimeBlock({ f }: { f: DashFilter }) {
           );
         })}
       </div>
-      <p className="pt-3 text-[12px] text-[#6b7480]">
+      <p className="pt-3 text-[12px] text-muted">
         Shifts (assumed, editable in lib/config.ts): {SHIFTS.map((s) => `${s.id} ${s.start} to ${s.end}`).join(", ")}, plant time ({PLANT_TIME_ZONE}). A session
         belongs to the shift it started in.
         {shifts.some((s) => s.untimed) && ` ${shifts.reduce((n, s) => n + s.untimed, 0)} completed sessions have no recorded time and are left out.`}
@@ -184,9 +184,9 @@ export async function DeviationsBlock({ f, devHref, active }: { f: DashFilter; d
   if (!steps.length) return <Empty>No deviations in this range.</Empty>;
   const max = Math.max(...steps.map((s) => s.count), ...steps.flatMap((s) => s.items.map((i) => i.count)), 1);
   const bar = (n: number, tone: "red" | "amber" | "gray") => (
-    <span className="h-5 rounded bg-[#e6e9ee]" aria-hidden>
+    <span className="h-5 rounded bg-surface-3" aria-hidden>
       <span
-        className={cx("block h-5 rounded", tone === "red" ? "bg-[#c9433a]" : tone === "amber" ? "bg-[#d98a1c]" : "bg-[#9aa3ad]")}
+        className={cx("block h-5 rounded", tone === "red" ? "bg-red" : tone === "amber" ? "bg-amber" : "bg-subtle")}
         style={{ width: `${(n / max) * 100}%` }}
       />
     </span>
@@ -201,8 +201,8 @@ export async function DeviationsBlock({ f, devHref, active }: { f: DashFilter; d
             aria-current={active === s.step ? "true" : undefined}
             title="Show only sessions with this deviation"
             className={cx(
-              "grid min-h-[40px] grid-cols-[minmax(0,330px)_1fr_36px] items-center gap-3 rounded px-1 hover:bg-[#f3f7fe]",
-              active === s.step && "bg-[#e3edfc] ring-2 ring-[#1f5fcf]",
+              "grid min-h-[40px] grid-cols-[minmax(0,330px)_1fr_36px] items-center gap-3 rounded px-1 hover:bg-blue-soft",
+              active === s.step && "bg-blue-soft ring-2 ring-blue",
             )}
           >
             <span className="text-[15px] font-semibold leading-tight">
@@ -213,14 +213,14 @@ export async function DeviationsBlock({ f, devHref, active }: { f: DashFilter; d
           </Link>
           {s.items.map((i) => (
             <div key={i.label} className="grid grid-cols-[minmax(0,330px)_1fr_36px] items-center gap-3 px-1 pl-7" data-item={i.label}>
-              <span className="text-[14px] leading-tight text-[#2b3138]">{i.label}</span>
+              <span className="text-[14px] leading-tight text-ink-2">{i.label}</span>
               {bar(i.count, "amber")}
               <span className="text-right text-[14px]">{i.count}</span>
             </div>
           ))}
           {s.notRecorded > 0 && (
             <div className="grid grid-cols-[minmax(0,330px)_1fr_36px] items-center gap-3 px-1 pl-7" data-item="not-recorded">
-              <span className="text-[14px] italic text-[#6b7480]">
+              <span className="text-[14px] italic text-muted">
                 points not recorded ({s.notRecorded} {s.notRecorded === 1 ? "session" : "sessions"})
               </span>
               {bar(s.notRecorded, "gray")}
@@ -229,7 +229,7 @@ export async function DeviationsBlock({ f, devHref, active }: { f: DashFilter; d
           )}
         </div>
       ))}
-      <p className="pt-2 text-[12px] text-[#6b7480]">Click a step to show only the sessions with that deviation in the table below.</p>
+      <p className="pt-2 text-[12px] text-muted">Click a step to show only the sessions with that deviation in the table below.</p>
     </div>
   );
 }
@@ -240,12 +240,12 @@ const SHIFT_IDS: ShiftId[] = ["A", "B", "C"];
 
 /** Heat shade: darker means more. The number is always printed in the cell. */
 function heat(n: number, max: number): string {
-  if (!n) return "bg-[#f4f5f7] text-[#6b7480]";
+  if (!n) return "bg-surface-2 text-muted";
   const r = n / max;
-  if (r > 0.75) return "bg-[#1f4fa8] text-white";
-  if (r > 0.5) return "bg-[#3f74d6] text-white";
-  if (r > 0.25) return "bg-[#8fb0ea] text-[#0f2d63]";
-  return "bg-[#d3e1f8] text-[#0f2d63]";
+  if (r > 0.75) return "bg-blue-ink text-on-strong";
+  if (r > 0.5) return "bg-blue text-on-strong";
+  if (r > 0.25) return "bg-blue-line text-blue-ink";
+  return "bg-blue-soft text-blue-ink";
 }
 
 export async function CategoriesBlock({ f }: { f: DashFilter }) {
@@ -257,7 +257,7 @@ export async function CategoriesBlock({ f }: { f: DashFilter }) {
   return (
     <>
       <table className="w-full text-[15px]" data-testid="category-table">
-        <thead className="text-[13px] text-[#6b7480]">
+        <thead className="text-[13px] text-muted">
           <tr>
             <th className="py-1 text-left font-medium">Category</th>
             {SHIFT_IDS.map((s) => (
@@ -282,7 +282,7 @@ export async function CategoriesBlock({ f }: { f: DashFilter }) {
               <td className="py-1 text-center font-semibold" data-shift="total">{total(r)}</td>
             </tr>
           ))}
-          <tr className="border-t border-[#dfe3e8] font-semibold">
+          <tr className="border-t border-line font-semibold">
             <td className="py-1.5">All categories</td>
             {SHIFT_IDS.map((s) => (
               <td key={s} className={cx("py-1.5 text-center", !shown.includes(s) && "opacity-40")}>{c.totals[s]}</td>
@@ -291,10 +291,10 @@ export async function CategoriesBlock({ f }: { f: DashFilter }) {
           </tr>
         </tbody>
       </table>
-      <p className="pt-2 text-[14px] text-[#2b3138]" data-testid="fixed-on-spot">
+      <p className="pt-2 text-[14px] text-ink-2" data-testid="fixed-on-spot">
         Fixed on the spot (not lodged): Shift A {c.fixedOnSpot.A} · Shift B {c.fixedOnSpot.B} · Shift C {c.fixedOnSpot.C} · total {c.fixedOnSpot.total}
       </p>
-      <p className="pt-1 text-[12px] text-[#6b7480]">Counted in the shift in which each issue was lodged. Darker means more; the number is in every cell.</p>
+      <p className="pt-1 text-[12px] text-muted">Counted in the shift in which each issue was lodged. Darker means more; the number is in every cell.</p>
     </>
   );
 }

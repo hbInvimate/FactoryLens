@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Card, Page } from "@/components/dashboard/light";
+import { ButtonLink } from "@/components/ds";
 
 export default function SessionNotFound() {
   return (
@@ -9,15 +9,12 @@ export default function SessionNotFound() {
           <h1 className="text-[26px] font-semibold" data-testid="session-not-found">
             Session not found
           </h1>
-          <p className="text-[16px] text-[#4b5563]">
+          <p className="text-[16px] text-ink-2">
             There is no session with this link. It may have been sample data that was cleared, or the link is incomplete.
           </p>
-          <Link
-            href="/dashboard"
-            className="inline-flex min-h-[56px] w-fit items-center rounded-lg bg-[#1f5fcf] px-5 text-[16px] font-semibold text-white hover:brightness-110"
-          >
+          <ButtonLink variant="primary" href="/dashboard" className="w-fit">
             Back to the dashboard
-          </Link>
+          </ButtonLink>
         </Card>
       </main>
     </Page>

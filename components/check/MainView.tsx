@@ -12,7 +12,7 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="tap inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 border-amber bg-amber-bg px-[18px] text-[18px] font-semibold text-amber-soft hover:brightness-125"
+      className="tap inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 border-amber bg-amber-soft px-[18px] text-[18px] font-semibold text-amber-ink hover:bg-tile-amber"
     >
       <Warn size={22} />
       Lodge a discrepancy
@@ -40,7 +40,7 @@ export function MainView({
 
   return (
     <div className="flex min-h-0 flex-1 gap-6 px-8 py-6">
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[14px] bg-panel2 px-4 py-5">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[14px] bg-surface px-4 py-5">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3">
           <h2 className="text-2xl font-semibold">SOP: first-off check</h2>
           <span className="text-[18px] text-muted">
@@ -55,12 +55,12 @@ export function MainView({
             const r = state.steps[s.n - 1];
             if (s.n === cur) {
               return (
-                <li key={s.n} aria-current="step" className="my-1 flex flex-col gap-3 rounded-xl border-2 border-blue bg-sel px-4 py-3">
+                <li key={s.n} aria-current="step" className="my-1 flex flex-col gap-3 rounded-[var(--fl-radius-md)] border-2 border-blue bg-blue-soft px-4 py-3">
                   <div className="flex items-start gap-4">
                     <Ring n={s.n} active />
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <span className="text-[26px] font-semibold leading-tight">{s.name}</span>
-                      <span className="text-[17px] text-soft">Correct: {s.correct}</span>
+                      <span className="text-[17px] text-ink-2">Correct: {s.correct}</span>
                     </div>
                   </div>
                   {s.points.length > 0 && (
@@ -96,7 +96,7 @@ export function MainView({
                 <button
                   type="button"
                   onClick={() => onOpenStep(s.n)}
-                  className="tap flex w-full items-center gap-4 rounded-[10px] px-3.5 text-left hover:bg-panel"
+                  className="tap flex w-full items-center gap-4 rounded-[10px] px-3.5 text-left hover:bg-surface"
                 >
                   {isDone ? <Tick tone={r.outcome === "corrected" ? "amber" : "green"} /> : <Ring n={s.n} />}
                   <span className={cx("text-[19px]", isDone ? "text-muted" : "text-ink")}>{s.name}</span>
@@ -116,7 +116,7 @@ export function MainView({
             <Chip tone="green">On track</Chip>
           </div>
           <PartDrawing step={cur} className="block h-auto w-full rounded-[10px]" />
-          <span className="text-[18px] text-ink2">Now: {def.name}.</span>
+          <span className="text-[18px] text-ink-2">Now: {def.name}.</span>
         </Panel>
 
         <div className="grid grid-cols-3 gap-3">
@@ -128,9 +128,9 @@ export function MainView({
           <Tile label="Phase" value={def.phase} sub="" />
         </div>
 
-        <div className="flex items-center gap-4 rounded-xl bg-panel px-5 py-3.5">
+        <div className="flex items-center gap-4 rounded-xl bg-surface px-5 py-3.5">
           <TabletIcon />
-          <span className="text-[17px] text-soft">Reminder: enter readings on the tablet as you go. They are not shown here.</span>
+          <span className="text-[17px] text-ink-2">Reminder: enter readings on the tablet as you go. They are not shown here.</span>
         </div>
       </div>
     </div>

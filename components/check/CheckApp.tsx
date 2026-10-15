@@ -56,20 +56,20 @@ function HoldStrip({ state, onOpen, onDecide }: { state: CheckState; onOpen: (di
   const holds = openHolds(state);
   if (!holds.length) return null;
   return (
-    <div role="status" data-testid="hold-strip" className="flex flex-none flex-wrap items-center gap-x-4 gap-y-1 bg-red-bg px-8 py-1.5">
+    <div role="status" data-testid="hold-strip" className="flex flex-none flex-wrap items-center gap-x-4 gap-y-1 bg-red-soft px-8 py-1.5">
       <Warn size={22} />
-      <span className="text-[18px] text-red-soft">
+      <span className="text-[18px] text-red-ink">
         Cell on hold: {holds.map((h) => h.issue).join("; ")}. The check continues.
       </span>
       <span className="flex-1" />
       {holds.map((h) => (
         <span key={h.id} className="flex gap-2">
           {h.proc && (
-            <button type="button" onClick={() => onOpen(h.id)} className="tap rounded-xl border-2 border-red px-4 text-[17px] font-semibold text-red-soft">
+            <button type="button" onClick={() => onOpen(h.id)} className="tap rounded-[var(--fl-radius-md)] border border-red bg-surface px-4 text-[17px] font-semibold text-red-ink hover:bg-red-soft">
               Hole check procedure
             </button>
           )}
-          <button type="button" onClick={() => onDecide(h.id)} className="tap rounded-xl border-2 border-red px-4 text-[17px] font-semibold text-red-soft">
+          <button type="button" onClick={() => onDecide(h.id)} className="tap rounded-[var(--fl-radius-md)] border border-red bg-surface px-4 text-[17px] font-semibold text-red-ink hover:bg-red-soft">
             Open the hold
           </button>
         </span>
@@ -108,7 +108,7 @@ export function CheckApp({ id }: { id: string }) {
   if (load === "missing") {
     return (
       <PageCenter title="This check was not found" body="It is not on this device or on the server.">
-        <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+        <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
           Start a check
         </Link>
       </PageCenter>
@@ -127,7 +127,7 @@ export function CheckApp({ id }: { id: string }) {
   if (state.left) {
     return (
       <PageCenter title="This check was left, not finished" body={`Reason: ${state.left.reason}. A new check was started instead.`}>
-        <Link href="/" className="tap inline-flex items-center rounded-xl border-2 border-blue bg-blue px-6 text-[20px] font-semibold text-blue-ink">
+        <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
           Start a check
         </Link>
       </PageCenter>
@@ -273,7 +273,7 @@ export function CheckApp({ id }: { id: string }) {
       <SyncNotice sync={sync} onRetry={retry} />
       {showHoldStrip && <HoldStrip state={state} onOpen={openHold} onDecide={(did) => setView({ kind: "lodged", did })} />}
       {flash && (
-        <div role="status" className="flex flex-none items-center gap-3 bg-green-bg px-8 py-2 text-[18px] text-green">
+        <div role="status" className="flex flex-none items-center gap-3 bg-primary-soft px-8 py-2 text-[18px] text-primary-ink">
           {flash}
         </div>
       )}

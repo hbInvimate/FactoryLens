@@ -8,10 +8,10 @@ export function SampleSwitch({ on }: { on: boolean }) {
   const [pending, start] = useTransition();
   const [shown, setShown] = useOptimistic(on);
   return (
-    <label className="tap inline-flex cursor-pointer items-center gap-3 rounded-xl border-2 border-line2 bg-panel px-4 text-[18px]" aria-busy={pending}>
+    <label className="tap inline-flex cursor-pointer items-center gap-3 rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-4 text-[18px]" aria-busy={pending}>
       <input
         type="checkbox"
-        className="size-6 accent-blue"
+        className="size-6 accent-primary"
         checked={shown}
         onChange={(e) => {
           const next = e.target.checked;

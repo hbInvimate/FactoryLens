@@ -34,8 +34,8 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
     return (
       <>
         {switchRow}
-        <p className="text-[19px] text-soft">
-          No checks yet. <Link href="/" className="text-blue-text underline">Start one</Link>.
+        <p className="text-[19px] text-ink-2">
+          No checks yet. <Link href="/" className="font-semibold text-primary-ink underline">Start one</Link>.
         </p>
       </>
     );
@@ -43,9 +43,9 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
   return (
     <>
     {switchRow}
-    <div className="overflow-x-auto rounded-[14px] bg-panel2">
+    <div className="overflow-x-auto rounded-card border border-line bg-surface shadow-card">
       <table className="w-full min-w-[1100px] text-left text-[17px]">
-        <thead className="text-[15px] text-muted">
+        <thead className="bg-surface-2 text-[15px] text-muted">
           <tr className="border-b border-line">
             <th className="px-5 py-3 font-medium">Started</th>
             <th className="px-3 py-3 font-medium">Part</th>
@@ -61,10 +61,10 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.id} data-session={r.id} className="border-b border-line last:border-0 hover:bg-panel">
+            <tr key={r.id} data-session={r.id} className="border-b border-line last:border-0 hover:bg-surface-2">
               <td className="px-5 py-1">
                 <span className="flex flex-wrap items-center gap-2">
-                  <Link href={`/sessions/${r.id}`} className="tap inline-flex items-center font-medium text-blue-text underline-offset-4 hover:underline">
+                  <Link href={`/sessions/${r.id}`} className="tap inline-flex items-center font-semibold text-primary-ink underline-offset-4 hover:underline">
                     <LocalTime iso={r.startedAt.toISOString()} />
                   </Link>
                   {r.isSample && (
