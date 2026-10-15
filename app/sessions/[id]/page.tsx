@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
+import { Gate } from "@/components/auth/Gate";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
 import { Chip, KV, Panel, Tick, Ring, Warn } from "@/components/ui";
@@ -184,7 +185,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
 
 export default function SessionPage(props: PageProps<"/sessions/[id]">) {
   return (
-    <>
+    <Gate area="check" next="/sessions">
       <PageBar title="Session" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
         <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
@@ -194,6 +195,6 @@ export default function SessionPage(props: PageProps<"/sessions/[id]">) {
           <Detail params={props.params} />
         </Suspense>
       </main>
-    </>
+    </Gate>
   );
 }

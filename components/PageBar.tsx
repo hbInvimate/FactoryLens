@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignedInUser } from "./auth/SignedInUser";
 import { Logo, cx } from "./ui";
 
 const NAV = [
@@ -36,6 +37,7 @@ export function PageBar({ title, current }: { title?: string; current?: (typeof 
           </Link>
         ))}
       </nav>
+      <SignedInUser area="check" compact />
     </header>
   );
 }

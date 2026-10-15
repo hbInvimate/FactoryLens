@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { Gate } from "@/components/auth/Gate";
 import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlock } from "@/components/dashboard/blocks";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
@@ -205,12 +206,14 @@ async function Body({ searchParams }: { searchParams: SP }) {
 
 export default function DashboardPage(props: PageProps<"/dashboard">) {
   return (
-    <Page>
-      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-6 md:px-8">
-        <Suspense fallback={<Skeleton />}>
-          <Body searchParams={props.searchParams} />
-        </Suspense>
-      </main>
-    </Page>
+    <Gate area="dashboard" next="/dashboard">
+      <Page>
+        <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-6 md:px-8">
+          <Suspense fallback={<Skeleton />}>
+            <Body searchParams={props.searchParams} />
+          </Suspense>
+        </main>
+      </Page>
+    </Gate>
   );
 }

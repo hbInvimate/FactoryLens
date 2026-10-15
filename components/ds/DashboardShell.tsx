@@ -1,7 +1,8 @@
 // The platform's left sidebar shell for the Process engineer's pages: white, 1px divider, app name on top,
 // nav items, user card at the bottom. On narrow screens the sidebar sits above the page.
 import type { ReactNode } from "react";
-import { NavItem, UserCard } from ".";
+import { SignedInUser } from "@/components/auth/SignedInUser";
+import { NavItem } from ".";
 import { IconChart, IconHistory, IconPlay } from "./icons";
 
 const NAV = [
@@ -26,10 +27,7 @@ export function DashboardShell({ current, children }: { current?: (typeof NAV)[n
           ))}
         </nav>
         <span className="flex-1" />
-        <div className="max-lg:hidden">
-          {/* Sign-in comes in stage 2; until then the card names the role this area is for. */}
-          <UserCard name="Process engineer" role="Not signed in" />
-        </div>
+        <SignedInUser area="dashboard" />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>

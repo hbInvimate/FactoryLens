@@ -1,5 +1,6 @@
 // Scenario 7: things going wrong in the app itself.
 import { expect, test } from "@playwright/test";
+import { ADMIN_STATE } from "./auth-helpers";
 import { doSteps, grid, startCheck, tap, waitSaved } from "./helpers";
 
 test("Refresh mid-session resumes where she left off", async ({ page }) => {
@@ -25,7 +26,8 @@ test("A new device resumes the session from the server", async ({ page, browser 
   const id = await startCheck(page);
   await doSteps(page, 1, 3);
   await waitSaved(page);
-  const other = await browser.newPage();
+  // Another device, signed in as the same person.
+  const other = await browser.newPage({ storageState: ADMIN_STATE });
   await other.goto(`/check/${id}`);
   await expect(other.locator("li[aria-current=step]")).toContainText("Round pin, then slot pin, no force");
   await other.close();

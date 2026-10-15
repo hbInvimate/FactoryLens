@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { Gate } from "@/components/auth/Gate";
 import { Card, LChip, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { ClipToggle, PrintButton, PrintedOn } from "@/components/dashboard/ReportParts";
 import { LiveWait } from "@/components/dashboard/SessionsTable";
@@ -369,7 +370,7 @@ async function Report({ id }: { id: string }) {
 async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
   const [{ id }, sp] = await Promise.all([props.params, props.searchParams]);
   return (
-    <>
+    <Gate area="dashboard" next={`/dashboard/${id}`}>
       <Link
         href={backHref(sp)}
         className="inline-flex min-h-[56px] w-fit items-center gap-2 text-[16px] font-semibold text-primary-ink hover:underline print:hidden"
@@ -381,7 +382,7 @@ async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
       <Suspense fallback={<Skeleton rows={12} />}>
         <Report id={id} />
       </Suspense>
-    </>
+    </Gate>
   );
 }
 

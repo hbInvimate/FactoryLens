@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
+import { Gate } from "@/components/auth/Gate";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
 import { Chip } from "@/components/ui";
@@ -96,7 +97,7 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
 
 export default function SessionsPage(props: PageProps<"/sessions">) {
   return (
-    <>
+    <Gate area="check" next="/sessions">
       <PageBar title="Session history" current="sessions" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
         <h1 className="text-[30px] font-semibold">Session history</h1>
@@ -104,6 +105,6 @@ export default function SessionsPage(props: PageProps<"/sessions">) {
           <SessionTable searchParams={props.searchParams} />
         </Suspense>
       </main>
-    </>
+    </Gate>
   );
 }

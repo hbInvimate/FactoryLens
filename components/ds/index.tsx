@@ -207,12 +207,16 @@ export function Avatar({ name, tone = "green", size = 36 }: { name: string; tone
 
 export function UserCard({ name, role, action }: { name: string; role: string; action?: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-card border border-line bg-surface px-3 py-3 shadow-card">
-      <Avatar name={name} />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-[15px] font-semibold text-ink">{name}</span>
-        <span className="truncate text-[13px] text-primary-ink">{role}</span>
-      </span>
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-surface px-3 py-3 shadow-card">
+      <div className="flex items-center gap-3">
+        <Avatar name={name} />
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-[15px] font-semibold text-ink" title={name}>
+            {name}
+          </span>
+          <span className="truncate text-[13px] text-primary-ink">{role}</span>
+        </span>
+      </div>
       {action}
     </div>
   );

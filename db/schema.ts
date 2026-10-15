@@ -114,6 +114,84 @@ export const discrepancies = pgTable(
   (t) => [index("discrepancies_session_idx").on(t.sessionId)],
 );
 
+// ---------- Sign-in (Better Auth). New tables only; "sessions" above stays the first-off check. ----------
+
+/**
+ * People who can sign in. Created with `npm run user:create`; there is no public sign-up.
+ * role: technician (Quality Technician), engineer (Process engineer) or admin.
+ */
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  role: text("role").notNull().default("technician"),
+  /** `npm run user:disable`: cannot sign in, and their sessions are ended. */
+  disabled: boolean("disabled").notNull().default(false),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/** Signed-in browsers. Length depends on the role (lib/auth/roles.ts). */
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    token: text("token").notNull().unique(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: ts("expires_at").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("auth_sessions_user_idx").on(t.userId)],
+);
+
+/** The password hash (argon2id) lives here, provider "credential". */
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: ts("access_token_expires_at"),
+    refreshTokenExpiresAt: ts("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [index("auth_accounts_user_idx").on(t.userId)],
+);
+
+/** Required by Better Auth. Unused while there are no emailed links. */
+export const authVerifications = pgTable("auth_verifications", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: ts("expires_at").notNull(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
+/** Failed sign-ins, for the limit of 5 per 15 minutes per account and address. The address is stored hashed. */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    addressHash: text("address_hash").notNull(),
+    at: ts("at").notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_key_idx").on(t.email, t.addressHash, t.at)],
+);
+
 /** Marks, photos, handoff sheet, handed over, waiting time and outcome for a lodged discrepancy. */
 export const handoffItems = pgTable(
   "handoff_items",

@@ -45,3 +45,4 @@ next-env.d.ts
 !.env.example
 /test-results/
 /playwright-report/
+/e2e/.auth/

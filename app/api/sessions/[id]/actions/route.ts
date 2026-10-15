@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { requireApiUser } from "@/lib/auth/server";
 import { getRepo } from "@/lib/server/repo";
 import { errorResponse } from "@/lib/server/http";
 import { BadRequest, isSessionId, parseActions, parseMeta } from "@/lib/server/validate";
@@ -8,6 +9,9 @@ import { BadRequest, isSessionId, parseActions, parseMeta } from "@/lib/server/v
  * Safe to retry: actions already stored are ignored.
  */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sessions/[id]/actions">) {
+  // Anonymous writes get 401; a Process engineer gets 403. The browser keeps the work and retries after sign-in.
+  const user = await requireApiUser(req, "check");
+  if (user instanceof Response) return user;
   const { id } = await ctx.params;
   try {
     if (!isSessionId(id)) throw new BadRequest("Not a session id");

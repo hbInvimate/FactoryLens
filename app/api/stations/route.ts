@@ -1,11 +1,14 @@
 import { connection } from "next/server";
+import { requireApiUser } from "@/lib/auth/server";
 import { errorResponse } from "@/lib/server/http";
 import { getRepo } from "@/lib/server/repo";
 import { BadRequest, parseStationName } from "@/lib/server/validate";
 
-/** Stations for the start form and the dashboard. */
-export async function GET() {
+/** Stations for the start form. */
+export async function GET(req: Request) {
   await connection();
+  const user = await requireApiUser(req, "check");
+  if (user instanceof Response) return user;
   try {
     return Response.json({ stations: await getRepo().stations() });
   } catch (e) {
@@ -15,6 +18,8 @@ export async function GET() {
 
 /** Adds a station ("Add a station" on the start form). Adding one that exists is fine. */
 export async function POST(req: Request) {
+  const user = await requireApiUser(req, "check");
+  if (user instanceof Response) return user;
   try {
     let body: { name?: unknown };
     try {
