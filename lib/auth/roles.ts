@@ -5,7 +5,7 @@ export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<Role, string> = {
   technician: "Quality Technician",
-  engineer: "Process engineer",
+  engineer: "Quality Engineer",
   admin: "Admin",
 };
 
@@ -25,10 +25,10 @@ export const SIGN_IN_PATH: Record<Area, string> = {
 /** Who each area is for, in the "This page is for ..." message. */
 export const AREA_FOR: Record<Area, string> = {
   check: "Quality Technicians",
-  dashboard: "Process engineers",
+  dashboard: "Quality Engineers",
 };
 
-/** Session length: a technician's shift is longer than an engineer's sign-in. */
+/** Session length: a Quality Technician's shift is longer than a Quality Engineer's sign-in. */
 export const SESSION_HOURS: Record<Role, number> = {
   technician: 12,
   engineer: 8,

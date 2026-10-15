@@ -39,7 +39,8 @@ test("Station list: seeded station, Add a station, empty station on the dashboar
   await expect(page.getByLabel("Cell and fixture", { exact: true })).toHaveValue(name);
 
   await openDashboard(page, name);
-  await expect(page.getByTestId("dashboard-empty")).toHaveText("No sessions at this station yet.");
+  // The tests run in test mode (FL_STORAGE=memory), so the empty dashboard says so.
+  await expect(page.getByTestId("dashboard-empty")).toHaveText("Test mode: nothing at this station in the temporary test database.");
 });
 
 test("One deviation fixed scores 92% on the dashboard and in the report", async ({ page }) => {

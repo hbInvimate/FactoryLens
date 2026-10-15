@@ -118,7 +118,7 @@ export const discrepancies = pgTable(
 
 /**
  * People who can sign in. Created with `npm run user:create`; there is no public sign-up.
- * role: technician (Quality Technician), engineer (Process engineer) or admin.
+ * role: technician (Quality Technician), engineer (Quality Engineer, the dashboard) or admin.
  */
 export const users = pgTable("users", {
   id: text("id").primaryKey(),

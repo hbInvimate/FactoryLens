@@ -90,7 +90,7 @@ function build(conn: Conn) {
     databaseHooks: {
       session: {
         create: {
-          // Technician 12 hours, Process engineer 8 hours, from sign-in.
+          // Quality Technician 12 hours, Quality Engineer 8 hours, from sign-in.
           before: async (session) => {
             const [u] = await conn.db.select({ role: t.users.role }).from(t.users).where(eq(t.users.id, session.userId));
             const hours = SESSION_HOURS[isRole(u?.role) ? u.role : "engineer"];

@@ -1,4 +1,4 @@
-// The two sign-in pages share this: /signin (Quality Technician) and /dashboard/signin (Process engineer).
+// The two sign-in pages share this: /signin (Quality Technician) and /dashboard/signin (Quality Engineer).
 import Link from "next/link";
 import { Suspense } from "react";
 import { Card } from "@/components/ds";
@@ -7,8 +7,8 @@ import { Logo } from "../ui";
 import { SignInForm } from "./SignInForm";
 
 const COPY: Record<Area, { who: string; what: string; other: string; otherArea: Area }> = {
-  check: { who: "Quality Technician", what: "Sign in to run first-off checks.", other: "Process engineer? Sign in to the dashboard", otherArea: "dashboard" },
-  dashboard: { who: "Process engineer", what: "Sign in to the dashboard.", other: "Quality Technician? Sign in to the check app", otherArea: "check" },
+  check: { who: "Quality Technician", what: "Sign in to run first-off checks.", other: "Quality Engineer? Sign in to the dashboard", otherArea: "dashboard" },
+  dashboard: { who: "Quality Engineer", what: "Sign in to the dashboard.", other: "Quality Technician? Sign in to the check app", otherArea: "check" },
 };
 
 async function Form({ area, searchParams }: { area: Area; searchParams: Promise<Record<string, string | string[] | undefined>> }) {

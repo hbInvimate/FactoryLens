@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
+import { isTestMode } from "@/components/TestModeBanner";
 import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlock } from "@/components/dashboard/blocks";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
@@ -106,8 +107,21 @@ async function Body({ searchParams }: { searchParams: SP }) {
 
       {s.total === 0 ? (
         <Card className="px-5 py-8 text-center">
-          <p className="text-[18px] font-semibold" data-testid="dashboard-empty">No sessions at this station yet.</p>
-          <p className="text-[15px] text-muted">Try a longer date range, another shift, or start a check at this station.</p>
+          {isTestMode() ? (
+            <>
+              <p className="text-[18px] font-semibold" data-testid="dashboard-empty">
+                Test mode: nothing at this station in the temporary test database.
+              </p>
+              <p className="text-[15px] text-muted">
+                This server runs with FL_STORAGE=memory. It starts empty, is cleared when the server stops, and does not show the sessions saved in Neon. Run npm run dev without FL_STORAGE to see them.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[18px] font-semibold" data-testid="dashboard-empty">No sessions at this station yet.</p>
+              <p className="text-[15px] text-muted">Try a longer date range, another shift, or start a check at this station.</p>
+            </>
+          )}
         </Card>
       ) : (
         <>

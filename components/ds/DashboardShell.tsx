@@ -1,4 +1,4 @@
-// The platform's left sidebar shell for the Process engineer's pages: white, 1px divider, app name on top,
+// The platform's left sidebar shell for the Quality Engineer's pages: white, 1px divider, app name on top,
 // nav items, user card at the bottom. On narrow screens the sidebar sits above the page.
 import type { ReactNode } from "react";
 import { SignedInUser } from "@/components/auth/SignedInUser";

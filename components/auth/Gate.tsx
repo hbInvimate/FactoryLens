@@ -51,11 +51,11 @@ async function Check({ area, next, children }: { area: Area; next: string; child
           This page is for {AREA_FOR[area]}
         </h1>
         <p className="text-[17px] text-ink-2">
-          You are signed in as {user.name}, {ROLE_LABEL[user.role]}. To open it, sign in with a {area === "check" ? "Quality Technician" : "Process engineer"} account.
+          You are signed in as {user.name}, {ROLE_LABEL[user.role]}. To open it, sign in with a {area === "check" ? "Quality Technician" : "Quality Engineer"} account.
         </p>
         <div className="flex flex-wrap gap-3">
           <ButtonLink variant="primary" href={SIGN_IN_PATH[area]}>
-            Sign in as a {area === "check" ? "Quality Technician" : "Process engineer"}
+            Sign in as a {area === "check" ? "Quality Technician" : "Quality Engineer"}
           </ButtonLink>
           <ButtonLink href={other === "check" ? "/" : "/dashboard"}>{other === "check" ? "Go to the check app" : "Go to the dashboard"}</ButtonLink>
         </div>

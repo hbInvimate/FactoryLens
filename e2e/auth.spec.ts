@@ -22,28 +22,28 @@ test("a Quality Technician cannot open the dashboard", async ({ page, context })
   await signInAs(page, "technician", "/signin");
   await expect(page).toHaveURL(/localhost:\d+\/$/);
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { name: "This page is for Process engineers" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in as a Process engineer" })).toHaveAttribute("href", "/dashboard/signin");
+  await expect(page.getByRole("heading", { name: "This page is for Quality Engineers" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in as a Quality Engineer" })).toHaveAttribute("href", "/dashboard/signin");
   await expect(page.getByTestId("tile-sessions")).toHaveCount(0);
   // A session report is closed too.
   await page.goto("/dashboard/00000000-0000-4000-8000-000000000000");
-  await expect(page.getByRole("heading", { name: "This page is for Process engineers" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This page is for Quality Engineers" })).toBeVisible();
   // The technician's own APIs still work.
   expect((await context.request.get("/api/sessions")).status()).toBe(200);
 });
 
-test("a Process engineer signs in at /dashboard/signin and sees the dashboard", async ({ page }) => {
+test("a Quality Engineer signs in at /dashboard/signin and sees the dashboard", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard\/signin\?next=%2Fdashboard$/);
-  await expect(page.getByText("Process engineer", { exact: true })).toBeVisible();
+  await expect(page.getByText("Quality Engineer", { exact: true })).toBeVisible();
   await signInAs(page, "engineer", "/dashboard/signin");
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByTestId("signed-in-user")).toContainText(testUser("engineer").name);
-  await expect(page.getByTestId("signed-in-user")).toContainText("Process engineer");
+  await expect(page.getByTestId("signed-in-user")).toContainText("Quality Engineer");
 });
 
-test("a Process engineer cannot start a check, on the page or through the API", async ({ page, context }) => {
+test("a Quality Engineer cannot start a check, on the page or through the API", async ({ page, context }) => {
   await signInAs(page, "engineer", "/dashboard/signin");
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.goto("/");
@@ -63,7 +63,7 @@ test("each sign-in page accepts its own role and the admin only", async ({ page 
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/dashboard\/signin$/);
-  // A Quality Technician on the Process engineer page: the same message as a wrong password.
+  // A Quality Technician on the Quality Engineer page: the same message as a wrong password.
   await signInAs(page, "technician", "/dashboard/signin");
   await expect(page.getByTestId("signin-error")).toHaveText(GENERIC_SIGN_IN_ERROR);
   await expect(page).toHaveURL(/\/dashboard\/signin/);

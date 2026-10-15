@@ -14,10 +14,24 @@ The reference pack is in [`docs/`](docs/README.md): the SOP, the scenarios, the 
 | `/sessions/[id]` | One check: its steps, deviations with times, lodged discrepancies and handoff. |
 | `/dashboard` | Supervisor dashboard for one station: tiles, four analytics blocks, sessions table. |
 | `/dashboard/[id]` | Session report: steps, what went wrong, discrepancies, hold, print to PDF. |
+| `/signin` | Sign-in for the Quality Technician (the check app). |
+| `/dashboard/signin` | Sign-in for the Quality Engineer (the dashboard). |
+
+## Who signs in where
+
+| Role | Signs in at | Can use |
+|---|---|---|
+| Quality Technician (`technician`) | `/signin` | The check app: `/`, `/check`, `/sessions` and their APIs. |
+| Quality Engineer (`engineer`) | `/dashboard/signin` | The dashboard: `/dashboard` and the session reports. Sees every saved session. |
+| Admin (`admin`) | Either page | Both. |
+
+The value in brackets is the role stored in the database. `npm run user:create` asks for it. The Quality Engineer is the dashboard user. The Process engineer is a different person: the one called about a part problem, or who corrects the laser program. That name stays on the hold and handoff screens.
+
+**Test mode.** With `FL_STORAGE=memory` the app runs on a temporary database inside the server. It starts empty, is cleared when the server stops, and never reads or writes Neon. Every page then shows `TEST MODE: data is temporary and is not saved to Neon`. Run `npm run dev` without `FL_STORAGE` to see the sessions saved in Neon.
 
 ## Supervisor dashboard
 
-Read-only. It reads the sessions saved in Neon and never shows measured values or judges the part. No logins yet: anyone with the link can open it, so use test data only.
+Read-only. It reads the sessions saved in Neon and never shows measured values or judges the part. Only a signed-in Quality Engineer or admin can open it.
 
 - **Stations.** "Cell and fixture" on the start form is a list of stations with "Add a station"; the list starts with "Laser cell 3 · FX-014" (`stations` table). Older sessions keep their typed text, which is also their station.
 - **Filters** (kept in the URL): station, date range (7, 30, 90 days, all), shift (All, A, B, C) and "Include sample data". They apply to the tiles, the four blocks and the sessions table.

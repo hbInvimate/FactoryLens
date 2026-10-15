@@ -9,7 +9,7 @@ import { BadRequest, isSessionId, parseActions, parseMeta } from "@/lib/server/v
  * Safe to retry: actions already stored are ignored.
  */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sessions/[id]/actions">) {
-  // Anonymous writes get 401; a Process engineer gets 403. The browser keeps the work and retries after sign-in.
+  // Anonymous writes get 401; a Quality Engineer gets 403. The browser keeps the work and retries after sign-in.
   const user = await requireApiUser(req, "check");
   if (user instanceof Response) return user;
   const { id } = await ctx.params;

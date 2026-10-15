@@ -87,7 +87,7 @@ async function create() {
   const { password, generated } = await askPassword();
   await createUser(db, { name, email, role, password });
   console.log(`\nCreated ${name} <${email}>, ${ROLE_LABEL[role]}.`);
-  console.log(role === "engineer" ? "Signs in at /dashboard/signin." : role === "technician" ? "Signs in at /signin." : "Signs in at /signin or /dashboard/signin.");
+  console.log(role === "engineer" ? "Signs in at /dashboard/signin (the dashboard)." : role === "technician" ? "Signs in at /signin." : "Signs in at /signin or /dashboard/signin.");
   if (generated) showOnce(password);
 }
 

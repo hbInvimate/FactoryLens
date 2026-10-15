@@ -5,6 +5,7 @@ import { LocalTime } from "@/components/LocalTime";
 import { Gate } from "@/components/auth/Gate";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
+import { isTestMode } from "@/components/TestModeBanner";
 import { Chip } from "@/components/ui";
 import { conformanceLabel, includeSampleFor } from "@/lib/dashboard/metrics";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
@@ -35,8 +36,9 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
     return (
       <>
         {switchRow}
-        <p className="text-[19px] text-ink-2">
-          No checks yet. <Link href="/" className="font-semibold text-primary-ink underline">Start one</Link>.
+        <p className="text-[19px] text-ink-2" data-testid="history-empty">
+          {isTestMode() ? "Test mode: no checks in the temporary test database yet. Sessions saved in Neon are not shown here. " : "No checks yet. "}
+          <Link href="/" className="font-semibold text-primary-ink underline">Start one</Link>.
         </p>
       </>
     );
