@@ -67,11 +67,11 @@ function Field({ id, label, value, onChange }: { id: string; label: string; valu
   );
 }
 
-export function StartForm() {
+/** `operatorName`: the signed-in person. The server stores the session under them whatever is sent. */
+export function StartForm({ operatorName }: { operatorName: string }) {
   const router = useRouter();
   const [part, setPart] = useState(SESSION_DEFAULTS.part);
   const [fixture, setFixture] = useState(SESSION_DEFAULTS.fixture);
-  const [operator, setOperator] = useState(SESSION_DEFAULTS.operator);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -101,11 +101,11 @@ export function StartForm() {
   };
 
   const startNew = () => {
-    if (!part.trim() || !fixture.trim() || !operator.trim()) return;
+    if (!part.trim() || !fixture.trim()) return;
     let id: string;
     try {
       id = createLocalSession({
-        part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), station: fixture.trim(), operator: operator.trim(),
+        part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), station: fixture.trim(), operator: operatorName,
       });
     } catch {
       setError("This device could not store the new check. Tap Retry.");
@@ -152,7 +152,19 @@ export function StartForm() {
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
           <StationSelect value={fixture} onChange={setFixture} />
-          <Field id="operator" label="Quality Technician" value={operator} onChange={setOperator} />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[17px] text-muted" id="operator-label">
+              Quality Technician
+            </span>
+            <span
+              aria-labelledby="operator-label"
+              data-testid="operator-name"
+              className="flex min-h-[56px] items-center rounded-[var(--fl-radius-md)] border border-line bg-surface-2 px-4 text-[22px] text-ink"
+            >
+              {operatorName}
+            </span>
+            <span className="text-[15px] text-muted">You are signed in as this Quality Technician. Not you? Sign out at the top right.</span>
+          </div>
           {error && (
             <div role="alert" className="flex flex-wrap items-center gap-4 rounded-[var(--fl-radius-md)] border-2 border-red bg-red-soft px-4 py-2 text-[18px] text-red-ink">
               <span className="flex-1">{error}</span>

@@ -145,7 +145,7 @@ test("print: A4 portrait, no menus or buttons, printed-on time, cards kept whole
   await expect(page.getByRole("button", { name: "Export report (PDF)" })).toBeHidden();
   await expect(page.getByRole("button", { name: "View clip next to reference" })).toBeHidden();
   await expect(page.getByTestId("back-to-dashboard")).toBeHidden();
-  await expect(page.getByText("Anyone with the link can open this page. Use test data only.")).toBeHidden();
+  await expect(page.getByText("Anyone with the link")).toHaveCount(0);
   await expect(page.getByTestId("printed-on")).toBeVisible();
   await expect(page.getByTestId("printed-on")).toHaveText(/^Printed on .+\d/);
   await expect(page.getByTestId("sample-mark")).toBeVisible();

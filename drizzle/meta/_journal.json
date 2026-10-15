@@ -36,6 +36,13 @@
       "when": 1792055971106,
       "tag": "0004_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792070814370,
+      "tag": "0005_session_user",
+      "breakpoints": true
     }
   ]
 }

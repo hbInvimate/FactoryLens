@@ -77,32 +77,78 @@ You need Node.js 24 (or 22.18 or later) and npm.
 
    This applies the SQL in `drizzle/` to the database in `DATABASE_URL`. It is safe to run again.
 
-5. **Run.**
+5. **Add `AUTH_SECRET` to `.env.local`.** It signs the sign-in cookie. Generate a value (at least 32 characters) and add a line `AUTH_SECRET=<value>`:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+6. **Create the first admin**, then the people who use the app. There is no public sign-up.
+
+   ```bash
+   npm run user:create
+   ```
+
+   It asks for the full name, email, role (`technician` = Quality Technician, `engineer` = Quality Engineer, `admin`) and a password. Leave the password empty to get a one-time password. It is shown once and stored nowhere, so give it to the person directly. Passwords are stored only as argon2id hashes.
+
+7. **Run.**
 
    ```bash
    npm run dev
    ```
 
-   Open http://localhost:3000 and tap **Start the check**.
+   Open http://localhost:3000, sign in as a Quality Technician and tap **Start the check**. The dashboard is at http://localhost:3000/dashboard/signin.
+
+### People
+
+| Command | What it does |
+|---|---|
+| `npm run user:create` | Adds a person: name, email, role, password (or a one-time password shown once). |
+| `npm run user:reset-password` | Sets a new password (or a one-time one), turns a disabled person back on, and signs them out everywhere. |
+| `npm run user:disable` | The person can no longer sign in and is signed out everywhere. Their checks stay. |
+
+All three work on the database in `DATABASE_URL`. A Quality Technician stays signed in for 12 hours, a Quality Engineer or admin for 8 hours, counted from sign-in. Five failed sign-ins within 15 minutes for the same account from the same address lock that pair for 15 minutes. The count is kept in the database.
 
 ### Before publishing
 
-Run these in the project folder, in order. Every migration is additive and safe to run twice.
+The order matters. The new code needs `AUTH_SECRET` and the sign-in tables, and nobody can sign in until the first people exist. Every migration is additive and safe to run twice, so the live app keeps working while you do this.
 
-```bash
-npm run lint
-npm run build
-npx playwright install chromium   # once per machine
-npm run test:e2e
-npx vercel env pull .env.local --environment=production
-npm run db:migrate                # tables and columns on the production database
-npm run db:backfill               # optional: older sessions get missed points, categories, check time
-npm run db:clear-sample           # if sample data was seeded on this database
-git push                          # Vercel builds and deploys
-```
+1. **Check the build.**
 
-Then pull your development environment back (`npx vercel env pull .env.local`) so local runs do not use the production database.
+   ```bash
+   npm run lint
+   npm run build
+   npx playwright install chromium   # once per machine
+   npm run test:e2e
+   ```
 
+2. **Set `AUTH_SECRET` in Vercel before pushing.** Project → **Settings** → **Environment Variables** → add `AUTH_SECRET` for Production and Preview. Use a new value, not the one in your `.env.local`:
+
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+   If it is missing, every page shows "Sign-in is not set up".
+
+3. **Create the tables on the production database.**
+
+   ```bash
+   npx vercel env pull .env.local --environment=production
+   npm run db:migrate                # adds the sign-in tables and sessions.user_id
+   npm run db:clear-sample           # only if sample data was seeded on this database
+   ```
+
+4. **Push.** `git push`. Vercel builds and deploys.
+
+5. **Create the first people on the live database.** `.env.local` still holds the production `DATABASE_URL` from step 3.
+
+   ```bash
+   npm run user:create    # the first admin: role admin
+   npm run user:create    # each Quality Technician: role technician
+   npm run user:create    # each Quality Engineer: role engineer
+   ```
+
+6. **Point local runs back at development.** Run `npx vercel env pull .env.local`. Then add your own development `AUTH_SECRET` to `.env.local` again, because the pull replaces the file.
 ### Change the schema
 
 1. Edit `db/schema.ts`.
@@ -127,7 +173,7 @@ The dashboard's "Include sample data" switch is on by default while there are fe
 
 ## Tests
 
-The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry. They run against a production build with `FL_STORAGE=memory`, which uses PGlite, a real Postgres running inside the process and migrated from `drizzle/`. So the tests run the same SQL as Neon (including the dashboard's group-by queries and plant time zone) and never touch the database. `e2e/analytics.spec.ts` checks every dashboard number against a small fixed dataset.
+The Playwright tests cover scenarios 1 to 6 in `docs/scenarios.md`, plus refresh-resumes, offline-queues-saves and save-fails-retry, sign-in and roles (`e2e/auth.spec.ts`), people in the data and sign-in ending during a check (`e2e/people.spec.ts`). A setup step signs in a test admin once; the other tests reuse that cookie. They run against a production build with `FL_STORAGE=memory`, which uses PGlite, a real Postgres running inside the process and migrated from `drizzle/`. So the tests run the same SQL as Neon (including the dashboard's group-by queries and plant time zone) and never touch the database. `e2e/analytics.spec.ts` checks every dashboard number against a small fixed dataset.
 
 ```bash
 npx playwright install chromium   # once
@@ -140,6 +186,8 @@ npm run test:e2e
 - **One action log per session.** Every tap (a point, Next step, Fixed, continue, a lodged issue, a handoff item) is an action. `lib/check/reducer.ts` rebuilds the whole check from the log: skip detection, clamp order, attempts, conformance, discrepancies and hold. The browser and the server run the same reducer.
 - **Never lose data.** Each action is written to `localStorage` first, then sent to `POST /api/sessions/[id]/actions` in batches. If the connection drops, a banner shows how many saves are queued and they are retried with backoff and on reconnect. If the server returns an error, a Retry button appears and the work stays on the device. Saves are idempotent, so a retry never duplicates anything.
 - **Resume.** Refreshing or reopening `/check/[id]` loads the local copy first and merges anything the server has. The start page offers to resume the active check.
+- **Sign-in ends during a check.** The check stays on screen and keeps working. Every change stays queued on the device, and a banner and dialog ask to sign in again without leaving the check. After signing in, the queue is sent. Signing in as a different Quality Technician does not save into someone else's check. The dialog asks for the person who started it. A reload while signed out goes to the sign-in page and comes back to the same check with the queue intact.
+- **Who sees what.** Session history shows a Quality Technician only their own checks; an admin sees all. The dashboard shows every session to a Quality Engineer, with the Include sample data switch.
 - **Tables.** `session_actions` is the append-only journal. On every save the server rebuilds `sessions`, `step_events`, `point_confirmations`, `discrepancies` and `handoff_items` from it, in one batch.
 - **Mistakes without AI.** Steps 5 to 11 show point grids. Next step with points unconfirmed raises "Step N skipped"; a clamp tapped out of order raises "wrong order". Undo works for 10 seconds on ordinary taps; a tap that raised a deviation stays on the record.
 
@@ -151,11 +199,13 @@ npm run test:e2e
 - `CallService`: calls are reminders until the plant call or andon system is linked.
 - `ClipStore`: clips are placeholders until video capture exists.
 
-Logins are not built. Sessions carry a free-text Quality Technician label.
+Sign-in uses Better Auth with our own tables (`users`, `auth_sessions`, `auth_accounts`, `auth_verifications`, `login_attempts`). Every page and API checks the role on the server. Each new session stores the signed-in person (`sessions.user_id`) and their name as the Quality Technician label. Older sessions keep their typed label and have no owner.
 
 ## Environment variables
 
 | Name | Where | What |
 |---|---|---|
 | `DATABASE_URL` | Vercel project, `.env.local` | Neon Postgres connection string. Required, except in tests. |
-| `FL_STORAGE` | tests only | `memory` runs on PGlite, an in-process Postgres, instead of Neon. Only then may a test mark a session as sample (`x-fl-sample` header). |
+| `AUTH_SECRET` | Vercel project (Production and Preview), `.env.local` | Signs the sign-in cookie and keys the stored address hashes of the sign-in limit. At least 32 characters; a different value per environment. Required. |
+| `BETTER_AUTH_URL` | optional | The site's address, for example `https://your-app.vercel.app`. On Vercel the deployment address is used when it is not set. |
+| `FL_STORAGE` | tests and test mode only | `memory` runs on PGlite, an in-process Postgres, instead of Neon, with the test accounts in `lib/auth/testUsers.ts` and a TEST MODE banner. Only then may a test mark a session as sample (`x-fl-sample` header). |

@@ -12,6 +12,8 @@ export interface SessionRow {
   fixture: string;
   station: string | null;
   operatorLabel: string;
+  /** users.id of who started it, when read from the database. Null for older sessions. */
+  userId?: string | null;
   conformance: number | null;
   correctFirstTime: number;
   currentStep: number;

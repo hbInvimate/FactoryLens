@@ -19,6 +19,11 @@ export interface SyncState {
   /** The browser refused to store the local copy. */
   localFull: boolean;
   lastSavedAt: number | null;
+  /**
+   * Saving needs a sign-in: `signin` when the sign-in has ended (401), `not_owner` when the person
+   * signed in is not the one who started the check. Nothing is lost: the work stays queued on this device.
+   */
+  auth: null | "signin" | "not_owner";
 }
 
 const BATCH = 400;
@@ -35,7 +40,7 @@ export function useCheckSession(id: string) {
   const [load, setLoad] = useState<LoadState>("loading");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sync, setSync] = useState<SyncState>({
-    offline: false, pending: 0, saving: false, error: null, localFull: false, lastSavedAt: null,
+    offline: false, pending: 0, saving: false, error: null, localFull: false, lastSavedAt: null, auth: null,
   });
 
   const recRef = useRef<LocalSession | null>(null);
@@ -43,6 +48,8 @@ export function useCheckSession(id: string) {
   const attempt = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushRef = useRef<() => void>(() => {});
+  /** Set while a sign-in is needed: no sends until `resumeAfterSignIn`. */
+  const authBlocked = useRef(false);
 
   const commit = useCallback((next: LocalSession) => {
     recRef.current = next;
@@ -58,7 +65,7 @@ export function useCheckSession(id: string) {
 
   const flush = useCallback(async () => {
     const cur = recRef.current;
-    if (!cur || inFlight.current) return;
+    if (!cur || inFlight.current || authBlocked.current) return;
     if (cur.created && cur.pending.length === 0) return;
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       setSync((s) => ({ ...s, offline: true }));
@@ -75,7 +82,14 @@ export function useCheckSession(id: string) {
         body: JSON.stringify({ meta: cur.meta, actions: batch }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+        if (res.status === 401 || (res.status === 403 && body.code === "not_owner")) {
+          // Keep everything queued here and ask for a sign-in. No retries until then.
+          authBlocked.current = true;
+          inFlight.current = false;
+          setSync((s) => ({ ...s, saving: false, offline: false, error: null, auth: res.status === 401 ? "signin" : "not_owner" }));
+          return;
+        }
         throw Object.assign(new Error(body.error || `Save failed (${res.status})`), { http: res.status });
       }
       attempt.current = 0;
@@ -126,6 +140,12 @@ export function useCheckSession(id: string) {
         if (res.status === 404) {
           if (!local) setLoad("missing");
           else flushRef.current();
+          return;
+        }
+        if (res.status === 401 && recRef.current) {
+          // Signed out, but the check is on this device: keep working and ask for a sign-in.
+          authBlocked.current = true;
+          setSync((s) => ({ ...s, auth: "signin" }));
           return;
         }
         if (!res.ok) {
@@ -184,6 +204,14 @@ export function useCheckSession(id: string) {
     [commit],
   );
 
+  /** After signing in again from the check: send everything that waited. */
+  const resumeAfterSignIn = useCallback(() => {
+    authBlocked.current = false;
+    attempt.current = 0;
+    setSync((s) => ({ ...s, auth: null, error: null }));
+    flushRef.current();
+  }, []);
+
   const retry = useCallback(() => {
     attempt.current = 0;
     setSync((s) => ({ ...s, error: null }));
@@ -202,7 +230,7 @@ export function useCheckSession(id: string) {
     if (ended && getActiveId() === id) setActiveId(null);
   }, [ended, id, actionCount]);
 
-  return { meta: rec?.meta ?? null, actions: rec?.actions ?? [], state, load, loadError, sync, dispatch, retry };
+  return { meta: rec?.meta ?? null, actions: rec?.actions ?? [], state, load, loadError, sync, dispatch, retry, resumeAfterSignIn };
 }
 
 /**

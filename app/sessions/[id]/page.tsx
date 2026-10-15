@@ -12,6 +12,8 @@ import { ENDED_STATUSES, STATUS_LABEL } from "@/lib/check/types";
 import { missedPoints } from "@/lib/dashboard/missed";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
+import { canOpenSession } from "@/lib/auth/roles";
+import { currentUser } from "@/lib/auth/server";
 import { STEPS, stepLabel } from "@/lib/sop";
 import { NotConfiguredNotice, TableSkeleton } from "../shared";
 
@@ -50,7 +52,9 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
     if (e instanceof NotConfigured) return <NotConfiguredNotice />;
     throw e;
   }
-  if (!p) notFound();
+  // Someone else's check looks the same as one that does not exist. The page's Gate has already checked the role.
+  const user = await currentUser();
+  if (!p || !user || !canOpenSession(user, p.session.userId ?? null)) notFound();
   const s = p.session;
   const open = !ENDED_STATUSES.includes(s.status);
   const deviations = p.stepEvents.filter((e) => e.kind !== "done");

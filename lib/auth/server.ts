@@ -7,7 +7,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { eq } from "drizzle-orm";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { memoryConnection, neonConnection, type Conn } from "@/db/client";
 import * as t from "@/db/schema";
@@ -140,8 +140,18 @@ export async function userFromHeaders(h: Headers): Promise<CurrentUser | null> {
   return { id: u.id, name: u.name, email: u.email, role: u.role };
 }
 
-/** Once per request: who is signed in. */
-export const currentUser = cache(async (): Promise<CurrentUser | null> => userFromHeaders(await headers()));
+/**
+ * Once per request: who is signed in. The cookie header is rebuilt from cookies(), which already holds
+ * a cookie set earlier in this request: after a sign-in from inside a check, the page re-renders in the
+ * same request and must see the new sign-in, not the old (signed-out) request.
+ */
+export const currentUser = cache(async (): Promise<CurrentUser | null> => {
+  const h = new Headers(await headers());
+  const jar = (await cookies()).toString();
+  if (jar) h.set("cookie", jar);
+  else h.delete("cookie");
+  return userFromHeaders(h);
+});
 
 /**
  * For Route Handlers: the person may use this area, or a JSON error.

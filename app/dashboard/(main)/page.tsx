@@ -5,7 +5,7 @@ import { Gate } from "@/components/auth/Gate";
 import { isTestMode } from "@/components/TestModeBanner";
 import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlock } from "@/components/dashboard/blocks";
 import { Filters } from "@/components/dashboard/Filters";
-import { Card, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
+import { Card, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
 import { IconAlert, IconChecklist, IconClock, IconPause, IconTarget, IconUsers } from "@/components/ds/icons";
 import { HOLD_WARN_MINUTES } from "@/lib/config";
@@ -103,7 +103,6 @@ async function Body({ searchParams }: { searchParams: SP }) {
           </span>
         )}
       </div>
-      <Note />
 
       {s.total === 0 ? (
         <Card className="px-5 py-8 text-center">

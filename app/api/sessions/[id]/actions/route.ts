@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NOT_OWNER_ERROR, canOpenSession } from "@/lib/auth/roles";
 import { requireApiUser } from "@/lib/auth/server";
 import { getRepo } from "@/lib/server/repo";
 import { errorResponse } from "@/lib/server/http";
@@ -28,7 +29,13 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sessions/[i
     // Tests only: with the in-process database (FL_STORAGE=memory) a test may save a sample session.
     // Against Neon this header is ignored: only `npm run db:seed-sample` creates sample data.
     const sample = process.env.FL_STORAGE === "memory" && req.headers.get("x-fl-sample") === "1";
-    const result = await getRepo().save(meta, actions, sample ? { sample: true } : undefined);
+    const repo = getRepo();
+    const existing = await repo.ownerOf(id);
+    if (existing.exists && !canOpenSession(user, existing.ownerId)) {
+      return Response.json({ error: NOT_OWNER_ERROR, code: "not_owner" }, { status: 403 });
+    }
+    // A new session is stored as the signed-in person's, under their name. Sample sessions belong to no one.
+    const result = await repo.save(meta, actions, sample ? { sample: true } : { owner: { id: user.id, name: user.name } });
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return errorResponse(e);

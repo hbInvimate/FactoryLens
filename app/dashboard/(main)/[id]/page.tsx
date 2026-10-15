@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
-import { Card, LChip, Note, Page, Skeleton, StatCard } from "@/components/dashboard/light";
+import { Card, LChip, Page, Skeleton, StatCard } from "@/components/dashboard/light";
 import { ClipToggle, PrintButton, PrintedOn } from "@/components/dashboard/ReportParts";
 import { LiveWait } from "@/components/dashboard/SessionsTable";
 import { LocalTime } from "@/components/LocalTime";
@@ -378,7 +378,6 @@ async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
       >
         <IconArrowLeft /> Back to the dashboard
       </Link>
-      <Note />
       <Suspense fallback={<Skeleton rows={12} />}>
         <Report id={id} />
       </Suspense>

@@ -5,7 +5,9 @@ import type { SyncState } from "@/lib/client/useCheckSession";
 import { Dot, Info, Logo, cx } from "../ui";
 
 function Connection({ sync }: { sync: SyncState }) {
-  const [color, text] = sync.offline
+  const [color, text] = sync.auth
+    ? (["amber", "Sign-in needed"] as const)
+    : sync.offline
     ? (["amber", "Offline"] as const)
     : sync.error
       ? (["red", "Save failed"] as const)

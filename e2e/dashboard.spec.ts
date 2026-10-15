@@ -23,7 +23,8 @@ test("Navigation: Dashboard button on the first screen and in the top navigation
   await page.goto("/");
   await page.getByRole("main").getByRole("link", { name: "Dashboard" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByText("Anyone with the link can open this page. Use test data only.")).toBeVisible();
+  // Sign-in protects the dashboard now, so the old "Anyone with the link" note is gone.
+  await expect(page.getByText("Anyone with the link")).toHaveCount(0);
   await page.goto("/sessions");
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboard" }).click();
   await expect(page).toHaveURL(/\/dashboard/);

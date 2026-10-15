@@ -14,16 +14,18 @@ import { NotConfigured } from "@/lib/server/repo";
 export interface SignInState {
   error?: string;
   email?: string;
+  /** Only from `signInHere`: signed in, stay on the page. */
+  ok?: boolean;
 }
 
 let dummy: Promise<string> | null = null;
 /** Checked against when there is no usable account, so a wrong email takes as long as a wrong password. */
 const dummyHash = () => (dummy ??= hashPassword("not-a-real-password-for-timing"));
 
-export async function signIn(area: Area, _prev: SignInState, form: FormData): Promise<SignInState> {
+/** Checks the limit, the account, the role and the password, and sets the cookie. Null when signed in. */
+async function attempt(area: Area, form: FormData): Promise<SignInState | null> {
   const email = normalizeEmail(String(form.get("email") ?? ""));
   const password = String(form.get("password") ?? "");
-  const next = safeNext(form.get("next"), area);
   if (!email || !password) return { error: "Enter your email and password.", email };
 
   try {
@@ -55,7 +57,19 @@ export async function signIn(area: Area, _prev: SignInState, form: FormData): Pr
     if (e instanceof AuthNotConfigured || e instanceof NotConfigured) return { error: e.message, email };
     throw e;
   }
-  redirect(next);
+  return null;
+}
+
+/** The sign-in pages: on success, go on to `next`. */
+export async function signIn(area: Area, _prev: SignInState, form: FormData): Promise<SignInState> {
+  const failed = await attempt(area, form);
+  if (failed) return failed;
+  redirect(safeNext(form.get("next"), area));
+}
+
+/** Inside a running check, when the sign-in has ended: sign in without leaving the check. Same limit and rules. */
+export async function signInHere(_prev: SignInState, form: FormData): Promise<SignInState> {
+  return (await attempt("check", form)) ?? { ok: true };
 }
 
 export async function signOut(area: Area): Promise<void> {

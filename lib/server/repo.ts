@@ -15,6 +15,8 @@ export type { DashFilter } from "./sqlparts";
 export interface Journal {
   meta: SessionMeta;
   actions: Action[];
+  /** users.id of the person who started it; null for older sessions and sample data. */
+  ownerId: string | null;
 }
 
 export interface SaveResult {
@@ -34,6 +36,11 @@ export interface DashRow extends SessionRow {
 export interface SaveOptions {
   /** Only the sample-data script sets this. Browsers cannot. */
   sample?: boolean;
+  /**
+   * The signed-in person saving it. A new session is stored as theirs, with their name as the
+   * Quality Technician label, whatever the browser sent. An existing session keeps its owner and label.
+   */
+  owner?: { id: string; name: string };
 }
 
 export interface HoldInfo {
@@ -58,8 +65,10 @@ export interface Repo {
   conn(): Promise<Conn>;
   save(meta: SessionMeta, actions: Action[], opts?: SaveOptions): Promise<SaveResult>;
   journal(id: string): Promise<Journal | null>;
-  /** Newest first. `includeSample: false` leaves out sessions from db:seed-sample. */
-  list(limit?: number, opts?: { includeSample?: boolean }): Promise<SessionRow[]>;
+  /** Newest first. `includeSample: false` leaves out sessions from db:seed-sample; `userId` keeps only that person's. */
+  list(limit?: number, opts?: { includeSample?: boolean; userId?: string }): Promise<SessionRow[]>;
+  /** Whether the session exists, and whose it is. */
+  ownerOf(id: string): Promise<{ exists: boolean; ownerId: string | null }>;
   detail(id: string): Promise<Projection | null>;
   /** Stations from the list, plus any station older sessions were saved with. Sorted by name. */
   stations(): Promise<string[]>;
@@ -131,8 +140,8 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
         .insert(t.sessions)
         .values({
           id: meta.id, startedAt: new Date(meta.createdAt), status: "running", part: meta.part, sop: meta.sop,
-          fixture: meta.fixture, station: stationOf(meta), operatorLabel: meta.operator, updatedAt: now,
-          isSample: opts?.sample === true,
+          fixture: meta.fixture, station: stationOf(meta), operatorLabel: opts?.owner?.name ?? meta.operator, updatedAt: now,
+          isSample: opts?.sample === true, userId: opts?.owner?.id ?? null,
         })
         .onConflictDoNothing();
       if (actions.length) {
@@ -174,7 +183,7 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
         .from(t.sessionActions)
         .where(eq(t.sessionActions.sessionId, id))
         .orderBy(asc(t.sessionActions.seq));
-      return { meta: metaFromRow(s), actions: rows.map(fromRow) };
+      return { meta: metaFromRow(s), actions: rows.map(fromRow), ownerId: s.userId ?? null };
     },
 
     async list(limit = 100, opts = {}) {
@@ -182,10 +191,21 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
       const rows = await db
         .select()
         .from(t.sessions)
-        .where(opts.includeSample === false ? sql`coalesce(${t.sessions.isSample}, false) = false` : undefined)
+        .where(
+          and(
+            opts.includeSample === false ? sql`coalesce(${t.sessions.isSample}, false) = false` : undefined,
+            opts.userId ? eq(t.sessions.userId, opts.userId) : undefined,
+          ),
+        )
         .orderBy(desc(t.sessions.startedAt))
         .limit(limit);
       return rows.map((r) => ({ ...r, status: r.status as SessionRow["status"] }));
+    },
+
+    async ownerOf(id) {
+      const { db } = await connect();
+      const [s] = await db.select({ userId: t.sessions.userId }).from(t.sessions).where(eq(t.sessions.id, id));
+      return { exists: !!s, ownerId: s?.userId ?? null };
     },
 
     async detail(id) {

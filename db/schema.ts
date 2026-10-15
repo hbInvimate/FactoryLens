@@ -29,9 +29,15 @@ export const sessions = pgTable(
     activeSeconds: integer("active_seconds"),
     /** Fake sessions from `npm run db:seed-sample`. Removed by `npm run db:clear-sample`. */
     isSample: boolean("is_sample").default(false),
+    /** The signed-in person who started it (users.id). Null for sessions from before sign-in and for sample data. */
+    userId: text("user_id"),
     updatedAt: ts("updated_at").notNull(),
   },
-  (t) => [index("sessions_started_idx").on(t.startedAt), index("sessions_station_idx").on(t.station, t.startedAt)],
+  (t) => [
+    index("sessions_started_idx").on(t.startedAt),
+    index("sessions_station_idx").on(t.station, t.startedAt),
+    index("sessions_user_idx").on(t.userId, t.startedAt),
+  ],
 );
 
 /** Stations: a cell and fixture where first-off checks are run. */

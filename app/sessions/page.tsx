@@ -6,6 +6,8 @@ import { Gate } from "@/components/auth/Gate";
 import { PageBar } from "@/components/PageBar";
 import { StatusChip } from "@/components/StatusChip";
 import { isTestMode } from "@/components/TestModeBanner";
+import { seesAllSessions } from "@/lib/auth/roles";
+import { currentUser } from "@/lib/auth/server";
 import { Chip } from "@/components/ui";
 import { conformanceLabel, includeSampleFor } from "@/lib/dashboard/metrics";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
@@ -19,18 +21,25 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
   await connection();
   let rows;
   let includeSample: boolean;
+  // A Quality Technician sees only their own checks (never sample data, which has no owner); an admin sees all.
+  const user = await currentUser();
+  const all = !!user && seesAllSessions(user.role);
   try {
     const repo = getRepo();
-    includeSample = includeSampleFor(sp.sample, (await repo.counts()).real);
-    rows = await repo.list(200, { includeSample });
+    includeSample = all ? includeSampleFor(sp.sample, (await repo.counts()).real) : false;
+    rows = await repo.list(200, all ? { includeSample } : { userId: user?.id ?? "-" });
   } catch (e) {
     if (e instanceof NotConfigured) return <NotConfiguredNotice />;
     throw e;
   }
-  const switchRow = (
+  const switchRow = all ? (
     <div className="flex flex-wrap items-center gap-3">
       <SampleSwitch on={includeSample} />
     </div>
+  ) : (
+    <p className="text-[17px] text-ink-2" data-testid="history-scope">
+      Your checks, signed in as {user?.name}.
+    </p>
   );
   if (!rows.length) {
     return (

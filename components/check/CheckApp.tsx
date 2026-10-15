@@ -17,6 +17,7 @@ import { LeaveDialog, PausedOverlay, UndoToast } from "./Dialogs";
 import { LodgedView } from "./LodgedView";
 import { LodgeFlow } from "./LodgeFlow";
 import { MainView } from "./MainView";
+import { SignInPrompt } from "./SignInPrompt";
 import { StepDetail } from "./StepDetail";
 import { Procedure } from "./Procedure";
 import { EndedView, StoppedView, type DecisionInput } from "./StopViews";
@@ -80,7 +81,7 @@ function HoldStrip({ state, onOpen, onDecide }: { state: CheckState; onOpen: (di
 
 export function CheckApp({ id }: { id: string }) {
   const router = useRouter();
-  const { meta, actions, state, load, loadError, sync, dispatch, retry } = useCheckSession(id);
+  const { meta, actions, state, load, loadError, sync, dispatch, retry, resumeAfterSignIn } = useCheckSession(id);
   const voice = useSpeech();
   const now = useNow(1000);
   const [view, setView] = useState<View>({ kind: "main" });
@@ -271,6 +272,7 @@ export function CheckApp({ id }: { id: string }) {
         canPause={!ended && state.status !== "complete"}
       />
       <SyncNotice sync={sync} onRetry={retry} />
+      <SignInPrompt sync={sync} onSignedIn={resumeAfterSignIn} />
       {showHoldStrip && <HoldStrip state={state} onOpen={openHold} onDecide={(did) => setView({ kind: "lodged", did })} />}
       {flash && (
         <div role="status" className="flex flex-none items-center gap-3 bg-primary-soft px-8 py-2 text-[18px] text-primary-ink">

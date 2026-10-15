@@ -1,6 +1,6 @@
 // Dashboard pieces on the shared design system (components/ds): white cards on the light page.
 import type { ReactNode } from "react";
-import { Card, Chip, StatTile, StateBanner, type ChipTone, type TileTone } from "@/components/ds";
+import { Card, Chip, StatTile, type ChipTone, type TileTone } from "@/components/ds";
 import { STATUS_LABEL, type SessionStatus } from "@/lib/check/types";
 
 export { Card };
@@ -37,14 +37,6 @@ const STATUS_TONE: Record<SessionStatus, ChipTone> = {
 
 export function StatusPill({ status }: { status: SessionStatus }) {
   return <LChip tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</LChip>;
-}
-
-export function Note() {
-  return (
-    <StateBanner tone="amber" className="py-2 print:hidden">
-      Anyone with the link can open this page. Use test data only.
-    </StateBanner>
-  );
 }
 
 export function Skeleton({ rows = 6 }: { rows?: number }) {
