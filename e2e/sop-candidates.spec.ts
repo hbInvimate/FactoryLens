@@ -2,7 +2,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { findCandidates } from "../lib/sop-candidates";
 import { signInAs, testUser } from "./auth-helpers";
-import { candidateDataset, statSession, timedActions, type TimedSpec } from "./sopFixtures";
+import { BASELINE_WHO, candidateDataset, statSession, timedActions, type TimedSpec } from "./sopFixtures";
 
 const NO_TARGETS = Array<number | null>(12).fill(null);
 const data = candidateDataset();
@@ -11,12 +11,12 @@ const sessions = data.map(({ key, spec }) => statSession(key, spec));
 test.describe("candidates (no browser)", () => {
   test("a Quality Technician faster in all of their last 5 checks is listed, with the faster steps", () => {
     const r = findCandidates(sessions, NO_TARGETS);
-    expect(r.stationMedianSeconds).toBe(480);
+    expect(r.stationMedianSeconds).toBe(490);
     expect(r.candidates.map((c) => c.label)).toEqual(["QT-A"]);
     const a = r.candidates[0];
     expect(a.checks).toHaveLength(6); // 6 in a row
-    expect(a.medianSeconds).toBe(432);
-    expect(a.fasterPercent).toBe(10);
+    expect(a.medianSeconds).toBe(433);
+    expect(a.fasterPercent).toBe(12);
     expect(a.firstTimeCorrect).toBe(100);
     expect(a.fasterSteps).toEqual([5, 7, 9]);
     expect(a.checks.map((c) => c.id)).toEqual(["A5", "A4", "A3", "A2", "A1", "A0"]); // newest first
@@ -72,8 +72,8 @@ test("the page: the candidate with their label and the video note, others not li
     return ctx;
   };
   const by = (prefix: string) => data.filter((d) => d.key.startsWith(prefix)).map((d) => d.spec);
-  // The admin: the median pace (18 checks). Test Quality Technician: A's 6 faster checks. Second: B's 3 of 5.
-  await save(request, [...by("C"), ...by("D"), ...by("F")]);
+  // The admin: the median pace (48 checks). Test Quality Technician: A's 6 faster checks. Second: B's 3 of 5.
+  await save(request, BASELINE_WHO.flatMap((w) => by(w)));
   const t1 = await as("technician");
   await save(t1.request, by("A"));
   const t2 = await as("technician2");
@@ -86,14 +86,14 @@ test("the page: the candidate with their label and the video note, others not li
   const a = rows.first();
   await expect(a).toHaveAttribute("data-candidate", testUser("technician").name);
   await expect(a).toContainText("Video: not recorded yet");
-  await expect(a.getByTestId("candidate-median")).toHaveText("07:12");
-  await expect(a.getByTestId("candidate-faster")).toHaveText("−10%");
+  await expect(a.getByTestId("candidate-median")).toHaveText("07:13");
+  await expect(a.getByTestId("candidate-faster")).toHaveText("−12%");
   await expect(a.getByTestId("candidate-streak")).toHaveText("6 in a row");
   await expect(a.getByTestId("candidate-ftc")).toHaveText("100%");
   await expect(a.getByTestId("candidate-steps")).toHaveText("5, 7, 9");
   await expect(page.getByTestId("candidates")).toContainText("Use this to improve the process, not to rank people.");
   await expect(page.getByTestId("ct-trend").locator("svg")).toBeVisible();
-  await expect(page.getByTestId("trend-callout")).toHaveText(`Consistently faster: ${testUser("technician").name} below the station median in 6 checks in a row (−10%)`);
+  await expect(page.getByTestId("trend-callout")).toHaveText(`Consistently faster: ${testUser("technician").name} below the station median in 6 checks in a row (−12%)`);
   await expect(page.getByTestId("sample-chip")).toHaveCount(0);
 
   // Sample data on: the trend includes them (SAMPLE chip), the candidates stay real only.

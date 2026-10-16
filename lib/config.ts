@@ -54,3 +54,9 @@ export const STEP_CHANGE_MIN_SECONDS = 3;
 
 /** ...in at least this share of the candidate's checks. The same share decides an ORDER suggestion. */
 export const STEP_CHANGE_SHARE_PERCENT = 80;
+
+/** A suggested step CT is the candidate's median step time rounded UP to the next multiple of this many seconds. */
+export const CT_ROUND_UP_SECONDS = 5;
+
+/** A suggested CT faster than this share of all completed checks at the station gets "Check it is realistic." */
+export const REALISTIC_FASTER_THAN_PERCENT = 90;

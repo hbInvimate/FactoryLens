@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1600, height: 900 } };
+const admin = { ...desktop, storageState: "e2e/.auth/admin.json" };
+const SOP_DRAFT_SPECS = [/sop-analysis\.spec\.ts/, /sop-review\.spec\.ts/];
 
 // Runs against a production build (`npm run build` first) with the in-memory store,
 // so the tests never touch the database in DATABASE_URL.
@@ -21,7 +23,10 @@ export default defineConfig({
   projects: [
     // Signs in the test admin once (e2e/auth.setup.ts); every other test starts with that cookie.
     { name: "setup", testMatch: /auth\.setup\.ts/, use: desktop },
-    { name: "chromium", dependencies: ["setup"], use: { ...desktop, storageState: "e2e/.auth/admin.json" } },
+    { name: "chromium", dependencies: ["setup"], testIgnore: SOP_DRAFT_SPECS, use: { ...admin } },
+    // These change the one open SOP Draft on the test server, so they run after the rest, one file at a time.
+    { name: "sop-analysis", dependencies: ["chromium"], testMatch: /sop-analysis\.spec\.ts/, use: { ...admin } },
+    { name: "sop-review", dependencies: ["sop-analysis"], testMatch: /sop-review\.spec\.ts/, use: { ...admin } },
   ],
   webServer: {
     command: `npx next start -p ${PORT}`,

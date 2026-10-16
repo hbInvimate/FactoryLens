@@ -243,6 +243,11 @@ export const sopRevisions = pgTable(
     approvedBy: text("approved_by"),
     approvedAt: ts("approved_at"),
     changeReason: text("change_reason"),
+    /** One-click flow: whose checks the draft was built from (the Quality Technician label) and which sessions. */
+    sourceLabel: text("source_label"),
+    sourceSessionIds: jsonb("source_session_ids").$type<string[]>(),
+    /** Last change to a draft: a `Check again` older than this is stale. */
+    updatedAt: ts("updated_at"),
   },
   (t) => [
     uniqueIndex("sop_revisions_scope_label_idx").on(t.scope, t.label),
@@ -315,4 +320,64 @@ export const sopAcknowledgements = pgTable(
     at: ts("at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.revisionId] })],
+);
+
+/**
+ * One-click flow: a change the app proposes for one step of a draft, from a candidate's checks. Nothing is
+ * applied to the draft until the Quality Engineer accepts or edits it. Rejected suggestions change nothing.
+ */
+export const sopSuggestions = pgTable(
+  "sop_suggestions",
+  {
+    id: text("id").primaryKey(),
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    step: integer("step").notNull(),
+    /** time (target CT, seconds as text) or order (the "What to do" text). */
+    type: text("type").notNull(),
+    oldValue: text("old_value"),
+    /** What the app proposed. Never changed. */
+    proposedValue: text("proposed_value").notNull(),
+    /** What applies if accepted: the proposal, or the Quality Engineer's edit. */
+    newValue: text("new_value").notNull(),
+    why: text("why").notNull(),
+    /** The numbers behind the why. */
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+    /** "Check it is realistic", when set. */
+    warning: text("warning"),
+    sourceSessionIds: jsonb("source_session_ids").$type<string[]>().notNull(),
+    /** proposed, accepted, edited or rejected. */
+    status: text("status").notNull(),
+    decidedBy: text("decided_by"),
+    decidedAt: ts("decided_at"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("sop_suggestions_revision_idx").on(t.revisionId, t.step)],
+);
+
+/** "Check again": the draft tested against the other completed real checks. Kept, never overwritten. */
+export const sopValidations = pgTable(
+  "sop_validations",
+  {
+    id: text("id").primaryKey(),
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    runAt: ts("run_at").notNull().defaultNow(),
+    runBy: text("run_by"),
+    settings: jsonb("settings").$type<Record<string, unknown>>().notNull(),
+    results: jsonb("results").$type<Record<string, unknown>>().notNull(),
+  },
+  (t) => [index("sop_validations_revision_idx").on(t.revisionId, t.runAt)],
+);
+
+/** Where each step is in a recorded check, so real video can be attached later. Seconds from the check's start. */
+export const sopClipRefs = pgTable(
+  "sop_clip_refs",
+  {
+    id: text("id").primaryKey(),
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    sessionId: text("session_id").notNull(),
+    step: integer("step").notNull(),
+    startSecond: integer("start_second").notNull(),
+    endSecond: integer("end_second").notNull(),
+  },
+  (t) => [index("sop_clip_refs_revision_idx").on(t.revisionId, t.step)],
 );

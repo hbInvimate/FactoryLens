@@ -13,6 +13,8 @@ export interface TimedSpec {
   steps?: Partial<Record<number, number>>;
   /** The Quality Technician label. */
   operator?: string;
+  /** The order the points of a step are tapped in (default: the SOP order). */
+  order?: Partial<Record<number, string[]>>;
   /** Step 7: H9 to H12 skipped, then fixed (not correct on the first attempt). */
   skip7?: boolean;
   /** A pause of this many seconds in the middle of step 7 (not counted). */
@@ -36,7 +38,7 @@ export function timedActions(id: string, s: TimedSpec): { createdAt: number; act
     const pause = st.n === 7 && s.pause7 ? s.pause7 * 1000 : 0;
     const missing = st.n === 7 && s.skip7 ? ["H9", "H10", "H11", "H12"] : [];
     let k = 0;
-    for (const p of st.points) if (!missing.includes(p)) push({ type: "tap_point", step: st.n, point: p }, t + ++k * 10);
+    for (const p of s.order?.[st.n] ?? st.points) if (!missing.includes(p)) push({ type: "tap_point", step: st.n, point: p }, t + ++k * 10);
     if (pause) {
       push({ type: "pause" } as ActionBody, t + 2000);
       push({ type: "resume" } as ActionBody, t + 2000 + pause);
@@ -74,27 +76,36 @@ export const DATASET: Record<string, TimedSpec> = {
   s1: { day: "2026-09-21", time: "01:00", step7: 50, sample: true },
 };
 
-/** Every step 10 s except steps 5, 7 and 9: a whole check of 480 s. */
-export const BASE_STEPS = { 5: 30, 7: 180, 9: 180 };
-/** About 12% faster on steps 5, 7 and 9: 432 s, 10% faster than 480. */
-export const FAST_STEPS = { 5: 26, 7: 158, 9: 158 };
+/** Every step 10 s except steps 5, 7 and 9: a whole check of 490 s. */
+export const BASE_STEPS = { 5: 40, 7: 180, 9: 180 };
+/** Technician A: 12% faster on steps 5, 7 and 9: 433 s, 12% faster than 490. */
+export const FAST_STEPS = { 5: 35, 7: 158, 9: 150 };
+/** Technician B (newest 3) and E: faster on 5 and 7 only: 463 s, 5.5% faster. */
+export const B_FAST_STEPS = { 5: 35, 7: 158, 9: 180 };
+
+const holes = Array.from({ length: 14 }, (_, i) => `H${i + 1}`);
+/** Odd holes first, then the even ones. */
+export const ODD_FIRST = [...holes.filter((_, i) => i % 2 === 0), ...holes.filter((_, i) => i % 2 === 1)];
+
+export const BASELINE_WHO = ["C", "D", "F", "G", "H", "I"];
 
 /**
- * Candidates (one-click-flow.md part 1). Real checks: C, D and F at the station median pace (18 checks,
- * 480 s), A faster in all 6 of their checks, B faster only in their newest 3 of 5, E faster but with step 7
- * skipped each time (first-time correct below the station's). S is faster still, but SAMPLE.
- * Station median of the real checks: 480 s.
+ * Candidates (one-click-flow.md). Real checks: C, D, F, G, H and I at the station median pace (8 checks each,
+ * 48 in all, 490 s); A faster in all 6 checks, tapping step 7 odd holes first; B faster only in their newest
+ * 3 of 5; E faster but with step 7 skipped each time. S is faster still, but SAMPLE. 64 real checks; the
+ * station median is 490 s.
  */
 export function candidateDataset(): { key: string; spec: TimedSpec }[] {
   const out: { key: string; spec: TimedSpec }[] = [];
   const day = (i: number) => `2026-09-${String(10 + i).padStart(2, "0")}`;
-  for (const who of ["C", "D", "F"]) {
-    for (let i = 0; i < 6; i++) out.push({ key: `${who}${i}`, spec: { day: day(i), time: who === "C" ? "07:00" : who === "D" ? "15:00" : "23:00", steps: BASE_STEPS, operator: `QT-${who}` } });
+  const times = ["06:30", "08:00", "10:30", "14:30", "16:00", "18:30", "22:30", "01:00"];
+  for (const who of BASELINE_WHO) {
+    for (let i = 0; i < 8; i++) out.push({ key: `${who}${i}`, spec: { day: day(i), time: times[(i + who.charCodeAt(0)) % 8], steps: BASE_STEPS, operator: `QT-${who}` } });
   }
-  for (let i = 0; i < 6; i++) out.push({ key: `A${i}`, spec: { day: day(i), time: i % 2 ? "09:00" : "17:00", steps: FAST_STEPS, operator: "QT-A" } });
+  for (let i = 0; i < 6; i++) out.push({ key: `A${i}`, spec: { day: day(i), time: i % 2 ? "09:00" : "17:00", steps: FAST_STEPS, order: { 7: ODD_FIRST }, operator: "QT-A" } });
   // B: oldest two at the median pace, the newest three faster.
-  for (let i = 0; i < 5; i++) out.push({ key: `B${i}`, spec: { day: day(i), time: "11:00", steps: i < 2 ? BASE_STEPS : FAST_STEPS, operator: "QT-B" } });
-  for (let i = 0; i < 5; i++) out.push({ key: `E${i}`, spec: { day: day(i), time: "13:00", steps: FAST_STEPS, skip7: true, operator: "QT-E" } });
+  for (let i = 0; i < 5; i++) out.push({ key: `B${i}`, spec: { day: day(i), time: "11:00", steps: i < 2 ? BASE_STEPS : B_FAST_STEPS, operator: "QT-B" } });
+  for (let i = 0; i < 5; i++) out.push({ key: `E${i}`, spec: { day: day(i), time: "13:00", steps: B_FAST_STEPS, skip7: true, operator: "QT-E" } });
   for (let i = 0; i < 6; i++) out.push({ key: `S${i}`, spec: { day: day(i), time: "19:00", steps: { 5: 20, 7: 120, 9: 120 }, operator: "QT-S (sample)", sample: true } });
   return out;
 }

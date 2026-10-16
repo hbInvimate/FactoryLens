@@ -121,6 +121,33 @@ export function nextLabel(labels: string[]): string {
   return out;
 }
 
+type DraftRow = typeof t.sopRevisions.$inferSelect;
+
+/** The open Draft revision, or a new one (B, C...) copied from the Active revision. */
+export async function openDraft(db: AnyDb, createdBy: string, active: SopRevisionText, now: Date): Promise<{ draft: DraftRow; created: boolean }> {
+  const [open] = await db.select().from(t.sopRevisions).where(and(eq(t.sopRevisions.scope, SOP_SCOPE), eq(t.sopRevisions.status, "draft"))).orderBy(asc(t.sopRevisions.createdAt)).limit(1);
+  if (open) return { draft: open, created: false };
+  const labels = (await db.select({ label: t.sopRevisions.label }).from(t.sopRevisions).where(eq(t.sopRevisions.scope, SOP_SCOPE))).map((r) => r.label);
+  const id = `sop-rev-${randomUUID()}`;
+  let draft: DraftRow;
+  try {
+    [draft] = await db
+      .insert(t.sopRevisions)
+      .values({ id, label: nextLabel(labels.length ? labels : ["A"]), status: "draft", scope: SOP_SCOPE, createdBy, createdAt: now, updatedAt: now })
+      .returning();
+  } catch (e) {
+    // Someone created the draft at the same moment (the label is unique): use theirs.
+    const [theirs] = await db.select().from(t.sopRevisions).where(and(eq(t.sopRevisions.scope, SOP_SCOPE), eq(t.sopRevisions.status, "draft"))).limit(1);
+    if (theirs) return { draft: theirs, created: false };
+    throw e;
+  }
+  const base = active.steps.length === 12 ? active : CODE_REVISION;
+  await db.insert(t.sopStepRevisions).values(
+    base.steps.map((s, i) => ({ revisionId: id, step: i + 1, todo: s.todo, correct: s.correct, mistake: s.mistake, rule: s.rule, spoken: s.spoken, referenceNote: s.referenceNote, targetCtSeconds: s.targetCtSeconds })),
+  );
+  return { draft, created: true };
+}
+
 export class SopRuleError extends Error {}
 
 export interface CtDecisionInput {
@@ -187,28 +214,14 @@ export async function saveCtDecision(
   const active: SopRevisionText = await activeRevision(c);
   const now = new Date();
 
-  // The open Draft, or a new one copied from the Active revision.
-  let [draft] = await db.select().from(t.sopRevisions).where(and(eq(t.sopRevisions.scope, SOP_SCOPE), eq(t.sopRevisions.status, "draft"))).orderBy(asc(t.sopRevisions.createdAt)).limit(1);
-  let created = false;
-  if (!draft) {
-    const labels = (await db.select({ label: t.sopRevisions.label }).from(t.sopRevisions).where(eq(t.sopRevisions.scope, SOP_SCOPE))).map((r) => r.label);
-    const id = `sop-rev-${randomUUID()}`;
-    [draft] = await db
-      .insert(t.sopRevisions)
-      .values({ id, label: nextLabel(labels.length ? labels : ["A"]), status: "draft", scope: SOP_SCOPE, createdBy: who.name, createdAt: now })
-      .returning();
-    const base = active.steps.length === 12 ? active : CODE_REVISION;
-    await db.insert(t.sopStepRevisions).values(
-      base.steps.map((s, i) => ({ revisionId: id, step: i + 1, todo: s.todo, correct: s.correct, mistake: s.mistake, rule: s.rule, spoken: s.spoken, referenceNote: s.referenceNote, targetCtSeconds: s.targetCtSeconds })),
-    );
-    created = true;
-  }
+  const { draft, created } = await openDraft(db, who.name, active, now);
 
   const previous = active.steps[step - 1]?.targetCtSeconds ?? null;
   await db
     .update(t.sopStepRevisions)
     .set({ targetCtSeconds: newCtSeconds })
     .where(and(eq(t.sopStepRevisions.revisionId, draft.id), eq(t.sopStepRevisions.step, step)));
+  await db.update(t.sopRevisions).set({ updatedAt: now }).where(eq(t.sopRevisions.id, draft.id));
   await db.insert(t.sopChangeRecords).values({
     id: randomUUID(), revisionId: draft.id, step, previousCtSeconds: previous, newCtSeconds, reason, decidedBy: who.name, decidedAt: now,
     evidenceSessionIds: ids, evidenceOverrideReason: evidence.met ? null : override,

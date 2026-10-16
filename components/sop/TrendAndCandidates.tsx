@@ -1,5 +1,6 @@
 // /dashboard/sop, c1: "Check CT trend" and "Ways of working worth a look" (one-click-flow.md part 1).
-import { Button, Card, Chip, Table, Td, Th } from "@/components/ds";
+import { Card, Chip, Table, Td, Th } from "@/components/ds";
+import { ReviewButton } from "./ReviewButton";
 import { CANDIDATE_MIN_CHECKS, CANDIDATE_MIN_IMPROVEMENT_PERCENT } from "@/lib/config";
 import type { Candidate, CheckRow } from "@/lib/sop-candidates";
 import { mmss } from "@/lib/sop-stats";
@@ -88,7 +89,7 @@ export function TrendCard({ rows, medianSeconds, targetSeconds, highlight, sampl
   );
 }
 
-export function CandidatesCard({ candidates }: { candidates: Candidate[] }) {
+export function CandidatesCard({ candidates, view }: { candidates: Candidate[]; /** The filters, so the review uses the same checks. */ view: { station: string; range: string; shift: string } }) {
   return (
     <Card className="flex min-w-0 flex-col gap-3 px-6 py-5" testId="candidates">
       <div>
@@ -117,7 +118,7 @@ export function CandidatesCard({ candidates }: { candidates: Candidate[] }) {
             </tr>
           </thead>
           <tbody>
-            {candidates.map((c) => (
+            {candidates.map((c, i) => (
               <tr key={c.who} data-candidate={c.label}>
                 <Td>
                   <span className="flex flex-col items-start gap-1">
@@ -138,9 +139,7 @@ export function CandidatesCard({ candidates }: { candidates: Candidate[] }) {
                 <Td data-testid="candidate-ftc">{c.firstTimeCorrect}%</Td>
                 <Td data-testid="candidate-steps">{c.fasterSteps.length ? c.fasterSteps.join(", ") : "none by the step rule"}</Td>
                 <Td className="py-1.5 text-right">
-                  <Button variant="primary" disabled title="Review this way opens in the next part" className="min-h-[56px] w-[104px] min-w-0! whitespace-normal! px-3! text-[15px] leading-tight">
-                    Review this way
-                  </Button>
+                  <ReviewButton candidate={c.who} station={view.station} range={view.range} shift={view.shift} primary={i === 0} />
                 </Td>
               </tr>
             ))}
@@ -148,7 +147,7 @@ export function CandidatesCard({ candidates }: { candidates: Candidate[] }) {
         </Table>
       )}
       <p className="rounded-card border border-primary-line bg-primary-soft px-4 py-2.5 text-[14px] text-primary-ink">
-        <b>FactoryLens AI proposes. You decide.</b> One click will build a draft from the checks. Nothing changes until you confirm. Use this to improve the
+        <b>FactoryLens AI proposes. You decide.</b> One click builds a draft from the checks. Nothing changes until you confirm. Use this to improve the
         process, not to rank people.
       </p>
     </Card>

@@ -71,7 +71,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1.4fr]">
         <TrendCard rows={trendRows} medianSeconds={trendMedian === null ? null : Math.round(trendMedian)} targetSeconds={target} highlight={found.candidates[0] ?? null} sample={params.sample} />
-        <CandidatesCard candidates={found.candidates} />
+        <CandidatesCard candidates={found.candidates} view={{ station: params.station, range: params.range, shift: params.shift ?? "all" }} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

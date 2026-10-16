@@ -37,6 +37,10 @@ export interface CheckRow {
   conformance: number;
   stepSeconds: (number | null)[];
   correct: boolean[];
+  /** The order the points of each step were first confirmed in (empty for steps without points). */
+  orders: string[][];
+  /** Each step's window in seconds from the start of the check (wall clock, for a future video clip). Null if not done. */
+  windows: ([number, number] | null)[];
 }
 
 export function checkRows(sessions: StatSession[]): CheckRow[] {
@@ -56,6 +60,14 @@ export function checkRows(sessions: StatSession[]): CheckRow[] {
         return v === null ? null : v / 1000;
       }),
       correct: st.steps.map((r) => r.outcome === "correct"),
+      orders: st.steps.map((r) => {
+        const seen = new Set<string>();
+        return [...r.confirmed].sort((a, b) => a.order - b.order).map((c) => c.point).filter((p) => (seen.has(p) ? false : (seen.add(p), true)));
+      }),
+      windows: st.steps.map((r, i) => {
+        const from = i === 0 ? st.startedAt : st.steps[i - 1].doneAt;
+        return r.doneAt === null || from === null ? null : ([Math.round((from - st.startedAt) / 1000), Math.round((r.doneAt - st.startedAt) / 1000)] as [number, number]);
+      }),
     };
   });
 }
