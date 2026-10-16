@@ -54,7 +54,8 @@ export function describeOrder(standard: string[], used: string[]): string {
 
 /**
  * For each of the 12 steps:
- * - TIME when the candidate's median step time beats the reference (Active target, else the station median)
+ * - TIME when the candidate's median step time beats the station median of real checks (targets are not used:
+ *   today's are placeholders)
  *   by the margin in percent and seconds, in at least the share of their checks. New CT = that median rounded
  *   up to the next 5 seconds. A warning when it is faster than 90% of all completed checks at the station.
  * - ORDER when the order the points are confirmed in differs from the standard order in at least the share
@@ -79,7 +80,7 @@ export function compare(
     const target = active[i]?.targetCtSeconds ?? null;
     const stationTimes = real.map((r) => r.stepSeconds[i]).filter((x): x is number => x !== null);
     const stationMedian = percentile(stationTimes, 0.5);
-    const ref = target ?? stationMedian;
+    const ref = stationMedian;
     const correct = checks.filter((c) => c.correct[i] && c.stepSeconds[i] !== null);
     const ids = correct.map((c) => c.id);
     let changed = false;
@@ -95,7 +96,7 @@ export function compare(
       if (share >= s.sharePercent && newCt < ref) {
         const slower = stationTimes.filter((t) => t > newCt).length;
         const slowerShare = stationTimes.length ? (slower / stationTimes.length) * 100 : 0;
-        const basis = target !== null ? `the target ${mmss(target)}` : `the station median ${mmss(Math.round(stationMedian as number))}`;
+        const basis = `the station median ${mmss(Math.round(stationMedian as number))}`;
         changes.push({
           step: st.n,
           type: "time",
@@ -104,8 +105,8 @@ export function compare(
           why: `${faster.length} of ${n} checks were faster than ${basis} by at least ${s.stepMinPercent}% and ${s.stepMinSeconds} s. Their median ${mmss(Math.round(median))}, rounded up to ${mmss(newCt)}.`,
           warning: slowerShare >= realisticPercent ? `New CT is faster than ${Math.floor(slowerShare)}% of the checks at this station. Check it is realistic.` : null,
           detail: {
-            reference: target !== null ? "target" : "station median",
-            referenceSeconds: target ?? Math.round(stationMedian as number),
+            reference: "station median",
+            referenceSeconds: Math.round(stationMedian as number),
             candidateMedianSeconds: median,
             fasterChecks: faster.length,
             checks: n,

@@ -57,6 +57,13 @@
       "when": 1792135568529,
       "tag": "0007_sop_one_click",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792142912270,
+      "tag": "0008_placeholder_targets",
+      "breakpoints": true
     }
   ]
 }

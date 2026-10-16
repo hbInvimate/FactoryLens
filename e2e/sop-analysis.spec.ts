@@ -129,7 +129,7 @@ test("the CT decision: required fields, real evidence only, the minimum and its 
   const { revisions, audit } = await (await request.get("/api/sop/revisions")).json();
   const draft = revisions.find((r: { id: string }) => r.id === o.revisionId);
   expect(draft.status).toBe("draft");
-  expect(draft.changes.find((c: { step: number }) => c.step === 7)).toMatchObject({ newCtSeconds: 140, previousCtSeconds: null, reason: `met ${tag}`, evidenceOverrideReason: null });
+  expect(draft.changes.find((c: { step: number }) => c.step === 7)).toMatchObject({ newCtSeconds: 140, previousCtSeconds: 840, reason: `met ${tag}`, evidenceOverrideReason: null });
   expect(revisions.find((r: { label: string }) => r.label === "A").status).toBe("active"); // nothing activated
 
   const mine = audit.filter((a: { reason: string | null }) => a.reason?.includes(tag));
@@ -150,7 +150,7 @@ test("the pages: overview numbers, the wizard, sample sessions cannot be ticked,
   await expect(row7.getByTestId("median")).toHaveText("02:25");
   await expect(row7.getByTestId("sessions")).toHaveText("6");
   await expect(row7.getByTestId("ftc")).toHaveText("83%");
-  await expect(row7.getByTestId("target-ct")).toHaveText("not set");
+  await expect(row7.getByTestId("target-ct")).toHaveText("14:00"); // placeholder target
   await expect(page.getByTestId("sop-cautions")).toContainText("Times are button taps, not measured process times.");
   await expect(page.getByTestId("sample-chip")).toHaveCount(0);
 
@@ -179,7 +179,7 @@ test("the pages: overview numbers, the wizard, sample sessions cannot be ticked,
   for (const box of await page.getByTestId("evidence-table").locator('tr[data-sample="0"]').getByRole("checkbox").all()) await box.check();
   await expect(page.getByTestId("evidence-count")).toContainText("Evidence ticked: 5 sessions from 3 shifts");
   await page.getByPlaceholder("mm:ss").fill("02:40");
-  await expect(page.getByTestId("ct-effect")).toContainText("Step 7: not set → 02:40");
+  await expect(page.getByTestId("ct-effect")).toContainText("Step 7: 14:00 → 02:40");
   await page.getByLabel("Reason (required)").fill("Pins tried in row order with the gauge held square. Fewer retries.");
   await expect(save).toBeDisabled(); // not confirmed yet
   await page.getByLabel("I decided this CT. FactoryLens AI did not.").check();

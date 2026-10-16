@@ -31,7 +31,7 @@ test.describe("the comparison (no browser)", () => {
     expect(r.changes.map((c) => `${c.step}:${c.type}`)).toEqual(["5:time", "7:time", "7:order", "9:time"]);
     expect(r.noChange).toEqual([1, 2, 3, 4, 6, 8, 10, 11, 12]);
     const [s5, s7, o7, s9] = r.changes;
-    expect(s5).toMatchObject({ oldValue: null, newValue: "35", warning: null });
+    expect(s5).toMatchObject({ oldValue: "120", newValue: "35", warning: null }); // old value: the placeholder target
     expect(s5.why).toBe("6 of 6 checks were faster than the station median 00:40 by at least 5% and 3 s. Their median 00:35, rounded up to 00:35.");
     expect(s7).toMatchObject({ newValue: "160", warning: null }); // 158 rounded up
     expect(o7.oldValue).toBe(STEPS[6].todo);
@@ -66,12 +66,12 @@ test.describe("the comparison (no browser)", () => {
     expect(changes.some((c) => c.step === 5)).toBe(true);
   });
 
-  test("rounding up to the next 5 seconds, and judging against a target when one is set", () => {
+  test("rounding up to the next 5 seconds; targets (placeholders today) are not the reference", () => {
     expect([roundUp(158), roundUp(150), roundUp(151), roundUp(1)]).toEqual([160, 150, 155, 5]);
     const cand = findCandidates(sessions, NO_TARGETS).candidates[0];
     const targets = CODE_REVISION.steps.map((s, i) => ({ ...s, targetCtSeconds: i === 4 ? 37 : null }));
-    // 35 s against a 00:37 target: 5% but only 2 s faster, so no step 5 suggestion.
-    expect(compare(cand.checks, checkRows(sessions), targets).changes.some((c) => c.step === 5)).toBe(false);
+    // A 00:37 target is ignored: step 5 is still judged against the station median 00:40, and the old value is the target.
+    expect(compare(cand.checks, checkRows(sessions), targets).changes.find((c) => c.step === 5)).toMatchObject({ newValue: "35", oldValue: "37" });
     expect(describeOrder(STEPS[6].points, ODD_FIRST)).toBe(ODD_NOTE);
     expect(describeOrder(STEPS[6].points, [...STEPS[6].points].reverse())).toBe("Check the holes in reverse order, H14 down to H1.");
   });
@@ -130,7 +130,7 @@ test("one click builds the draft and shows the suggestions like c2", async ({ pa
   await expect(rows).toHaveCount(4);
   await expect(table.locator('tr[data-step="7"][data-type="order"]')).toContainText(ODD_NOTE);
   await expect(table.locator('tr[data-step="9"]').getByTestId("suggestion-warning")).toContainText("Check it is realistic.");
-  await expect(table.locator('tr[data-step="7"][data-type="time"]')).toContainText("not set → 02:40");
+  await expect(table.locator('tr[data-step="7"][data-type="time"]')).toContainText("14:00 → 02:40");
   await expect(page.getByTestId("no-change-row")).toContainText("1–4, 6, 8, 10–12");
   await expect(rows.locator('[data-testid="suggestion-status"]')).toHaveText(["Proposed", "Proposed", "Proposed", "Proposed"]);
   // Clicking a step in the strip selects its row.
@@ -144,7 +144,7 @@ test("one click builds the draft and shows the suggestions like c2", async ({ pa
   expect(rev.suggestions.map((s: { step: number; type: string }) => `${s.step}:${s.type}`).sort()).toEqual(["5:time", "7:order", "7:time", "9:time"]);
   expect(rev.suggestions.every((s: { why: string; sourceSessionIds: string[] }) => s.why && s.sourceSessionIds.length >= 5)).toBe(true);
   expect(rev.clips).toHaveLength(12);
-  expect(rev.steps[8].targetCtSeconds).toBeNull();
+  expect(rev.steps[8].targetCtSeconds).toBe(540); // revision A's placeholder
   expect(rev.steps[6].todo).toBe(STEPS[6].todo);
 
   // A second click opens the same review rather than building another.
@@ -169,7 +169,7 @@ test("reject step 9, edit step 5, accept step 7: the draft holds only those, and
   await r5.getByLabel("New CT for step 5 (mm:ss)").fill("00:37");
   await r5.getByRole("button", { name: "Save the edit" }).click();
   await expect(r5).toHaveAttribute("data-status", "edited");
-  await expect(r5).toContainText("not set → 00:37");
+  await expect(r5).toContainText("02:00 → 00:37");
 
   // Accept both step 7 suggestions.
   await table.locator('tr[data-step="7"][data-type="time"]').getByRole("button", { name: "Accept" }).click();
@@ -198,7 +198,7 @@ test("reject step 9, edit step 5, accept step 7: the draft holds only those, and
   expect((await request.post(`/api/sop/suggestions/${s9.id}`, { data: { action: "accept" } })).ok()).toBeTruthy();
   expect((await getRevision(request)).steps[8].targetCtSeconds).toBe(150);
   expect((await request.post(`/api/sop/suggestions/${s9.id}`, { data: { action: "reject" } })).ok()).toBeTruthy();
-  expect((await getRevision(request)).steps[8].targetCtSeconds).toBeNull();
+  expect((await getRevision(request)).steps[8].targetCtSeconds).toBe(540); // back to the Active value
 
   const { audit } = await (await request.get("/api/sop/revisions")).json();
   const mine = audit.filter((a: { revisionId: string }) => a.revisionId === revisionId);

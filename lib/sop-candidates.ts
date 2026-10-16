@@ -98,14 +98,14 @@ export interface CandidateResult {
 }
 
 /**
- * Steps where the checks are faster than the reference (the Active target, or the station median when no
- * target is set) by at least the margin in percent AND seconds, in at least the share of the checks.
+ * Steps where the checks are faster than the station median of real checks by at least the margin in percent
+ * AND seconds, in at least the share of the checks. Targets are not used: today's targets are placeholders.
  * Only checks with the step correct on the first attempt count as faster.
  */
-export function fasterSteps(checks: CheckRow[], targets: (number | null)[], stationStepMedians: (number | null)[], s: CandidateSettings = CANDIDATE_SETTINGS): number[] {
+export function fasterSteps(checks: CheckRow[], stationStepMedians: (number | null)[], s: CandidateSettings = CANDIDATE_SETTINGS): number[] {
   const out: number[] = [];
   for (let i = 0; i < 12; i++) {
-    const ref = targets[i] ?? stationStepMedians[i];
+    const ref = stationStepMedians[i];
     if (ref === null || ref === undefined || !checks.length) continue;
     const faster = checks.filter((c) => {
       const t = c.stepSeconds[i];
@@ -120,9 +120,9 @@ const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 /**
  * `sessions`: completed checks at one station. Sample sessions are dropped here whatever the caller passes,
- * so they never make or join a candidate. `targets`: the Active revision's step targets (null: not set).
+ * so they never make or join a candidate. `targets` is kept for callers but not used to judge steps.
  */
-export function findCandidates(sessions: StatSession[], targets: (number | null)[], s: CandidateSettings = CANDIDATE_SETTINGS): CandidateResult {
+export function findCandidates(sessions: StatSession[], _targets?: (number | null)[], s: CandidateSettings = CANDIDATE_SETTINGS): CandidateResult {
   const rows = checkRows(sessions.filter((x) => !x.isSample));
   const timed = rows.filter((r) => r.checkSeconds !== null);
   const stationMedian = percentile(timed.map((r) => r.checkSeconds as number), 0.5);
@@ -156,7 +156,7 @@ export function findCandidates(sessions: StatSession[], targets: (number | null)
         medianSeconds: Math.round(median),
         fasterPercent: Math.round(((stationMedian - median) / stationMedian) * 100),
         firstTimeCorrect: Math.round(ftc),
-        fasterSteps: fasterSteps(streak, targets, stationStepMedians, s),
+        fasterSteps: fasterSteps(streak, stationStepMedians, s),
       });
     }
   }

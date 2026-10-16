@@ -45,10 +45,10 @@ test.describe("candidates (no browser)", () => {
     expect(findCandidates(sessions.filter((s) => !s.isSample), NO_TARGETS)).toEqual(r);
   });
 
-  test("with a target set, a faster step is judged against the target", () => {
+  test("targets are not used: faster steps are judged against the station median only", () => {
     const targets = [...NO_TARGETS];
-    targets[4] = 25; // step 5 target 00:25: A's 26 s is not faster
-    expect(findCandidates(sessions, targets).candidates[0].fasterSteps).toEqual([7, 9]);
+    targets[4] = 25; // a step 5 target of 00:25 would make A's 35 s not faster; it is ignored
+    expect(findCandidates(sessions, targets).candidates[0].fasterSteps).toEqual([5, 7, 9]);
   });
 });
 

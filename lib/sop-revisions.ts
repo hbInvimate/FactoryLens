@@ -34,8 +34,14 @@ export interface SopRevisionText {
 
 export const EDITABLE_FIELDS = ["todo", "correct", "mistake", "rule", "spoken", "referenceNote", "targetCtSeconds"] as const;
 
+/**
+ * Placeholder target CTs of revision A, step 1 first: 45:00 for the whole check. drizzle/0008 writes the same
+ * into the database. Placeholders: the suggestions never judge against them, only against the station median.
+ */
+export const PLACEHOLDER_TARGET_SECONDS = [30, 90, 60, 90, 120, 90, 840, 420, 540, 240, 120, 60];
+
 export function codeStepText(s: SopStep): StepText {
-  return { todo: s.todo, correct: s.correct, mistake: s.mistake, rule: s.rule, spoken: s.spoken, referenceNote: null, targetCtSeconds: null };
+  return { todo: s.todo, correct: s.correct, mistake: s.mistake, rule: s.rule, spoken: s.spoken, referenceNote: null, targetCtSeconds: PLACEHOLDER_TARGET_SECONDS[s.n - 1] ?? null };
 }
 
 /** The fallback: revision A exactly as lib/sop.ts has it. */

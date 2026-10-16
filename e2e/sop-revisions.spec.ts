@@ -9,7 +9,7 @@ import type { AnyDb, Conn } from "../db/client";
 import * as schema from "../db/schema";
 import { activeRevision, revisionIdOf, runnableRevisionId, runnableRevisions } from "../lib/server/sop";
 import { STEPS } from "../lib/sop";
-import { CODE_REVISION, REV_A_ID, checkTargetSeconds, sopName, stepOf } from "../lib/sop-revisions";
+import { CODE_REVISION, PLACEHOLDER_TARGET_SECONDS, REV_A_ID, checkTargetSeconds, sopName, stepOf } from "../lib/sop-revisions";
 import { startCheck } from "./helpers";
 
 const DRIZZLE = path.join(process.cwd(), "drizzle");
@@ -34,12 +34,12 @@ test.describe("revisions in the database (no browser)", () => {
       const r = rev.steps[i];
       expect([r.todo, r.correct, r.mistake, r.rule, r.spoken]).toEqual([s.todo, s.correct, s.mistake, s.rule, s.spoken]);
       expect(r.referenceNote).toBeNull();
-      expect(r.targetCtSeconds).toBeNull();
+      expect(r.targetCtSeconds).toBe(PLACEHOLDER_TARGET_SECONDS[i]);
     });
     // The merged step keeps names and check points from code.
     expect(stepOf(rev, 7)).toMatchObject({ name: STEPS[6].name, points: STEPS[6].points, spoken: STEPS[6].spoken });
-    // No targets in revision A, so the check screen still says "[set by plant]".
-    expect(checkTargetSeconds(rev)).toBeNull();
+    // Placeholder targets (drizzle/0008): 45:00 for the whole check.
+    expect(checkTargetSeconds(rev)).toBe(45 * 60);
     expect(sopName(rev.label)).toBe("First-off check, rev A");
     const { rows } = await pg.query<{ n: number }>(`select count(*)::int as n from sop_audit where action = 'seed_baseline'`);
     const n = rows[0].n;

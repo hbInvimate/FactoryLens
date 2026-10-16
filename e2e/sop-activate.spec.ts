@@ -42,8 +42,8 @@ test("make the draft the primary way: the confirm box lists only the accepted ch
   const box = page.getByRole("dialog");
   const list = box.getByTestId("primary-changes");
   await expect(list.locator("li")).toHaveCount(2); // 5 and 7; the rejected step 9 is not there
-  await expect(list.locator('li[data-step="5"]')).toContainText("CT not set → 00:37");
-  await expect(list.locator('li[data-step="7"]')).toContainText("CT not set → 02:40");
+  await expect(list.locator('li[data-step="5"]')).toContainText("CT 02:00 → 00:37");
+  await expect(list.locator('li[data-step="7"]')).toContainText("CT 14:00 → 02:40");
   await expect(list.locator('li[data-step="7"]')).toContainText(ODD);
   const confirm = box.getByRole("button", { name: "Confirm and make primary" });
   await expect(confirm).toBeDisabled();
