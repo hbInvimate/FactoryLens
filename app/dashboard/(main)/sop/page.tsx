@@ -10,6 +10,7 @@ import { Table, Td, Th } from "@/components/ds";
 import { Cautions, RevisionChip, SampleChip, StatusChip } from "@/components/sop/parts";
 import { CandidatesCard, TrendCard } from "@/components/sop/TrendAndCandidates";
 import { RollbackButton } from "@/components/sop/RollbackButton";
+import { DiscardDraftButton } from "@/components/sop/DiscardDraftButton";
 import { checkRows, findCandidates } from "@/lib/sop-candidates";
 import { LocalTime } from "@/components/LocalTime";
 import { activeCheckMs, reduce } from "@/lib/check/reducer";
@@ -120,10 +121,11 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
                   {r.status === "draft" ? r.createdBy ?? "" : <LocalTime iso={r.activatedAt ?? r.createdAt} />}
                 </span>
                 {r.status === "draft" && (
-                  <span className="col-span-3">
+                  <span className="col-span-3 flex flex-wrap items-center gap-4">
                     <Link href={`/dashboard/sop/review/${encodeURIComponent(r.id)}`} className="text-[14px] font-semibold text-primary-ink hover:underline">
                       Open the review of revision {r.label}
                     </Link>
+                    <DiscardDraftButton revisionId={r.id} label={r.label} />
                   </span>
                 )}
                 {r.status === "retired" && (

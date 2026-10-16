@@ -8,6 +8,7 @@ import { Gate } from "@/components/auth/Gate";
 import { Card, Page, Skeleton } from "@/components/dashboard/light";
 import { CheckAgainCard } from "@/components/sop/CheckAgainCard";
 import { MakePrimary } from "@/components/sop/MakePrimary";
+import { DiscardDraftButton } from "@/components/sop/DiscardDraftButton";
 import { ReviewBoard, type SuggestionView } from "@/components/sop/ReviewBoard";
 import { cx } from "@/components/ui";
 import { activeRevision } from "@/lib/server/sop";
@@ -76,6 +77,7 @@ async function Body({ params }: { params: PageProps<"/dashboard/sop/review/[revi
                 activeLabel={active.label}
                 changes={changes.map((c) => ({ ...c, stepName: STEPS[c.step - 1].name }))}
               />
+              <DiscardDraftButton revisionId={rev.id} label={rev.label} after="/dashboard/sop" />
             </CheckAgainCard>
           ) : (
             <Card className="px-6 py-5 text-[15px] text-ink-2">

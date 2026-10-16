@@ -5,6 +5,10 @@ import { REV_A_ID } from "../lib/sop-revisions";
 import { signInAs } from "./auth-helpers";
 import { BASELINE_WHO, candidateDataset, timedActions, type TimedSpec } from "./sopFixtures";
 
+test.describe.configure({ mode: "serial" });
+
+let fastCheck = "";
+
 test("a failed Confirm, then Retry, activates exactly one revision", async ({ page, request, browser }) => {
   const station = `Laser cell U · FX-${Math.random().toString(36).slice(2, 7)}`;
   const data = candidateDataset();
@@ -23,6 +27,7 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
   await signInAs(tp, "technician", "/signin");
   await expect(tp).toHaveURL(/localhost:\d+\/$/);
   const fastId = await save(tctx.request, data.find((x) => x.key === "A5")!.spec);
+  fastCheck = fastId;
   await tctx.close();
 
   // The dashboard's Update SOP button, then the last sessions: real only.
@@ -71,4 +76,49 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
 
   // Back to revision A for anything after this.
   expect((await request.post(`/api/sop/revisions/${REV_A_ID}/activate`, { data: { kind: "rollback", reason: "End of the Update SOP test" } })).ok()).toBeTruthy();
+});
+
+test("Discard draft: kept as Discarded, audited, and never blocks Use this way", async ({ page, request }) => {
+  const propose = () => request.post("/api/sop/update/propose", { data: { sessionId: fastCheck } });
+  // An open draft (a manual CT decision) blocks Use this way...
+  const decided = await request.post("/api/sop/decisions", {
+    data: { step: 7, newCtSeconds: 170, confirmed: true, reason: "Discard test", evidenceSessionIds: [fastCheck], overrideReason: "Only one check" },
+  });
+  expect(decided.ok(), await decided.text()).toBeTruthy();
+  const draft = await decided.json();
+  const blocked = await propose();
+  expect(blocked.status()).toBe(400);
+  expect((await blocked.json()).error).toContain("still open in SOP history");
+
+  // ...until it is discarded from SOP history.
+  await page.goto("/dashboard/sop");
+  const row = page.getByTestId("revisions").locator(`li[data-revision="${draft.label}"]`);
+  await row.getByRole("button", { name: "Discard draft" }).click();
+  await row.getByRole("button", { name: `Discard draft ${draft.label}` }).click();
+  await expect(row).toHaveAttribute("data-status", "discarded");
+  await expect(row).toContainText("Discarded");
+
+  const next = await propose();
+  expect(next.ok(), await next.text()).toBeTruthy();
+  const proposal = await next.json();
+  expect(proposal.revisionId).toBeTruthy();
+
+  // Discard draft on the review page too.
+  await page.goto(`/dashboard/sop/review/${encodeURIComponent(proposal.revisionId)}`);
+  await page.getByRole("button", { name: "Discard draft" }).click();
+  await page.getByRole("button", { name: `Discard draft ${proposal.label}` }).click();
+  await page.waitForURL(/\/dashboard\/sop$/);
+  await expect(page.getByTestId("revisions").locator(`li[data-revision="${proposal.label}"]`)).toHaveAttribute("data-status", "discarded");
+
+  const { revisions, audit } = await (await request.get("/api/sop/revisions")).json();
+  expect(revisions.filter((r: { status: string }) => r.status === "active").map((r: { id: string }) => r.id)).toEqual([REV_A_ID]); // nothing activated
+  for (const id of [draft.revisionId, proposal.revisionId]) {
+    const entry = audit.find((a: { action: string; revisionId: string }) => a.action === "discarded" && a.revisionId === id);
+    expect(entry).toMatchObject({ actorName: "Test Admin" });
+    expect(entry.at).toBeTruthy();
+  }
+  // A discarded draft never runs and never blocks.
+  const again = await propose();
+  expect(again.ok(), await again.text()).toBeTruthy();
+  await request.post(`/api/sop/update/${(await again.json()).revisionId}/discard`);
 });
