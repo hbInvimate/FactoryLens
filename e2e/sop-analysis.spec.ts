@@ -144,8 +144,8 @@ test("the CT decision: required fields, real evidence only, the minimum and its 
 test("the pages: overview numbers, the wizard, sample sessions cannot be ticked, saving a draft", async ({ page }) => {
   const q = `station=${encodeURIComponent(STATION)}&range=all&shift=all`;
   await page.goto(`/dashboard/sop?${q}&sample=0`);
-  await expect(page.getByRole("heading", { name: "SOP management" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "SOP management" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "SOP history" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "SOP history" })).toHaveAttribute("aria-current", "page");
   const row7 = page.getByTestId("sop-steps").locator('tr[data-step="7"]');
   await expect(row7.getByTestId("median")).toHaveText("02:25");
   await expect(row7.getByTestId("sessions")).toHaveText("6");
@@ -154,7 +154,8 @@ test("the pages: overview numbers, the wizard, sample sessions cannot be ticked,
   await expect(page.getByTestId("sop-cautions")).toContainText("Times are button taps, not measured process times.");
   await expect(page.getByTestId("sample-chip")).toHaveCount(0);
 
-  await row7.getByRole("link", { name: "Propose a better way" }).click();
+  await expect(page.getByRole("link", { name: "Propose a better way" })).toHaveCount(0); // removed; the manual wizard stays by URL
+  await page.goto(`/dashboard/sop/new?step=7&${q}&sample=0`);
   await expect(page).toHaveURL(/\/dashboard\/sop\/new\?step=7/);
   // The overview stays mounted, hidden, after a client navigation (Next.js keeps it for Back): start clean.
   await page.reload();
@@ -210,8 +211,8 @@ test("access: a Quality Technician gets the access message and 403; signed out g
   const ep = await eng.newPage();
   await signInAs(ep, "engineer", "/dashboard/signin");
   await expect(ep).toHaveURL(/\/dashboard$/);
-  await ep.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "SOP management" }).click();
-  await expect(ep.getByRole("heading", { name: "SOP management" })).toBeVisible();
+  await ep.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "SOP history" }).click();
+  await expect(ep.getByRole("heading", { name: "SOP history" })).toBeVisible();
   expect((await eng.request.get("/api/sop/revisions")).status()).toBe(200);
   await eng.close();
 });

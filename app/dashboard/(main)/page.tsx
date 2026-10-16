@@ -6,6 +6,7 @@ import { isTestMode } from "@/components/TestModeBanner";
 import { Block, CategoriesBlock, CheckTimeBlock, ConformanceBlock, DeviationsBlock } from "@/components/dashboard/blocks";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Page, Skeleton, StatCard } from "@/components/dashboard/light";
+import { ButtonLink } from "@/components/ds";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
 import { IconAlert, IconChecklist, IconClock, IconPause, IconTarget, IconUsers } from "@/components/ds/icons";
 import { HOLD_WARN_MINUTES } from "@/lib/config";
@@ -100,6 +101,9 @@ async function Body({ searchParams }: { searchParams: SP }) {
         <h1 className="text-[30px] font-bold">Dashboard</h1>
         <Filters stations={stations} params={params} />
         <span className="flex-1" />
+        <ButtonLink variant="primary" href={`/dashboard/update-sop?station=${encodeURIComponent(params.station)}`} data-testid="update-sop-button">
+          Update SOP
+        </ButtonLink>
         {params.sample && (
           <span data-testid="sample-chip" className="rounded-full border border-amber-line bg-amber-soft px-4 py-1.5 text-[14px] font-bold tracking-wide text-amber-ink">
             SAMPLE DATA · {s.real} real, {s.sample} sample {s.real + s.sample === 1 ? "session" : "sessions"}

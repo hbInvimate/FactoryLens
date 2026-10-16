@@ -6,7 +6,7 @@ import { Button } from "@/components/ds";
 
 const SMALL = "min-h-[44px]! min-w-0! px-3! text-[14px]! shadow-none";
 
-export function RollbackButton({ revisionId, label }: { revisionId: string; label: string }) {
+export function RollbackButton({ revisionId, label, cta, primary }: { revisionId: string; label: string; /** The button text. */ cta?: string; primary?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -33,8 +33,8 @@ export function RollbackButton({ revisionId, label }: { revisionId: string; labe
   };
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)} className={SMALL}>
-        Make this revision active again
+      <Button variant={primary ? "primary" : "secondary"} onClick={() => setOpen(true)} className={SMALL}>
+        {cta ?? "Make this revision active again"}
       </Button>
     );
   }

@@ -6,20 +6,24 @@ const STATUS: Record<RevisionStatus, { tone: "blue" | "green" | "gray"; text: st
   draft: { tone: "blue", text: "Draft" },
   active: { tone: "green", text: "Active" },
   retired: { tone: "gray", text: "Retired" },
+  discarded: { tone: "gray", text: "Discarded" },
 };
+
+/** While a Confirm is being saved the status is briefly "confirming". */
+const look = (status: string) => STATUS[status as RevisionStatus] ?? { tone: "gray" as const, text: "Saving" };
 
 export function RevisionChip({ label, status }: { label: string; status: RevisionStatus }) {
   return (
-    <Chip tone={STATUS[status].tone} size="sm">
-      Rev {label} · {STATUS[status].text}
+    <Chip tone={look(status).tone} size="sm">
+      Rev {label} · {look(status).text}
     </Chip>
   );
 }
 
 export function StatusChip({ status }: { status: RevisionStatus }) {
   return (
-    <Chip tone={STATUS[status].tone} size="sm">
-      {STATUS[status].text}
+    <Chip tone={look(status).tone} size="sm">
+      {look(status).text}
     </Chip>
   );
 }

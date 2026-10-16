@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 3100;
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1600, height: 900 } };
 const admin = { ...desktop, storageState: "e2e/.auth/admin.json" };
-const SOP_DRAFT_SPECS = [/sop-analysis\.spec\.ts/, /sop-review\.spec\.ts/, /sop-activate\.spec\.ts/];
+const SOP_DRAFT_SPECS = [/sop-analysis\.spec\.ts/, /sop-review\.spec\.ts/, /sop-activate\.spec\.ts/, /sop-update\.spec\.ts/];
 
 // Runs against a production build (`npm run build` first) with the in-memory store,
 // so the tests never touch the database in DATABASE_URL.
@@ -29,6 +29,7 @@ export default defineConfig({
     { name: "sop-review", dependencies: ["sop-analysis"], testMatch: /sop-review\.spec\.ts/, use: { ...admin } },
     // Last: it changes the Active revision that every new check uses.
     { name: "sop-activate", dependencies: ["sop-review"], testMatch: /sop-activate\.spec\.ts/, use: { ...admin } },
+    { name: "sop-update", dependencies: ["sop-activate"], testMatch: /sop-update\.spec\.ts/, use: { ...admin } },
   ],
   webServer: {
     command: `npx next start -p ${PORT}`,

@@ -6,14 +6,14 @@ import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { Card, Page, Skeleton } from "@/components/dashboard/light";
 import { Filters } from "@/components/dashboard/Filters";
-import { buttonClass, Table, Td, Th } from "@/components/ds";
+import { Table, Td, Th } from "@/components/ds";
 import { Cautions, RevisionChip, SampleChip, StatusChip } from "@/components/sop/parts";
 import { CandidatesCard, TrendCard } from "@/components/sop/TrendAndCandidates";
 import { RollbackButton } from "@/components/sop/RollbackButton";
 import { checkRows, findCandidates } from "@/lib/sop-candidates";
 import { LocalTime } from "@/components/LocalTime";
 import { activeCheckMs, reduce } from "@/lib/check/reducer";
-import { dashView, viewQuery } from "@/lib/server/dashView";
+import { dashView } from "@/lib/server/dashView";
 import { NotConfigured } from "@/lib/server/repo";
 import { activeRevision } from "@/lib/server/sop";
 import { completedSessions, medianCheckSeconds, revisions } from "@/lib/server/sopData";
@@ -21,7 +21,7 @@ import { STEPS } from "@/lib/sop";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { mmss, percentile, stepStats } from "@/lib/sop-stats";
 
-export const metadata = { title: "FactoryLens AI: SOP management" };
+export const metadata = { title: "FactoryLens AI: SOP history" };
 
 async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop">["searchParams"] }) {
   const sp = await searchParams;
@@ -59,12 +59,11 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
   }));
   const activeSummary = revs.find((r) => r.id === active.id);
   const sample = sessions.filter((s) => s.isSample).length;
-  const q = viewQuery(params);
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <h1 className="text-[30px] font-bold">SOP management</h1>
+        <h1 className="text-[30px] font-bold">SOP history</h1>
         <Filters stations={stations} params={params} base="/dashboard/sop" />
         <span className="flex-1" />
         {params.sample && <SampleChip real={sessions.length - sample} sample={sample} />}
@@ -160,9 +159,6 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
               <Th>Median actual</Th>
               <Th>Sessions</Th>
               <Th>First-time correct</Th>
-              <Th>
-                <span className="sr-only">Propose</span>
-              </Th>
             </tr>
           </thead>
           <tbody>
@@ -174,11 +170,6 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
                 <Td data-testid="median">{s.medianSeconds === null ? "—" : mmss(s.medianSeconds)}</Td>
                 <Td data-testid="sessions">{s.sessions}</Td>
                 <Td data-testid="ftc">{s.firstTimeCorrect === null ? "—" : `${s.firstTimeCorrect}%`}</Td>
-                <Td className="py-1.5 text-right">
-                  <Link href={`/dashboard/sop/new?step=${s.step}&${q}`} className={buttonClass("secondary", "min-h-[48px] text-[15px]")}>
-                    Propose a better way
-                  </Link>
-                </Td>
               </tr>
             ))}
           </tbody>

@@ -50,11 +50,11 @@ A lodged issue puts the session (if the check stops) or the cell (if it continue
 
 ## SOP management
 
-For the Quality Engineer and admin, at `/dashboard/sop`. The SOP has numbered revisions (A, B, C). Exactly one is Active, and new checks use it. Revision A is the SOP in `lib/sop.ts`, copied once into the database and never edited. A revision may change each step's text and target CT. It never changes the 12 steps or the check points.
+For the Quality Engineer and admin. **Update SOP** (`/dashboard/update-sop`, also the green button on the dashboard) lists the last finished real checks done correctly first time. "Use this way" on one runs the comparison below on that check, then shows what would change ("Not changed yet"). "Confirm and update SOP" applies all of it as the new Active revision, for new checks only; "Discard" changes nothing. Confirm is safe to retry: only one revision is ever activated. **SOP history** (`/dashboard/sop`) has the rest: The SOP has numbered revisions (A, B, C). Exactly one is Active, and new checks use it. Revision A is the SOP in `lib/sop.ts`, copied once into the database and never edited. A revision may change each step's text and target CT. It never changes the 12 steps or the check points.
 
 - **See.** The check CT trend, and "Ways of working worth a look": a Quality Technician whose last 5 completed real checks were all at least 5% faster than the station median, with first-time correct not below the station's. Sample sessions never count.
 - **Review this way.** One click builds Draft B from the Active revision and that technician's checks. It suggests a new step CT (their median, rounded up to 5 seconds) where they were at least 5% and 3 s faster in at least 80% of their checks. It suggests an order note for "What to do" where they confirm the points in another order. Accept, edit or reject each suggestion; nothing applies until accepted.
-- **Decide manually.** "Propose a better way" on a step: tick real evidence and decide the CT yourself.
+- **Decide manually.** `/dashboard/sop/new?step=N`: tick real evidence and decide the CT yourself.
 - **Check again** (optional): tests the draft against the other completed real checks in the last 30 days. It never blocks.
 - **Make this the primary way.** A confirm box lists the accepted changes. Write a reason, then click "Confirm and make primary". New checks use the new revision; running checks finish on the revision they started with. It is blocked only when any evidence is a sample session.
 - **Roll back.** "Make this revision active again" on an older revision, with a reason. The other revision is retired; nothing is deleted.

@@ -10,7 +10,8 @@ export const SOP_SCOPE = "First-off check, B-pillar outer";
 export const REV_A_ID = "sop-rev-A";
 export const REV_A_LABEL = "A";
 
-export type RevisionStatus = "draft" | "active" | "retired";
+/** discarded: a proposal from Update SOP that was not confirmed. Kept for the record; it never runs. */
+export type RevisionStatus = "draft" | "active" | "retired" | "discarded";
 
 /** The fields a revision may change for one step. */
 export interface StepText {

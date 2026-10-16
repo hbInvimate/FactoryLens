@@ -2,13 +2,15 @@
 // The sidebar items. The active one follows the page: SOP management for /dashboard/sop and below.
 import { usePathname } from "next/navigation";
 import { NavItem } from ".";
-import { IconChart, IconChecklist, IconHistory, IconPlay } from "./icons";
+import { IconChart, IconHistory, IconPlay } from "./icons";
 
+const under = (p: string, base: string) => p === base || p.startsWith(`${base}/`);
+
+/** The Quality Engineer's pages. The check app's pages are not here: they are for Quality Technicians. */
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: <IconChart />, match: (p: string) => p === "/dashboard" || (p.startsWith("/dashboard/") && !p.startsWith("/dashboard/sop")) },
-  { href: "/dashboard/sop", label: "SOP management", icon: <IconChecklist />, match: (p: string) => p === "/dashboard/sop" || p.startsWith("/dashboard/sop/") },
-  { href: "/sessions", label: "Session history", icon: <IconHistory />, match: (p: string) => p.startsWith("/sessions") },
-  { href: "/", label: "Start a check", icon: <IconPlay />, match: (p: string) => p === "/" },
+  { href: "/dashboard", label: "Dashboard", icon: <IconChart />, match: (p: string) => under(p, "/dashboard") && !under(p, "/dashboard/sop") && !under(p, "/dashboard/update-sop") },
+  { href: "/dashboard/update-sop", label: "Update SOP", icon: <IconPlay />, match: (p: string) => under(p, "/dashboard/update-sop") },
+  { href: "/dashboard/sop", label: "SOP history", icon: <IconHistory />, match: (p: string) => under(p, "/dashboard/sop") },
 ];
 
 /** The items for a path. With no path (before the URL is known), none is marked active. */
