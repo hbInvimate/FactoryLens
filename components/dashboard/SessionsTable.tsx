@@ -5,7 +5,7 @@ import { ENDED_WITHOUT_CHECK, type SessionStatus } from "@/lib/check/types";
 import { useNow } from "@/lib/client/hooks";
 import { conformanceLabel, isOnHold, waitTone } from "@/lib/dashboard/metrics";
 import { fmtClock } from "@/lib/format";
-import { Table, Td, Th } from "../ds";
+import { Chip, Table, Td, Th } from "../ds";
 import { cx } from "../ui";
 import { LocalTime } from "../LocalTime";
 import { StatusPill } from "./light";
@@ -28,6 +28,8 @@ export interface TableRow {
   discrepancies: number;
   activeSeconds: number | null;
   hold: TableHold | null;
+  /** The SOP revision label: A, B... */
+  revision: string;
 }
 
 function timeText(r: TableRow): string {
@@ -107,6 +109,11 @@ export function SessionsTable({ rows, query = "" }: { rows: TableRow[]; /** The 
                 <Link href={`/dashboard/${r.id}${query ? `?${query}` : ""}`} className="inline-flex min-h-[56px] items-center font-semibold text-primary-ink hover:underline" onClick={(e) => e.stopPropagation()}>
                   <LocalTime iso={r.startedAt} />
                 </Link>
+                <span className="ml-2 align-middle" data-testid="row-revision">
+                  <Chip tone="gray" size="sm">
+                    Rev {r.revision}
+                  </Chip>
+                </span>
               </Td>
               <Td className="py-4">{r.operator}</Td>
               <Td className="max-w-[360px] py-3.5">

@@ -127,7 +127,7 @@ export interface ReviewData {
   clips: (typeof t.sopClipRefs.$inferSelect)[];
   steps: (typeof t.sopStepRevisions.$inferSelect)[];
   /** The check the clip references point at (the candidate's latest). */
-  latest: { sessionId: string; startedAt: string } | null;
+  latest: { sessionId: string; startedAt: string; station: string } | null;
 }
 
 export async function reviewData(revisionId: string): Promise<ReviewData | null> {
@@ -141,8 +141,8 @@ export async function reviewData(revisionId: string): Promise<ReviewData | null>
   ]);
   let latest: ReviewData["latest"] = null;
   if (clips[0]) {
-    const [s] = await db.select({ startedAt: t.sessions.startedAt }).from(t.sessions).where(eq(t.sessions.id, clips[0].sessionId));
-    if (s) latest = { sessionId: clips[0].sessionId, startedAt: s.startedAt.toISOString() };
+    const [s] = await db.select({ startedAt: t.sessions.startedAt, station: t.sessions.station, fixture: t.sessions.fixture }).from(t.sessions).where(eq(t.sessions.id, clips[0].sessionId));
+    if (s) latest = { sessionId: clips[0].sessionId, startedAt: s.startedAt.toISOString(), station: s.station ?? s.fixture.trim() };
   }
   return { revision, suggestions, clips, steps, latest };
 }

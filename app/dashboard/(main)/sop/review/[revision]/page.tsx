@@ -6,9 +6,12 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { Card, Page, Skeleton } from "@/components/dashboard/light";
-import { Button } from "@/components/ds";
+import { CheckAgainCard } from "@/components/sop/CheckAgainCard";
+import { MakePrimary } from "@/components/sop/MakePrimary";
 import { ReviewBoard, type SuggestionView } from "@/components/sop/ReviewBoard";
 import { cx } from "@/components/ui";
+import { activeRevision } from "@/lib/server/sop";
+import { latestCheckAgain, pendingChanges } from "@/lib/server/sopActivate";
 import { reviewData } from "@/lib/server/sopReview";
 import { STEPS } from "@/lib/sop";
 
@@ -22,6 +25,11 @@ async function Body({ params }: { params: PageProps<"/dashboard/sop/review/[revi
   const data = await reviewData(revision);
   if (!data) notFound();
   const { revision: rev, suggestions, clips, latest } = data;
+  const [changes, check, active] = await Promise.all([
+    rev.status === "draft" ? pendingChanges(rev.id) : [],
+    latestCheckAgain(rev.id),
+    activeRevision(),
+  ]);
   const n = rev.sourceSessionIds?.length ?? 0;
   const views: SuggestionView[] = suggestions.map((s) => ({
     id: s.id, step: s.step, stepName: STEPS[s.step - 1].name, type: s.type as SuggestionView["type"], oldValue: s.oldValue, proposedValue: s.proposedValue,
@@ -60,17 +68,20 @@ async function Body({ params }: { params: PageProps<"/dashboard/sop/review/[revi
       <div className="grid gap-4 xl:grid-cols-[2.4fr_1fr]">
         <ReviewBoard suggestions={views} stepNames={STEPS.map((s) => s.name)} clips={clips} latest={latest} />
         <div className="flex flex-col gap-4">
-          <Card className="flex flex-col gap-2 px-6 py-5" testId="check-again">
-            <h2 className="text-[20px] font-semibold">Check again</h2>
-            <p className="text-[14px] text-muted">Tests the draft against the other completed real checks in the last 30 days.</p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary" disabled title="Check again comes in the next part">
-                Check again
-              </Button>
-            </div>
-            <p className="text-[13px] text-muted">Check again and activation come in the next part. Your accepted, edited and rejected suggestions are saved.</p>
-          </Card>
-          <section role="note" data-testid="sop-cautions" className="flex flex-col gap-1.5 rounded-card border border-amber-line bg-amber-soft px-5 py-4 text-amber-ink">
+          {rev.status === "draft" ? (
+            <CheckAgainCard revisionId={rev.id} station={latest?.station ?? null} latest={check}>
+              <MakePrimary
+                revisionId={rev.id}
+                label={rev.label}
+                activeLabel={active.label}
+                changes={changes.map((c) => ({ ...c, stepName: STEPS[c.step - 1].name }))}
+              />
+            </CheckAgainCard>
+          ) : (
+            <Card className="px-6 py-5 text-[15px] text-ink-2">
+              Revision {rev.label} is {rev.status}. It can no longer be changed. <Link href="/dashboard/sop" className="font-semibold text-primary-ink underline">Back to SOP management</Link>
+            </Card>
+          )}          <section role="note" data-testid="sop-cautions" className="flex flex-col gap-1.5 rounded-card border border-amber-line bg-amber-soft px-5 py-4 text-amber-ink">
             <h2 className="text-[17px] font-semibold">Before you confirm</h2>
             <p className="text-[15px]">
               Times are button taps until video and hands-free steps are switched on. A faster check can also mean a corner was cut. The app cannot tell whether

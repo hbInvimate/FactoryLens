@@ -48,6 +48,18 @@ Read-only. It reads the sessions saved in Neon and never shows measured values o
 
 A lodged issue puts the session (if the check stops) or the cell (if it continues) on hold. On the hold screen in the check app the Quality Technician records the decision made by others: **Record the decision and close the hold** → outcome (Cleared, the check continues; Part scrapped; Sent for rework or sorting; Concession approved; Check abandoned), decided by (Process engineer, Shift supervisor, Quality), a reason (required) and the time. "Cleared" resumes the check at the same step; every other outcome ends the session with that outcome. The app never decides. Waiting time turns red on the dashboard after 30 minutes (`HOLD_WARN_MINUTES`).
 
+## SOP management
+
+For the Quality Engineer and admin, at `/dashboard/sop`. The SOP has numbered revisions (A, B, C). Exactly one is Active, and new checks use it. Revision A is the SOP in `lib/sop.ts`, copied once into the database and never edited. A revision may change each step's text and target CT. It never changes the 12 steps or the check points.
+
+- **See.** The check CT trend, and "Ways of working worth a look": a Quality Technician whose last 5 completed real checks were all at least 5% faster than the station median, with first-time correct not below the station's. Sample sessions never count.
+- **Review this way.** One click builds Draft B from the Active revision and that technician's checks. It suggests a new step CT (their median, rounded up to 5 seconds) where they were at least 5% and 3 s faster in at least 80% of their checks. It suggests an order note for "What to do" where they confirm the points in another order. Accept, edit or reject each suggestion; nothing applies until accepted.
+- **Decide manually.** "Propose a better way" on a step: tick real evidence and decide the CT yourself.
+- **Check again** (optional): tests the draft against the other completed real checks in the last 30 days. It never blocks.
+- **Make this the primary way.** A confirm box lists the accepted changes. Write a reason, then click "Confirm and make primary". New checks use the new revision; running checks finish on the revision they started with. It is blocked only when any evidence is a sample session.
+- **Roll back.** "Make this revision active again" on an older revision, with a reason. The other revision is retired; nothing is deleted.
+- Quality Technicians see "SOP rev B is active. Step N changed: …" once, until they press "I have read this". Dashboard sessions show a revision chip; older sessions count as revision A.
+- Every action is written to `sop_audit`. The settings are in `lib/config.ts`. `REQUIRE_SECOND_APPROVAL` is kept for later and not enforced by this flow.
 ## Set up
 
 You need Node.js 24 (or 22.18 or later) and npm.
@@ -134,7 +146,7 @@ The order matters. The new code needs `AUTH_SECRET` and the sign-in tables, and 
 
    ```bash
    npx vercel env pull .env.local --environment=production
-   npm run db:migrate                # adds the sign-in tables and sessions.user_id
+   npm run db:migrate                # sign-in tables, sessions.user_id, the SOP revision tables (0006, 0007)
    npm run db:clear-sample           # only if sample data was seeded on this database
    ```
 

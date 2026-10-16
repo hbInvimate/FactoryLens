@@ -50,6 +50,8 @@ export interface RevisionSummary {
   createdAt: string;
   activatedAt: string | null;
   changeReason: string | null;
+  /** One-click flow: whose checks it was built from. */
+  sourceLabel: string | null;
   /** The latest CT decision per step: "Step 7: new CT 02:40". */
   changes: { step: number; previousCtSeconds: number | null; newCtSeconds: number | null; decidedBy: string; decidedAt: string; reason: string; evidenceSessionIds: string[]; evidenceOverrideReason: string | null }[];
 }
@@ -72,6 +74,7 @@ export async function revisions(c?: Conn): Promise<RevisionSummary[]> {
         createdAt: r.createdAt.toISOString(),
         activatedAt: r.activatedAt?.toISOString() ?? null,
         changeReason: r.changeReason,
+        sourceLabel: r.sourceLabel ?? null,
         changes: [...latest.values()]
           .sort((a, b) => a.step - b.step)
           .map((x) => ({

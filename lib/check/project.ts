@@ -14,6 +14,8 @@ export interface SessionRow {
   operatorLabel: string;
   /** users.id of who started it, when read from the database. Null for older sessions. */
   userId?: string | null;
+  /** The SOP revision it ran on, when read from the database. Null: revision A. */
+  sopRevisionId?: string | null;
   conformance: number | null;
   correctFirstTime: number;
   currentStep: number;

@@ -9,6 +9,7 @@ import { Filters } from "@/components/dashboard/Filters";
 import { buttonClass, Table, Td, Th } from "@/components/ds";
 import { Cautions, RevisionChip, SampleChip, StatusChip } from "@/components/sop/parts";
 import { CandidatesCard, TrendCard } from "@/components/sop/TrendAndCandidates";
+import { RollbackButton } from "@/components/sop/RollbackButton";
 import { checkRows, findCandidates } from "@/lib/sop-candidates";
 import { LocalTime } from "@/components/LocalTime";
 import { activeCheckMs, reduce } from "@/lib/check/reducer";
@@ -101,21 +102,36 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
           <ul className="flex flex-col">
             {revs.length === 0 && <li className="py-2 text-[15px] text-muted">No revisions in the database yet. The SOP in lib/sop.ts is used.</li>}
             {revs.map((r) => (
-              <li key={r.id} data-revision={r.label} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 border-t border-line py-2.5 text-[15px] first:border-t-0">
+              <li key={r.id} data-revision={r.label} data-status={r.status} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-4 gap-y-2 border-t border-line py-2.5 text-[15px] first:border-t-0">
                 <span className="flex items-center gap-2">
                   <b>Rev {r.label}</b>
                   <StatusChip status={r.status} />
                 </span>
                 <span>
-                  {r.changes.length
-                    ? r.changes.map((c) => `Step ${c.step}: new CT ${mmss(c.newCtSeconds)}`).join(" · ")
-                    : r.label === "A"
-                      ? "Baseline"
-                      : r.changeReason ?? "No changes yet"}
+                  {r.label === "A"
+                    ? "Baseline"
+                    : [
+                        r.sourceLabel ? `From checks by ${r.sourceLabel}` : null,
+                        ...r.changes.map((c) => `Step ${c.step}: new CT ${mmss(c.newCtSeconds)}`),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "No changes yet"}
                 </span>
                 <span className="text-muted">
                   {r.status === "draft" ? r.createdBy ?? "" : <LocalTime iso={r.activatedAt ?? r.createdAt} />}
                 </span>
+                {r.status === "draft" && (
+                  <span className="col-span-3">
+                    <Link href={`/dashboard/sop/review/${encodeURIComponent(r.id)}`} className="text-[14px] font-semibold text-primary-ink hover:underline">
+                      Open the review of revision {r.label}
+                    </Link>
+                  </span>
+                )}
+                {r.status === "retired" && (
+                  <span className="col-span-3">
+                    <RollbackButton revisionId={r.id} label={r.label} />
+                  </span>
+                )}
               </li>
             ))}
           </ul>

@@ -16,6 +16,7 @@ import { summary } from "@/lib/server/analytics";
 import { getRepo, NotConfigured, SEED_STATION } from "@/lib/server/repo";
 import type { DashFilter } from "@/lib/server/sqlparts";
 import { plantDay } from "@/lib/shifts";
+import { revisionLabels } from "@/lib/server/sopActivate";
 
 export const metadata = { title: "FactoryLens AI: dashboard" };
 
@@ -38,7 +39,7 @@ function plantToday(): string {
 }
 
 async function SessionsSection({ f, params }: { f: DashFilter; params: DashParams }) {
-  const { rows, total } = await getRepo().dashboard(f, { devStep: params.dev, limit: TABLE_LIMIT });
+  const [{ rows, total }, labels] = await Promise.all([getRepo().dashboard(f, { devStep: params.dev, limit: TABLE_LIMIT }), revisionLabels()]);
   return (
     <>
       {rows.length === 0 ? (
@@ -56,6 +57,8 @@ async function SessionsSection({ f, params }: { f: DashFilter; params: DashParam
             discrepancies: r.discrepancies,
             activeSeconds: r.activeSeconds,
             hold: r.hold && { ...r.hold, startedAt: r.hold.startedAt.toISOString() },
+            // Older sessions have no revision: they ran on revision A.
+            revision: (r.sopRevisionId && labels.get(r.sopRevisionId)) || "A",
           }))}
         />
       )}

@@ -3,12 +3,20 @@ import { PageBar } from "@/components/PageBar";
 import { StartForm } from "@/components/StartForm";
 import { currentUser } from "@/lib/auth/server";
 import { activeRevision } from "@/lib/server/sop";
+import { bannerFor } from "@/lib/server/sopActivate";
+import { SopBanner } from "@/components/SopBanner";
 
 /** Inside the Gate, so someone is signed in. */
 async function Start() {
   const [user, rev] = await Promise.all([currentUser(), activeRevision()]);
+  const banner = user ? await bannerFor(user.id) : null;
   // A new check starts on the Active revision (lib/sop.ts when the database has none).
-  return <StartForm operatorName={user?.name ?? ""} sop={{ id: rev.id, label: rev.label }} />;
+  return (
+    <div className="flex flex-col gap-6">
+      {banner && <SopBanner {...banner} />}
+      <StartForm operatorName={user?.name ?? ""} sop={{ id: rev.id, label: rev.label }} />
+    </div>
+  );
 }
 
 export default function Home() {
