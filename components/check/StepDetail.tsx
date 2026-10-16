@@ -1,7 +1,7 @@
 "use client";
 import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
-import { step as sopStep } from "@/lib/sop";
+import { useSopStep } from "@/lib/client/sopContext";
 import { Bars, Btn, Chip, Speaker, Warn } from "../ui";
 import { PartDrawing } from "./PartDrawing";
 import { MiniStepList } from "./StepList";
@@ -36,6 +36,7 @@ export function StepDetail({
   onSay: (text: string) => void;
   voice: boolean;
 }) {
+  const sopStep = useSopStep();
   const s = sopStep(n);
   const run = state.steps[n - 1];
   const devs = state.deviations.filter((d) => d.step === n);
@@ -90,6 +91,7 @@ export function StepDetail({
             <Section title="What to do">{s.todo}</Section>
             <Section title="What correct looks like">{s.correct}</Section>
             <Section title="Common mistakes">{s.mistake}</Section>
+            {s.referenceNote && <Section title="Reference note">{s.referenceNote}</Section>}
             <Section title="What you will hear">
               The glasses speak this line. Nothing is drawn on the lens:
               <button

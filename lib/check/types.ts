@@ -61,6 +61,8 @@ export interface SessionMeta {
   station?: string;
   operator: string;
   createdAt: number;
+  /** The SOP revision the check started on (sop_revisions.id). Older sessions have none: revision A. */
+  sopRevisionId?: string;
 }
 
 /**

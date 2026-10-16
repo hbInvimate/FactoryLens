@@ -24,6 +24,11 @@ function time(v: unknown, field: string): number {
   return v;
 }
 
+function revisionId(v: unknown): string {
+  if (typeof v !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(v)) throw new BadRequest("sopRevisionId is not a revision id");
+  return v;
+}
+
 export function parseMeta(v: unknown, id: string): SessionMeta {
   if (!v || typeof v !== "object") throw new BadRequest("meta is missing");
   const m = v as Record<string, unknown>;
@@ -36,6 +41,7 @@ export function parseMeta(v: unknown, id: string): SessionMeta {
     ...(m.station === undefined || m.station === null ? {} : { station: str(m.station, "station") }),
     operator: str(m.operator, "operator"),
     createdAt: time(m.createdAt, "createdAt"),
+    ...(m.sopRevisionId === undefined || m.sopRevisionId === null ? {} : { sopRevisionId: revisionId(m.sopRevisionId) }),
   };
 }
 

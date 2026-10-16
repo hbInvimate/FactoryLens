@@ -1,4 +1,5 @@
-import { boolean, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -31,12 +32,15 @@ export const sessions = pgTable(
     isSample: boolean("is_sample").default(false),
     /** The signed-in person who started it (users.id). Null for sessions from before sign-in and for sample data. */
     userId: text("user_id"),
+    /** The SOP revision the check ran on (sop_revisions.id). Null for older sessions: they count as revision A. */
+    sopRevisionId: text("sop_revision_id"),
     updatedAt: ts("updated_at").notNull(),
   },
   (t) => [
     index("sessions_started_idx").on(t.startedAt),
     index("sessions_station_idx").on(t.station, t.startedAt),
     index("sessions_user_idx").on(t.userId, t.startedAt),
+    index("sessions_sop_revision_idx").on(t.sopRevisionId),
   ],
 );
 
@@ -215,4 +219,100 @@ export const handoffItems = pgTable(
     reason: text("reason"),
   },
   (t) => [index("handoff_items_session_idx").on(t.sessionId)],
+);
+
+// ---------- SOP management (docs/sop-management). New tables only. ----------
+
+/**
+ * A numbered version of the SOP: A, B, C. Exactly one is Active per scope. Revision A is copied once
+ * from lib/sop.ts (drizzle/0006_sop_revisions.sql) and never edited. Nothing is ever deleted.
+ */
+export const sopRevisions = pgTable(
+  "sop_revisions",
+  {
+    id: text("id").primaryKey(),
+    label: text("label").notNull(),
+    /** draft, active or retired. */
+    status: text("status").notNull(),
+    scope: text("scope").notNull(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    activatedBy: text("activated_by"),
+    activatedAt: ts("activated_at"),
+    effectiveFrom: ts("effective_from"),
+    approvedBy: text("approved_by"),
+    approvedAt: ts("approved_at"),
+    changeReason: text("change_reason"),
+  },
+  (t) => [
+    uniqueIndex("sop_revisions_scope_label_idx").on(t.scope, t.label),
+    uniqueIndex("sop_revisions_one_active_idx").on(t.scope).where(sql`status = 'active'`),
+  ],
+);
+
+/**
+ * The text and target CT of each of the 12 steps in a revision. Only these fields may change; the step
+ * names, order and check points stay in lib/sop.ts.
+ */
+export const sopStepRevisions = pgTable(
+  "sop_step_revisions",
+  {
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    step: integer("step").notNull(),
+    todo: text("todo").notNull(),
+    correct: text("correct").notNull(),
+    mistake: text("mistake").notNull(),
+    rule: text("rule").notNull(),
+    spoken: text("spoken").notNull(),
+    referenceNote: text("reference_note"),
+    /** Target CT for the step in seconds. Null: not set (revision A, "[set by plant]"). */
+    targetCtSeconds: integer("target_ct_seconds"),
+  },
+  (t) => [primaryKey({ columns: [t.revisionId, t.step] })],
+);
+
+/** The Quality Engineer's CT decision for a step in a revision, with its evidence. */
+export const sopChangeRecords = pgTable(
+  "sop_change_records",
+  {
+    id: text("id").primaryKey(),
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    step: integer("step").notNull(),
+    previousCtSeconds: integer("previous_ct_seconds"),
+    newCtSeconds: integer("new_ct_seconds"),
+    reason: text("reason").notNull(),
+    decidedBy: text("decided_by").notNull(),
+    decidedAt: ts("decided_at").notNull(),
+    evidenceSessionIds: jsonb("evidence_session_ids").$type<string[]>().notNull(),
+    evidenceOverrideReason: text("evidence_override_reason"),
+  },
+  (t) => [index("sop_change_records_revision_idx").on(t.revisionId)],
+);
+
+/** Append-only: who did what to which revision, when and why. Never updated or deleted. */
+export const sopAudit = pgTable(
+  "sop_audit",
+  {
+    id: text("id").primaryKey(),
+    at: ts("at").notNull().defaultNow(),
+    actorId: text("actor_id"),
+    actorName: text("actor_name").notNull(),
+    action: text("action").notNull(),
+    revisionId: text("revision_id"),
+    step: integer("step"),
+    reason: text("reason"),
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+  },
+  (t) => [index("sop_audit_revision_idx").on(t.revisionId, t.at)],
+);
+
+/** A Quality Technician pressed "I have read this" for a revision. */
+export const sopAcknowledgements = pgTable(
+  "sop_acknowledgements",
+  {
+    userId: text("user_id").notNull(),
+    revisionId: text("revision_id").notNull().references(() => sopRevisions.id),
+    at: ts("at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.revisionId] })],
 );

@@ -41,6 +41,11 @@ export interface SaveOptions {
    * Quality Technician label, whatever the browser sent. An existing session keeps its owner and label.
    */
   owner?: { id: string; name: string };
+  /**
+   * The checked SOP revision for a new session (see lib/server/sop.ts runnableRevisionId). Null: counts as
+   * revision A. An existing session keeps the revision it started on.
+   */
+  sopRevisionId?: string | null;
 }
 
 export interface HoldInfo {
@@ -124,6 +129,7 @@ function metaFromRow(r: typeof t.sessions.$inferSelect): SessionMeta {
   return {
     id: r.id, part: r.part, sop: r.sop, fixture: r.fixture, operator: r.operatorLabel, createdAt: r.startedAt.getTime(),
     ...(r.station ? { station: r.station } : {}),
+    ...(r.sopRevisionId ? { sopRevisionId: r.sopRevisionId } : {}),
   };
 }
 
@@ -141,7 +147,7 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
         .values({
           id: meta.id, startedAt: new Date(meta.createdAt), status: "running", part: meta.part, sop: meta.sop,
           fixture: meta.fixture, station: stationOf(meta), operatorLabel: opts?.owner?.name ?? meta.operator, updatedAt: now,
-          isSample: opts?.sample === true, userId: opts?.owner?.id ?? null,
+          isSample: opts?.sample === true, userId: opts?.owner?.id ?? null, sopRevisionId: opts?.sopRevisionId ?? null,
         })
         .onConflictDoNothing();
       if (actions.length) {

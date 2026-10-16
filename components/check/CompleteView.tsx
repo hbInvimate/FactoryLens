@@ -5,7 +5,9 @@ import { checkPointsDone, conformance, correctFirstTime, elapsedMs, openHolds } 
 import { deviationText, fixedLine } from "@/lib/check/text";
 import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
+import { useSopRevision } from "@/lib/client/sopContext";
 import type { SyncState } from "@/lib/client/useCheckSession";
+import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Banner, Btn, Chip, Frame, TabletIcon, Tick, Tile, Warn } from "../ui";
 import { ClipDialog } from "./Dialogs";
@@ -27,6 +29,7 @@ export function CompleteView({
   onLodge: () => void;
 }) {
   const [clip, setClip] = useState<string | null>(null);
+  const target = checkTargetSeconds(useSopRevision());
   const conf = conformance(state);
   const holds = openHolds(state);
   const lodged = state.discrepancies.filter((d) => d.status !== "fixed_on_spot");
@@ -71,7 +74,7 @@ export function CompleteView({
               </span>
             </div>
             <div className="grid flex-1 grid-cols-2 gap-3">
-              <Tile label="Time" value={fmtClock(elapsedMs(state, now))} sub="Target: [set by plant]" />
+              <Tile label="Time" value={fmtClock(elapsedMs(state, now))} sub={`Target: ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
               <Tile
                 label="Deviations"
                 value={String(state.deviations.length)}

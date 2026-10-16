@@ -23,3 +23,17 @@ export const SHIFTS: { id: ShiftId; start: string; end: string }[] = [
 
 /** While fewer real sessions than this exist, the dashboard includes sample data by default. */
 export const SAMPLE_DEFAULT_BELOW = 10;
+
+// ---------- SOP management (docs/sop-management) ----------
+
+/** Evidence for a new step CT: at least this many completed real sessions with the step correct first time... */
+export const MIN_EVIDENCE_SESSIONS = 5;
+
+/** ...from at least this many different shifts. The Quality Engineer may override both with a written reason. */
+export const MIN_EVIDENCE_SHIFTS = 2;
+
+/** When true, a different Quality Engineer or an admin must approve a revision before it can be activated. */
+export const REQUIRE_SECOND_APPROVAL = false;
+
+/** When true, the evidence table shows the Quality Technician label of each session. Off: date, shift and times only. */
+export const SHOW_TECHNICIAN_IN_EVIDENCE = false;

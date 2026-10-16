@@ -7,9 +7,10 @@ import { deviationText } from "@/lib/check/text";
 import { STATUS_LABEL, type ActionBody, type CheckState } from "@/lib/check/types";
 import { useNow, useSpeech } from "@/lib/client/hooks";
 import { uid } from "@/lib/client/local";
+import { SopProvider } from "@/lib/client/sopContext";
 import { useCheckSession } from "@/lib/client/useCheckSession";
 import type { Issue } from "@/lib/issues";
-import { step as sopStep } from "@/lib/sop";
+import { REV_A_ID, stepOf, type SopRevisionText } from "@/lib/sop-revisions";
 import { Btn, PageCenter, Warn } from "../ui";
 import { CompleteView } from "./CompleteView";
 import { DeviationView } from "./DeviationView";
@@ -31,7 +32,7 @@ export type View =
   | { kind: "procedure"; did: string; screen: number };
 
 /** What the glasses would say now. Changing the key speaks the line once. */
-function spoken(state: CheckState, view: View): [string, string] {
+function spoken(state: CheckState, view: View, rev: SopRevisionText): [string, string] {
   if (view.kind === "lodged") {
     const d = state.discrepancies.find((x) => x.id === view.did);
     if (d) {
@@ -44,7 +45,7 @@ function spoken(state: CheckState, view: View): [string, string] {
   if (isEnded(state)) return ["ended", `${STATUS_LABEL[state.status]}. The check is over.`];
   const dev = openDeviation(state);
   if (dev) return [`dev:${dev.id}:${dev.failed}`, deviationText(dev).correction];
-  if (state.current <= 12) return [`step:${state.current}`, sopStep(state.current).spoken];
+  if (state.current <= 12) return [`step:${state.current}`, stepOf(rev, state.current).spoken];
   return ["done", "Check complete. Sign off on the tablet."];
 }
 
@@ -79,7 +80,17 @@ function HoldStrip({ state, onOpen, onDecide }: { state: CheckState; onOpen: (di
   );
 }
 
-export function CheckApp({ id }: { id: string }) {
+/**
+ * The revision this check runs on: the one it started with, or revision A for older sessions. A check that
+ * is running keeps its revision when another one becomes Active.
+ */
+function revisionFor(revisions: SopRevisionText[], sopRevisionId: string | undefined): SopRevisionText {
+  const want = sopRevisionId ?? REV_A_ID;
+  return revisions.find((r) => r.id === want) ?? revisions.find((r) => r.id === REV_A_ID) ?? revisions.find((r) => r.id === null) ?? revisions[0];
+}
+
+/** `revisions`: every revision a check may run on (lib/server/sop.ts), never empty. */
+export function CheckApp({ id, revisions }: { id: string; revisions: SopRevisionText[] }) {
   const router = useRouter();
   const { meta, actions, state, load, loadError, sync, dispatch, retry, resumeAfterSignIn } = useCheckSession(id);
   const voice = useSpeech();
@@ -90,7 +101,8 @@ export function CheckApp({ id }: { id: string }) {
 
   const say = voice.say;
   const lastSpoken = useRef<string | null>(null);
-  const [speakKey, speakText] = state ? spoken(state, view) : ["", ""];
+  const rev = revisionFor(revisions, meta?.sopRevisionId);
+  const [speakKey, speakText] = state ? spoken(state, view, rev) : ["", ""];
   useEffect(() => {
     if (!speakKey || lastSpoken.current === speakKey) return;
     lastSpoken.current = speakKey;
@@ -261,6 +273,7 @@ export function CheckApp({ id }: { id: string }) {
   const showHoldStrip = !stop && !ended && (view.kind === "main" || view.kind === "detail") && !dev && state.current <= 12;
 
   return (
+    <SopProvider revision={rev}>
     <div className="flex h-dvh flex-col overflow-hidden">
       <TopBar
         meta={meta}
@@ -295,5 +308,6 @@ export function CheckApp({ id }: { id: string }) {
         />
       )}
     </div>
+    </SopProvider>
   );
 }

@@ -2,7 +2,9 @@
 import { checkPointsDone, conformanceSoFar, elapsedMs, stepsDone } from "@/lib/check/reducer";
 import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
-import { STEPS, TOTAL_CHECK_POINTS, step as sopStep } from "@/lib/sop";
+import { useSopRevision, useSopStep } from "@/lib/client/sopContext";
+import { checkTargetSeconds } from "@/lib/sop-revisions";
+import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Tile, Warn, cx } from "../ui";
 import { PartDrawing } from "./PartDrawing";
 import { PointGrid } from "./PointGrid";
@@ -30,6 +32,8 @@ export function MainView({
   onOpenStep: (n: number) => void;
   onLodge: () => void;
 }) {
+  const sopStep = useSopStep();
+  const target = checkTargetSeconds(useSopRevision());
   const cur = Math.min(state.current, 12);
   const def = sopStep(cur);
   const run = state.steps[cur - 1];
@@ -60,7 +64,7 @@ export function MainView({
                     <Ring n={s.n} active />
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <span className="text-[26px] font-semibold leading-tight">{s.name}</span>
-                      <span className="text-[17px] text-ink-2">Correct: {s.correct}</span>
+                      <span className="text-[17px] text-ink-2">Correct: {sopStep(s.n).correct}</span>
                     </div>
                   </div>
                   {s.points.length > 0 && (
@@ -122,7 +126,7 @@ export function MainView({
         <div className="grid grid-cols-3 gap-3">
           <Tile label="Steps done" value={`${done} / 12`} sub={devs ? "Deviations corrected" : "On track"} />
           <Tile label="Check points" value={`${checkPointsDone(state)} / ${TOTAL_CHECK_POINTS}`} sub="Sequence only" />
-          <Tile label="Time elapsed" value={fmtClock(elapsedMs(state, now))} sub="Target: [set by plant]" />
+          <Tile label="Time elapsed" value={fmtClock(elapsedMs(state, now))} sub={`Target: ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
           <Tile label="Deviations" value={String(devs)} sub={devs ? "See the step list" : "None yet"} tone={devs ? "amber" : "green"} />
           <Tile label="Conformance" value={conf === null ? "—" : `${conf}%`} sub="So far" tone="green" />
           <Tile label="Phase" value={def.phase} sub="" />

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NOT_OWNER_ERROR, canOpenSession } from "@/lib/auth/roles";
 import { requireApiUser } from "@/lib/auth/server";
+import { runnableRevisionId } from "@/lib/server/sop";
 import { getRepo } from "@/lib/server/repo";
 import { errorResponse } from "@/lib/server/http";
 import { BadRequest, isSessionId, parseActions, parseMeta } from "@/lib/server/validate";
@@ -35,7 +36,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sessions/[i
       return Response.json({ error: NOT_OWNER_ERROR, code: "not_owner" }, { status: 403 });
     }
     // A new session is stored as the signed-in person's, under their name. Sample sessions belong to no one.
-    const result = await repo.save(meta, actions, sample ? { sample: true } : { owner: { id: user.id, name: user.name } });
+    // The SOP revision the check started on, if a check may run on it (never a draft). Only used for a new session.
+    const sopRevisionId = existing.exists ? null : await runnableRevisionId(meta.sopRevisionId, await repo.conn());
+    const result = await repo.save(meta, actions, sample ? { sample: true, sopRevisionId } : { owner: { id: user.id, name: user.name }, sopRevisionId });
     return Response.json({ ok: true, ...result });
   } catch (e) {
     return errorResponse(e);

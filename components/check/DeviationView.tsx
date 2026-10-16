@@ -4,7 +4,8 @@ import { checkPointsDone, conformanceSoFar, elapsedMs, missingPoints, stepsDone 
 import { deviationText } from "@/lib/check/text";
 import type { CheckState, Deviation } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
-import { compressIds, describePoints, missingVerb, step as sopStep, TOTAL_CHECK_POINTS } from "@/lib/sop";
+import { useSopStep } from "@/lib/client/sopContext";
+import { compressIds, describePoints, missingVerb, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Banner, Bars, Btn, Dot, Frame, Speaker, Stat, cx } from "../ui";
 import { LodgeButton } from "./MainView";
 import { MiniStepList } from "./StepList";
@@ -37,6 +38,7 @@ export function DeviationView({
 }) {
   const t = deviationText(dev);
   const tone = dev.kind === "wrong_order" ? "red" : "amber";
+  const sopStep = useSopStep();
   const def = sopStep(dev.step);
   const run = state.steps[dev.step - 1];
   const confirmed = new Set(run.confirmed.map((c) => c.point));

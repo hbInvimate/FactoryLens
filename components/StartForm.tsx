@@ -7,6 +7,7 @@ import { ENDED_STATUSES, STATUS_LABEL, type SessionStatus } from "@/lib/check/ty
 import { getActiveId, readLocal, setActiveId } from "@/lib/client/local";
 import { createLocalSession, leaveSessionForGood } from "@/lib/client/useCheckSession";
 import { SESSION_DEFAULTS, STEP_COUNT } from "@/lib/sop";
+import { sopName } from "@/lib/sop-revisions";
 import { LeaveDialog } from "./check/Dialogs";
 import { StationSelect } from "./StationSelect";
 import { Btn, Chip, Panel } from "./ui";
@@ -68,7 +69,7 @@ function Field({ id, label, value, onChange }: { id: string; label: string; valu
 }
 
 /** `operatorName`: the signed-in person. The server stores the session under them whatever is sent. */
-export function StartForm({ operatorName }: { operatorName: string }) {
+export function StartForm({ operatorName, sop }: { operatorName: string; /** The Active SOP revision. id null: lib/sop.ts. */ sop: { id: string | null; label: string } }) {
   const router = useRouter();
   const [part, setPart] = useState(SESSION_DEFAULTS.part);
   const [fixture, setFixture] = useState(SESSION_DEFAULTS.fixture);
@@ -105,7 +106,8 @@ export function StartForm({ operatorName }: { operatorName: string }) {
     let id: string;
     try {
       id = createLocalSession({
-        part: part.trim(), sop: SESSION_DEFAULTS.sop, fixture: fixture.trim(), station: fixture.trim(), operator: operatorName,
+        part: part.trim(), sop: sopName(sop.label), fixture: fixture.trim(), station: fixture.trim(), operator: operatorName,
+        ...(sop.id ? { sopRevisionId: sop.id } : {}),
       });
     } catch {
       setError("This device could not store the new check. Tap Retry.");
@@ -148,7 +150,7 @@ export function StartForm({ operatorName }: { operatorName: string }) {
       <Panel title="Start a first-off check">
         <form onSubmit={submit} className="flex flex-col gap-5">
           <p className="text-[17px] text-ink-2">
-            SOP: {SESSION_DEFAULTS.sop}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
+            SOP: {sopName(sop.label)}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
           <StationSelect value={fixture} onChange={setFixture} />

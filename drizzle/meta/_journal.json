@@ -43,6 +43,13 @@
       "when": 1792070814370,
       "tag": "0005_session_user",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792130919925,
+      "tag": "0006_sop_revisions",
+      "breakpoints": true
     }
   ]
 }
