@@ -30,6 +30,8 @@ async function attempt(area: Area, form: FormData): Promise<SignInState | null> 
 
   try {
     const h = await headers();
+    // Ready before the account lookup: in test mode this also creates the test accounts on a fresh server.
+    const auth = await getAuth();
     const { db } = await authConn();
     const addr = addressHash(clientAddress(h), authSecret());
     if (await isLocked(db, email, addr)) {
@@ -38,7 +40,6 @@ async function attempt(area: Area, form: FormData): Promise<SignInState | null> 
     const user = await findUser(db, email);
     let ok = false;
     if (user && !user.disabled && canUse(user.role, area)) {
-      const auth = await getAuth();
       try {
         await auth.api.signInEmail({ body: { email, password, rememberMe: true }, headers: h });
         ok = true;

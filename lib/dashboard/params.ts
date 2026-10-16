@@ -20,9 +20,10 @@ export function parseDev(v: unknown): number | null {
   return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null;
 }
 
-export function dashHref(p: DashParams, change: Partial<DashParams> = {}): string {
+/** The URL of a view with these filters. `base`: the page (/dashboard, /dashboard/sop). */
+export function dashHref(p: DashParams, change: Partial<DashParams> = {}, base = "/dashboard"): string {
   const q = { ...p, ...change };
   const s = new URLSearchParams({ station: q.station, range: q.range, shift: q.shift ?? "all", sample: q.sample ? "1" : "0" });
   if (q.dev) s.set("dev", String(q.dev));
-  return `/dashboard?${s.toString()}`;
+  return `${base}?${s.toString()}`;
 }

@@ -9,7 +9,7 @@ const SELECT =
   "min-h-[56px] rounded-lg border border-line-strong bg-surface px-3 text-[16px] text-ink disabled:bg-surface-2 disabled:text-subtle";
 
 /** Station, date range, shift and the sample-data switch. They apply to the tiles, the blocks and the table. */
-export function Filters({ stations, params }: { stations: string[]; params: DashParams }) {
+export function Filters({ stations, params, base }: { stations: string[]; params: DashParams; /** The page the filters belong to. Default /dashboard. */ base?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   // Controls move at once; the page catches up when the new data arrives.
@@ -17,7 +17,7 @@ export function Filters({ stations, params }: { stations: string[]; params: Dash
   const go = (change: Partial<DashParams>) =>
     start(() => {
       setShown({ ...params, ...change });
-      router.push(dashHref(params, change));
+      router.push(dashHref(params, change, base));
     });
 
   return (

@@ -469,6 +469,19 @@ export function activeCheckMs(s: CheckState): number | null {
   return Math.max(0, end - s.startedAt - unionMs(idleIntervals(s, end), s.startedAt, end));
 }
 
+/**
+ * CT of one step: active time from the previous step being confirmed (the start, for step 1) to this
+ * step being confirmed, minus pauses and stop holds. These are button taps, not measured process times.
+ * Null if the step was not done.
+ */
+export function stepActiveMs(s: CheckState, n: number): number | null {
+  const end = s.steps[n - 1]?.doneAt ?? null;
+  if (end === null) return null;
+  const from = n === 1 ? s.startedAt : s.steps[n - 2].doneAt;
+  if (from === null || from > end) return null;
+  return Math.max(0, end - from - unionMs(idleIntervals(s, end), from, end));
+}
+
 /** Active time from the start to a moment, without paused time ("Done at" in the report). */
 export function activeAt(s: CheckState, at: number): number {
   return Math.max(0, at - s.startedAt - pausedBetween(s, s.startedAt, at));
