@@ -2,21 +2,38 @@
 // "Use this way": runs the comparison on one check (the "platform is working" pop-up), then opens the
 // verify screen. Over 20 seconds or an error: a clear message with Retry.
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { LocalTime } from "@/components/LocalTime";
 import { Button } from "@/components/ds";
 import { Modal } from "@/components/check/Dialogs";
 
 const LIMIT_MS = 20_000;
 const SMALL = "min-h-[44px]! min-w-0! px-3! text-[14px]! shadow-none";
 
+function Mark({ done }: { done: boolean }) {
+  return <span aria-hidden className="text-primary">{done ? "✔" : "●"}</span>;
+}
+
 type State = { kind: "idle" } | { kind: "working" } | { kind: "error"; message: string } | { kind: "none" };
 
-export function UseThisWay({ sessionId, label }: { sessionId: string; label: string }) {
+export function UseThisWay({ sessionId, label, startedAt, activeLabel }: { sessionId: string; label: string; startedAt: string; activeLabel: string }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
   const ctl = useRef<AbortController | null>(null);
+  // The progress lines tick on while the comparison runs (it is one request on the server).
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    if (state.kind !== "working") return;
+    const a = setTimeout(() => setPhase(1), 400);
+    const b = setTimeout(() => setPhase(2), 1000);
+    return () => {
+      clearTimeout(a);
+      clearTimeout(b);
+    };
+  }, [state.kind]);
 
   const run = async () => {
+    setPhase(0);
     setState({ kind: "working" });
     const c = new AbortController();
     ctl.current = c;
@@ -50,11 +67,22 @@ export function UseThisWay({ sessionId, label }: { sessionId: string; label: str
       </Button>
       {state.kind !== "idle" && (
         <Modal title={state.kind === "working" ? "The platform is working" : state.kind === "none" ? "No clear difference" : "That did not work"}>
+          <p className="-mt-2 text-[15px] text-muted">
+            Session of <LocalTime iso={startedAt} /> · {label}
+          </p>
           {state.kind === "working" && (
-            <div role="status" className="flex items-center gap-4" data-testid="platform-working">
-              <span aria-hidden className="size-8 flex-none animate-spin rounded-full border-4 border-primary-soft border-t-primary" />
-              <p className="text-[17px] text-ink-2">
-                Comparing the check by {label} with the active SOP and the station&apos;s other checks. This takes a few seconds.
+            <div role="status" className="flex flex-col gap-3" data-testid="platform-working">
+              <ul className="flex flex-col gap-2 text-[17px]">
+                <li className={phase >= 1 ? "text-ink" : "font-semibold text-ink"}><Mark done={phase >= 1} /> Read the session</li>
+                {phase >= 1 && (
+                  <li className={phase >= 2 ? "text-ink" : "font-semibold text-ink"}>
+                    <Mark done={phase >= 2} /> Compared it with SOP rev {activeLabel} and the other checks
+                  </li>
+                )}
+                {phase >= 2 && <li className="font-semibold text-ink"><Mark done={false} /> Finding what would change…</li>}
+              </ul>
+              <p className="rounded-[var(--fl-radius-md)] border border-primary-line bg-primary-soft px-4 py-2.5 text-[15px] text-ink">
+                <b>Nothing is changed yet.</b> You will check the result first.
               </p>
             </div>
           )}

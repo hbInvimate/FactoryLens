@@ -39,7 +39,8 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
   await expect(page.getByTestId("not-changed-yet")).toContainText("Not changed yet.");
   const changes = page.getByTestId("update-changes").locator("li");
   await expect(changes).toHaveCount(3);
-  await expect(changes.nth(1)).toContainText("Order note for \"What to do\": Check the odd-numbered holes first");
+  await expect(changes.first()).toHaveAttribute("data-step", "7"); // the biggest gain first
+  await expect(page.getByTestId("update-changes").locator('li[data-step="7"]')).toContainText('New note for "What to do": Check the odd-numbered holes first');
   expect((await (await request.get("/api/sop/revisions")).json()).revisions.find((r: { status: string }) => r.status === "active").id).toBe(REV_A_ID);
 
   // The first Confirm reaches the server, but the answer is lost.
@@ -54,7 +55,8 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
   await expect(page.getByTestId("verify-error")).toContainText("Press Retry.");
   await expect(page.getByTestId("update-changes")).toBeVisible(); // the proposal stays on screen
   await page.getByTestId("verify-error").getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByTestId("update-done")).toContainText("The SOP is now rev");
+  await expect(page.getByTestId("update-done")).toContainText("SOP updated to rev");
+  await expect(page.getByTestId("what-changed")).toContainText("Check target: 45:00 →");
 
   // A third Confirm, straight to the API, changes nothing either.
   const again = await request.post(`/api/sop/update/${revisionId}/confirm`);

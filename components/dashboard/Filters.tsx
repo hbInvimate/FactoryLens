@@ -11,13 +11,15 @@ const SELECT =
 /** Station, date range, shift and the sample-data switch. They apply to the tiles, the blocks and the table. */
 type Field = "station" | "range" | "shift" | "sample";
 
-export function Filters({ stations, params, base, fields = ["station", "range", "shift", "sample"] }: {
+export function Filters({ stations, params, base, fields = ["station", "range", "shift", "sample"], allTimeLabel }: {
   stations: string[];
   params: DashParams;
   /** The page the filters belong to. Default /dashboard. */
   base?: string;
   /** Which filters to show. Default all four. */
   fields?: Field[];
+  /** Update SOP calls `all` "Last sessions". */
+  allTimeLabel?: string;
 }) {
   const has = (f: Field) => fields.includes(f);
   const router = useRouter();
@@ -48,7 +50,7 @@ export function Filters({ stations, params, base, fields = ["station", "range", 
         <select aria-label="Date range" className={SELECT} value={shown.range} onChange={(e) => go({ range: e.target.value as Range })}>
           {RANGES.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.label}
+              {r.id === "all" && allTimeLabel ? allTimeLabel : r.label}
             </option>
           ))}
         </select>

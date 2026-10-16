@@ -25,7 +25,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/upda
   await connection();
   let view;
   try {
-    view = await dashView({ ...sp, range: "all", sample: "0" });
+    // "Last sessions" (all time) unless a shorter period is picked; real checks only.
+    view = await dashView({ ...sp, range: typeof sp.range === "string" ? sp.range : "all", sample: "0" });
   } catch (e) {
     if (e instanceof NotConfigured) return <Card className="px-5 py-4">The database is not set up. See the README: Set up the database.</Card>;
     throw e;
@@ -38,16 +39,17 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/upda
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="flex flex-col gap-1">
         <h1 className="text-[30px] font-bold">Update SOP</h1>
-        <Filters stations={stations} params={params} base="/dashboard/update-sop" fields={["station", "shift"]} />
+        <p className="text-[16px] text-ink-2">Pick the session whose way of working should become the SOP. The platform does the rest.</p>
       </div>
+      <Filters stations={stations} params={params} base="/dashboard/update-sop" fields={["station", "shift", "range"]} allTimeLabel="Last sessions" />
       <Card className="flex flex-col gap-3 px-6 py-5" testId="last-sessions">
         <div>
           <h2 className="text-[20px] font-semibold">Last sessions</h2>
           <p className="text-[14px] text-muted">
-            Finished real checks done correctly the first time, newest first. Pick one with &quot;Use this way&quot;: FactoryLens AI compares it with the
-            active SOP (rev {active.label}) and the station&apos;s other checks, and shows what would change. Nothing changes until you confirm.
+            Newest first. Only finished real checks done correctly first time are listed.
+            {target !== null ? `  Check time is compared with the target of ${mmss(target)}.` : ""}
           </p>
         </div>
         {rows.length === 0 ? (
@@ -81,16 +83,16 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/upda
                   <Td>{shiftOf(r.startedAt)}</Td>
                   <Td data-testid="check-time">
                     <b>{mmss(Math.round(r.checkSeconds))}</b>
-                    {target !== null && <span className="text-muted"> ({deltaText(target, Math.round(r.checkSeconds))} against {mmss(target)})</span>}
+                    {target !== null && <span className="text-muted"> {deltaText(target, Math.round(r.checkSeconds))} vs {mmss(target)}</span>}
                   </Td>
-                  <Td>12 of 12</Td>
+                  <Td>100%</Td>
                   <Td>
                     <Chip tone="gray" size="sm">
-                      Not recorded yet
+                      not recorded yet
                     </Chip>
                   </Td>
                   <Td className="text-right">
-                    <UseThisWay sessionId={r.id} label={r.label} />
+                    <UseThisWay sessionId={r.id} label={r.label} startedAt={new Date(r.startedAt).toISOString()} activeLabel={active.label} />
                   </Td>
                 </tr>
               ))}
