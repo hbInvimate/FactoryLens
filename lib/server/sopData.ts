@@ -27,7 +27,7 @@ async function withActions(db: AnyDb, rows: (typeof t.sessions.$inferSelect)[]):
   const acts = await db.select().from(t.sessionActions).where(inArray(t.sessionActions.sessionId, rows.map((r) => r.id))).orderBy(asc(t.sessionActions.seq));
   const by = new Map<string, Action[]>();
   for (const a of acts) by.set(a.sessionId, [...(by.get(a.sessionId) ?? []), fromRow(a)]);
-  return rows.map((r) => ({ id: r.id, startedAt: r.startedAt.getTime(), isSample: r.isSample === true, operator: r.operatorLabel, actions: by.get(r.id) ?? [] }));
+  return rows.map((r) => ({ id: r.id, startedAt: r.startedAt.getTime(), isSample: r.isSample === true, operator: r.operatorLabel, userId: r.userId ?? null, actions: by.get(r.id) ?? [] }));
 }
 
 /** Completed sessions in a dashboard view (station, range, shift, sample switch), newest first. */

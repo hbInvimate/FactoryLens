@@ -7,8 +7,12 @@ import type { StatSession } from "../lib/sop-stats";
 export interface TimedSpec {
   day: string;
   time: string;
-  /** Seconds for step 7; every other step takes 10 seconds. */
-  step7: number;
+  /** Seconds for step 7 (default 10). */
+  step7?: number;
+  /** Seconds for any step; a step not listed takes 10 seconds (step 7: `step7`). */
+  steps?: Partial<Record<number, number>>;
+  /** The Quality Technician label. */
+  operator?: string;
   /** Step 7: H9 to H12 skipped, then fixed (not correct on the first attempt). */
   skip7?: boolean;
   /** A pause of this many seconds in the middle of step 7 (not counted). */
@@ -28,7 +32,7 @@ export function timedActions(id: string, s: TimedSpec): { createdAt: number; act
   };
   let t = createdAt;
   for (const st of STEPS) {
-    const dur = (st.n === 7 ? s.step7 : 10) * 1000;
+    const dur = (s.steps?.[st.n] ?? (st.n === 7 ? s.step7 ?? 10 : 10)) * 1000;
     const pause = st.n === 7 && s.pause7 ? s.pause7 * 1000 : 0;
     const missing = st.n === 7 && s.skip7 ? ["H9", "H10", "H11", "H12"] : [];
     let k = 0;
@@ -52,7 +56,7 @@ export function timedActions(id: string, s: TimedSpec): { createdAt: number; act
 
 export function statSession(id: string, s: TimedSpec): StatSession {
   const { createdAt, actions } = timedActions(id, s);
-  return { id, startedAt: createdAt, isSample: s.sample === true, operator: "QT-test", actions };
+  return { id, startedAt: createdAt, isSample: s.sample === true, operator: s.operator ?? "QT-test", actions };
 }
 
 /**
@@ -69,3 +73,28 @@ export const DATASET: Record<string, TimedSpec> = {
   r6: { day: "2026-09-20", time: "10:00", step7: 180, skip7: true },
   s1: { day: "2026-09-21", time: "01:00", step7: 50, sample: true },
 };
+
+/** Every step 10 s except steps 5, 7 and 9: a whole check of 480 s. */
+export const BASE_STEPS = { 5: 30, 7: 180, 9: 180 };
+/** About 12% faster on steps 5, 7 and 9: 432 s, 10% faster than 480. */
+export const FAST_STEPS = { 5: 26, 7: 158, 9: 158 };
+
+/**
+ * Candidates (one-click-flow.md part 1). Real checks: C, D and F at the station median pace (18 checks,
+ * 480 s), A faster in all 6 of their checks, B faster only in their newest 3 of 5, E faster but with step 7
+ * skipped each time (first-time correct below the station's). S is faster still, but SAMPLE.
+ * Station median of the real checks: 480 s.
+ */
+export function candidateDataset(): { key: string; spec: TimedSpec }[] {
+  const out: { key: string; spec: TimedSpec }[] = [];
+  const day = (i: number) => `2026-09-${String(10 + i).padStart(2, "0")}`;
+  for (const who of ["C", "D", "F"]) {
+    for (let i = 0; i < 6; i++) out.push({ key: `${who}${i}`, spec: { day: day(i), time: who === "C" ? "07:00" : who === "D" ? "15:00" : "23:00", steps: BASE_STEPS, operator: `QT-${who}` } });
+  }
+  for (let i = 0; i < 6; i++) out.push({ key: `A${i}`, spec: { day: day(i), time: i % 2 ? "09:00" : "17:00", steps: FAST_STEPS, operator: "QT-A" } });
+  // B: oldest two at the median pace, the newest three faster.
+  for (let i = 0; i < 5; i++) out.push({ key: `B${i}`, spec: { day: day(i), time: "11:00", steps: i < 2 ? BASE_STEPS : FAST_STEPS, operator: "QT-B" } });
+  for (let i = 0; i < 5; i++) out.push({ key: `E${i}`, spec: { day: day(i), time: "13:00", steps: FAST_STEPS, skip7: true, operator: "QT-E" } });
+  for (let i = 0; i < 6; i++) out.push({ key: `S${i}`, spec: { day: day(i), time: "19:00", steps: { 5: 20, 7: 120, 9: 120 }, operator: "QT-S (sample)", sample: true } });
+  return out;
+}

@@ -37,3 +37,20 @@ export const REQUIRE_SECOND_APPROVAL = false;
 
 /** When true, the evidence table shows the Quality Technician label of each session. Off: date, shift and times only. */
 export const SHOW_TECHNICIAN_IN_EVIDENCE = false;
+
+// ---------- SOP management: the one-click flow (docs/sop-management/one-click-flow.md) ----------
+
+/** A Quality Technician is a candidate when at least this many of their newest completed checks in a row... */
+export const CANDIDATE_MIN_CHECKS = 5;
+
+/** ...are each faster than the station median check CT by at least this much, with first-time correct not below the station's. */
+export const CANDIDATE_MIN_IMPROVEMENT_PERCENT = 5;
+
+/** A step counts as faster (and gets a TIME suggestion) when it beats the target, or the station median when no target is set, by this much... */
+export const STEP_CHANGE_MIN_PERCENT = 5;
+
+/** ...and by at least this many seconds... */
+export const STEP_CHANGE_MIN_SECONDS = 3;
+
+/** ...in at least this share of the candidate's checks. The same share decides an ORDER suggestion. */
+export const STEP_CHANGE_SHARE_PERCENT = 80;

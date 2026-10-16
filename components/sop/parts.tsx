@@ -41,7 +41,7 @@ export function Cautions() {
         <li>Times are button taps, not measured process times.</li>
         <li>A faster step can also mean a corner was cut.</li>
         <li>The app cannot tell whether a method gives a better part. Check part quality in the tablet quality data tool.</li>
-        <li>FactoryLens AI shows the data and keeps the record. It does not recommend, decide or activate anything.</li>
+        <li>FactoryLens AI may propose changes from the data. It never decides or activates anything: the Quality Engineer does.</li>
       </ul>
     </section>
   );

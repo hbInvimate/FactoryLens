@@ -8,6 +8,8 @@ import { Card, Page, Skeleton } from "@/components/dashboard/light";
 import { Filters } from "@/components/dashboard/Filters";
 import { buttonClass, Table, Td, Th } from "@/components/ds";
 import { Cautions, RevisionChip, SampleChip, StatusChip } from "@/components/sop/parts";
+import { CandidatesCard, TrendCard } from "@/components/sop/TrendAndCandidates";
+import { checkRows, findCandidates } from "@/lib/sop-candidates";
 import { LocalTime } from "@/components/LocalTime";
 import { activeCheckMs, reduce } from "@/lib/check/reducer";
 import { dashView, viewQuery } from "@/lib/server/dashView";
@@ -16,7 +18,7 @@ import { activeRevision } from "@/lib/server/sop";
 import { completedSessions, medianCheckSeconds, revisions } from "@/lib/server/sopData";
 import { STEPS } from "@/lib/sop";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
-import { mmss, stepStats } from "@/lib/sop-stats";
+import { mmss, percentile, stepStats } from "@/lib/sop-stats";
 
 export const metadata = { title: "FactoryLens AI: SOP management" };
 
@@ -38,7 +40,16 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
     throw e;
   }
   const { stations, params, f } = view;
-  const [active, revs, sessions] = await Promise.all([activeRevision(), revisions(), completedSessions(f)]);
+  const [active, revs, sessions, realSessions] = await Promise.all([
+    activeRevision(),
+    revisions(),
+    completedSessions(f),
+    // Candidates always use real checks only, whatever the sample switch says.
+    f.includeSample ? completedSessions({ ...f, includeSample: false }) : null,
+  ]);
+  const found = findCandidates(realSessions ?? sessions, active.steps.map((s) => s.targetCtSeconds));
+  const trendRows = checkRows(sessions).filter((r) => r.checkSeconds !== null).sort((a, b) => a.startedAt - b.startedAt);
+  const trendMedian = percentile(trendRows.map((r) => r.checkSeconds as number), 0.5);
   const stats = stepStats(sessions);
   const target = checkTargetSeconds(active);
   const medianCheck = medianCheckSeconds(sessions.map((s) => {
@@ -56,6 +67,11 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/sop"
         <Filters stations={stations} params={params} base="/dashboard/sop" />
         <span className="flex-1" />
         {params.sample && <SampleChip real={sessions.length - sample} sample={sample} />}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1.4fr]">
+        <TrendCard rows={trendRows} medianSeconds={trendMedian === null ? null : Math.round(trendMedian)} targetSeconds={target} highlight={found.candidates[0] ?? null} sample={params.sample} />
+        <CandidatesCard candidates={found.candidates} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

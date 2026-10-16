@@ -12,6 +12,8 @@ export interface StatSession {
   startedAt: number;
   isSample: boolean;
   operator: string;
+  /** users.id of the Quality Technician; null for older sessions (their label identifies them). */
+  userId?: string | null;
   actions: Action[];
 }
 
