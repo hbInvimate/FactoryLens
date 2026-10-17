@@ -3,6 +3,8 @@ import { checkPointsDone, conformanceSoFar, elapsedMs, stepsDone } from "@/lib/c
 import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
 import { useSopRevision, useSopStep } from "@/lib/client/sopContext";
+import type { Action } from "@/lib/check/types";
+import { MEASURED_STEPS, MeasureEntry, latestValues } from "./MeasureEntry";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Tile, Warn, cx } from "../ui";
@@ -23,9 +25,12 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
 }
 
 export function MainView({
-  state, now, onTap, onNext, onOpenStep, onLodge,
+  state, now, onTap, onNext, onOpenStep, onLodge, actions = [], onMeasure,
 }: {
   state: CheckState;
+  /** The session's actions, for the values recorded at steps 7 to 10. */
+  actions?: Action[];
+  onMeasure?: (step: number, point: string, value: number, typed: string) => void;
   now: number;
   onTap: (step: number, point: string) => void;
   onNext: (step: number) => void;
@@ -82,6 +87,15 @@ export function MainView({
                         look={(p) => (confirmed.has(p) ? "done" : "open")}
                         onTap={(p) => onTap(s.n, p)}
                       />
+                      {onMeasure && MEASURED_STEPS.includes(s.n) && (
+                        <MeasureEntry
+                          step={s.n}
+                          points={s.points}
+                          confirmed={confirmed}
+                          values={latestValues(actions, s.n)}
+                          onRecord={(p, v, typed) => onMeasure(s.n, p, v, typed)}
+                        />
+                      )}
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-3">

@@ -60,3 +60,8 @@ export const CT_ROUND_UP_SECONDS = 5;
 
 /** A suggested CT faster than this share of all completed checks at the station gets "Check it is realistic." */
 export const REALISTIC_FASTER_THAN_PERCENT = 90;
+
+// ---------- Measurements (spoken or typed at steps 7 to 10) ----------
+
+/** The unit every recorded value is in. The app records values; it never judges tolerance or pass/fail. */
+export const MEASUREMENT_UNIT = "mm";

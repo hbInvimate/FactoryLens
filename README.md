@@ -1,6 +1,6 @@
 # FactoryLens AI
 
-A Quality Technician runs the first-off check of a B-pillar outer on checking fixture FX-014. FactoryLens AI follows the 12-step SOP, catches mistakes from what she taps, and lets her lodge discrepancies about the part or the fixture. It never measures, never judges a reading, never decides tolerance and never releases the cell. Readings go on the tablet.
+A Quality Technician runs the first-off check of a B-pillar outer on checking fixture FX-014. FactoryLens AI follows the 12-step SOP, catches mistakes from what she taps, and lets her lodge discrepancies about the part or the fixture. It never measures, never judges a reading, never decides tolerance or pass/fail and never releases the cell. At steps 7 to 10 it records the values she types (voice comes next), labelled "not a validated record"; the tablet stays the validated record.
 
 The reference pack is in [`docs/`](docs/README.md): the SOP, the scenarios, the 54-issue catalogue and the screen images that the UI follows.
 
@@ -31,7 +31,7 @@ The value in brackets is the role stored in the database. `npm run user:create` 
 
 ## Supervisor dashboard
 
-Read-only. It reads the sessions saved in Neon and never shows measured values or judges the part. Only a signed-in Quality Engineer or admin can open it.
+Read-only. It reads the sessions saved in Neon and never judges a value or the part. Recorded values are shown, as recorded, on `/dashboard/measurements` and in each session report. Only a signed-in Quality Engineer or admin can open it.
 
 - **Stations.** "Cell and fixture" on the start form is a list of stations with "Add a station"; the list starts with "Laser cell 3 · FX-014" (`stations` table). Older sessions keep their typed text, which is also their station.
 - **Filters** (kept in the URL): station, date range (7, 30, 90 days, all), shift (All, A, B, C) and "Include sample data". They apply to the tiles, the four blocks and the sessions table.

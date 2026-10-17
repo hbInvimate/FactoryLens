@@ -171,11 +171,13 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
         db.delete(t.stepEvents).where(eq(t.stepEvents.sessionId, meta.id)),
         db.delete(t.pointConfirmations).where(eq(t.pointConfirmations.sessionId, meta.id)),
         db.delete(t.handoffItems).where(eq(t.handoffItems.sessionId, meta.id)),
+        db.delete(t.measurements).where(eq(t.measurements.sessionId, meta.id)),
         db.delete(t.discrepancies).where(eq(t.discrepancies.sessionId, meta.id)),
         ...(p.stepEvents.length ? [db.insert(t.stepEvents).values(p.stepEvents)] : []),
         ...(p.points.length ? [db.insert(t.pointConfirmations).values(p.points)] : []),
         ...(p.discrepancies.length ? [db.insert(t.discrepancies).values(p.discrepancies)] : []),
         ...(p.handoffs.length ? [db.insert(t.handoffItems).values(p.handoffs)] : []),
+        ...(p.measurements.length ? [db.insert(t.measurements).values(p.measurements)] : []),
       ]);
       return { saved: actions.length, status: p.session.status };
     },
@@ -218,12 +220,13 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
       const { db } = await connect();
       const [s] = await db.select().from(t.sessions).where(eq(t.sessions.id, id));
       if (!s) return null;
-      const [stepEvents, points, discrepancies, handoffs] = await Promise.all([
+      const [stepEvents, points, discrepancies, handoffs, measurements] = await Promise.all([
         db.select().from(t.stepEvents).where(eq(t.stepEvents.sessionId, id)).orderBy(asc(t.stepEvents.at)),
         db.select().from(t.pointConfirmations).where(eq(t.pointConfirmations.sessionId, id))
           .orderBy(asc(t.pointConfirmations.step), asc(t.pointConfirmations.sequence)),
         db.select().from(t.discrepancies).where(eq(t.discrepancies.sessionId, id)).orderBy(asc(t.discrepancies.loggedAt)),
         db.select().from(t.handoffItems).where(eq(t.handoffItems.sessionId, id)),
+        db.select().from(t.measurements).where(eq(t.measurements.sessionId, id)).orderBy(asc(t.measurements.step), asc(t.measurements.recordedAt)),
       ]);
       return {
         session: { ...s, status: s.status as SessionRow["status"] },
@@ -231,6 +234,7 @@ function pgRepo(connect: () => Promise<Conn>, kind: Repo["kind"]): Repo {
         points,
         discrepancies,
         handoffs,
+        measurements,
       };
     },
 

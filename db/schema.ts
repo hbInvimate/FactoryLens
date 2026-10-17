@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -380,4 +380,30 @@ export const sopClipRefs = pgTable(
     endSecond: integer("end_second").notNull(),
   },
   (t) => [index("sop_clip_refs_revision_idx").on(t.revisionId, t.step)],
+);
+
+/**
+ * Values the Quality Technician spoke or typed for a check point at steps 7 to 10. Recorded, never judged:
+ * no tolerance, no pass or fail. "Voice-entered, not a validated record": the tablet stays the validated record.
+ * One row per measure action (the id); a correction is a new row and the old one stays. No audio is kept.
+ */
+export const measurements = pgTable(
+  "measurements",
+  {
+    id: text("id").primaryKey(),
+    sessionId: text("session_id").notNull().references(() => sessions.id, { onDelete: "cascade" }),
+    step: integer("step").notNull(),
+    pointId: text("point_id").notNull(),
+    value: doublePrecision("value"),
+    unit: text("unit").notNull(),
+    /** voice or typed. */
+    source: text("source").notNull(),
+    /** What the speech recognition heard (or what was typed). */
+    textHeard: text("text_heard").notNull().default(""),
+    confidence: real("confidence"),
+    /** recorded, missing or unclear. */
+    status: text("status").notNull(),
+    recordedAt: ts("recorded_at").notNull(),
+  },
+  (t) => [index("measurements_session_idx").on(t.sessionId, t.step), index("measurements_recorded_idx").on(t.recordedAt)],
 );

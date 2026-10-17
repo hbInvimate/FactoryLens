@@ -90,12 +90,40 @@ export interface HandoffRow {
   reason: string | null;
 }
 
+/** A spoken or typed value: one row per measure action, corrections included. Never judged. */
+export interface MeasurementRow {
+  id: string;
+  sessionId: string;
+  step: number;
+  pointId: string;
+  value: number | null;
+  unit: string;
+  source: string;
+  textHeard: string;
+  confidence: number | null;
+  status: string;
+  recordedAt: Date;
+}
+
 export interface Projection {
   session: SessionRow;
   stepEvents: StepEventRow[];
   points: PointRow[];
   discrepancies: DiscrepancyRow[];
   handoffs: HandoffRow[];
+  measurements: MeasurementRow[];
+}
+
+/** Every measure action becomes a row; a correction is a new row and the old one stays. */
+export function measurementRows(sessionId: string, actions: Action[]): MeasurementRow[] {
+  return actions.flatMap((a) =>
+    a.type === "measure"
+      ? [{
+          id: a.id, sessionId, step: a.step, pointId: a.point, value: a.value, unit: a.unit, source: a.source,
+          textHeard: a.heard.slice(0, 200), confidence: a.confidence, status: a.status, recordedAt: new Date(a.at),
+        }]
+      : [],
+  );
 }
 
 export function endedAt(s: CheckState): number | null {
@@ -119,6 +147,7 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
   const ended = endedAt(s);
 
   return {
+    measurements: measurementRows(sid, actions),
     session: {
       id: sid,
       startedAt: new Date(meta.createdAt),

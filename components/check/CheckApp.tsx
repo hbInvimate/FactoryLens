@@ -8,6 +8,7 @@ import { STATUS_LABEL, type ActionBody, type CheckState } from "@/lib/check/type
 import { useNow, useSpeech } from "@/lib/client/hooks";
 import { uid } from "@/lib/client/local";
 import { SopProvider } from "@/lib/client/sopContext";
+import { MEASUREMENT_UNIT } from "@/lib/config";
 import { useCheckSession } from "@/lib/client/useCheckSession";
 import type { Issue } from "@/lib/issues";
 import { REV_A_ID, stepOf, type SopRevisionText } from "@/lib/sop-revisions";
@@ -263,6 +264,10 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
         state={state}
         now={now}
         onTap={(step, point) => act({ type: "tap_point", step, point })}
+        actions={actions}
+        onMeasure={(step, point, value, typed) =>
+          act({ type: "measure", step, point, value, unit: MEASUREMENT_UNIT, source: "typed", heard: typed, confidence: null, status: "recorded" })
+        }
         onNext={(step) => act({ type: "next_step", step })}
         onOpenStep={(step) => setView({ kind: "detail", step })}
         onLodge={() => setView({ kind: "lodge" })}

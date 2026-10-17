@@ -190,6 +190,12 @@ function apply(s: CheckState, a: Action) {
       return;
     }
 
+    case "measure":
+      // A recorded value confirms its check point, exactly like a tap, so nothing is entered twice.
+      // The value itself is only recorded (see the measurements table); the check never judges it.
+      if (a.status === "recorded" && a.value !== null) apply(s, { id: a.id, seq: a.seq, at: a.at, type: "tap_point", step: a.step, point: a.point });
+      return;
+
     case "release_clamps": {
       if (isLocked(s) || a.step !== s.current || a.step > STEP_COUNT || !sopStep(a.step).ordered) return;
       const run = s.steps[a.step - 1];

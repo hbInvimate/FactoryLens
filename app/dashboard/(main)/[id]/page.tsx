@@ -9,7 +9,7 @@ import { LiveWait } from "@/components/dashboard/SessionsTable";
 import { LocalTime } from "@/components/LocalTime";
 import { Button, ButtonLink, StateBanner, Table, Td, Th } from "@/components/ds";
 import { IconAlert, IconArrowLeft, IconChecklist, IconClock, IconTarget } from "@/components/ds/icons";
-import { stationOf } from "@/lib/check/project";
+import { stationOf, type MeasurementRow } from "@/lib/check/project";
 import {
   activeAt, activeCheckMs, conformance, correctFirstTime, openHoldsAll, reduce,
 } from "@/lib/check/reducer";
@@ -189,6 +189,50 @@ function WhatWentWrong({ cards }: { cards: ReturnType<typeof deviationCards> }) 
   );
 }
 
+/** Every value recorded at steps 7 to 10, corrections included, as recorded. Never judged. */
+function Measurements({ rows }: { rows: MeasurementRow[] }) {
+  return (
+    <section className="flex flex-col gap-3" data-testid="report-measurements">
+      <h2 className="print-keep-heading pt-2 text-[20px] font-semibold">Measurements</h2>
+      {rows.length === 0 ? (
+        <Card className="px-5 py-4 text-[15px] text-ink-2">No values were recorded in this check.</Card>
+      ) : (
+        <>
+          <p className="text-[14px] text-muted">As spoken or typed: not a validated record. The tablet quality data tool stays the record. No tolerance or pass/fail is judged here.</p>
+          <Table testId="report-measurements-table" minWidth={720}>
+            <thead>
+              <tr>
+                <Th>Step</Th>
+                <Th>Point</Th>
+                <Th>Value</Th>
+                <Th>Unit</Th>
+                <Th>Source</Th>
+                <Th>Status</Th>
+                <Th>Recorded at</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((m) => (
+                <tr key={m.id} data-point={m.pointId}>
+                  <Td>{m.step}</Td>
+                  <Td className="font-semibold">{m.pointId}</Td>
+                  <Td>{m.value === null ? "—" : m.value}</Td>
+                  <Td>{m.unit}</Td>
+                  <Td>{m.source === "voice" ? "Voice-entered" : "Typed"}</Td>
+                  <Td>{m.status}</Td>
+                  <Td>
+                    <LocalTime iso={m.recordedAt.toISOString()} timeOnly />
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </>
+      )}
+    </section>
+  );
+}
+
 function DiscrepanciesLodged({ s }: { s: CheckState }) {
   const cards = discrepancyCards(s);
   return (
@@ -357,6 +401,7 @@ async function Report({ id }: { id: string }) {
 
       <WhatWentWrong cards={cards} />
       <DiscrepanciesLodged s={s} />
+      <Measurements rows={detail.measurements} />
       <HoldSection s={s} />
 
       <p className="text-[13px] text-muted" data-testid="footnote">

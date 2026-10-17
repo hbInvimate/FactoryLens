@@ -93,7 +93,16 @@ export type ActionBody =
   | { type: "proc_holes"; did: string; holes: string[] }
   | { type: "proc_parts"; did: string; count: number }
   | { type: "trial_outcome"; did: string; outcome: TrialOutcome }
-  | { type: "proc_close"; did: string };
+  | { type: "proc_close"; did: string }
+  /**
+   * A value the Quality Technician spoke or typed for a check point (steps 7 to 10). Recorded, never judged:
+   * no tolerance, no pass or fail. A recorded value also confirms the point. A correction is a new action.
+   * Audio is never kept: only the text heard and the number parsed from it.
+   */
+  | { type: "measure"; step: number; point: string; value: number | null; unit: string; source: MeasureSource; heard: string; confidence: number | null; status: MeasureStatus };
+
+export type MeasureSource = "voice" | "typed";
+export type MeasureStatus = "recorded" | "missing" | "unclear";
 
 export type ActionType = ActionBody["type"];
 export type Action = ActionBody & { id: string; seq: number; at: number };
@@ -101,7 +110,7 @@ export type Action = ActionBody & { id: string; seq: number; at: number };
 export const ACTION_TYPES: ActionType[] = [
   "tap_point", "next_step", "release_clamps", "fix_continue", "call_trainer", "undo", "pause", "resume",
   "leave", "fixed_on_spot", "lodge", "call_marked", "todo_tick", "handoff", "clear", "hold_decision", "proc_tick",
-  "proc_holes", "proc_parts", "trial_outcome", "proc_close",
+  "proc_holes", "proc_parts", "trial_outcome", "proc_close", "measure",
 ];
 
 export type ClearOutcome = "cleared" | "scrapped";

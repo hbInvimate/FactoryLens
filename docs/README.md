@@ -3,12 +3,12 @@
 Read in this order: this file, `sop.md`, `scenarios.md`, `issues.json`, then LOOK AT every image in `screens/`. The images are the visual spec: copy their layout, colours, wording and sizes.
 
 ## Product in one paragraph
-A Quality Technician runs the first-off check of a laser-cut B-pillar outer on a checking fixture. FactoryLens AI follows the 12-step procedure, guides each step, catches mistakes, and helps lodge issues when the part is bad. It never measures, never judges a reading, never decides tolerance, never releases the cell. Measurements are entered on a tablet outside this app.
+A Quality Technician runs the first-off check of a laser-cut B-pillar outer on a checking fixture. FactoryLens AI follows the 12-step procedure, guides each step, catches mistakes, and helps lodge issues when the part is bad. It never measures, never judges a reading, never decides tolerance or pass/fail, never releases the cell. At steps 7 to 10 it RECORDS the values the Quality Technician speaks or types, labelled "Voice-entered, not a validated record" (or "Typed"). The validated measurements stay on the tablet outside this app. No audio is stored, only the text heard and the number parsed from it.
 
 ## Hard rules
 1. Exactly 12 steps (see `sop.md`). Never show another numbering.
 2. Write "Quality Technician" in full. Never abbreviate it.
-3. No measured values on any screen. Feature IDs only (H5, C4, T3).
+3. Values are recorded, never judged: no tolerance and no pass/fail anywhere. Recorded values (steps 7 to 10) are shown only as recorded, labelled "Voice-entered, not a validated record" or "Typed, not a validated record". Everywhere else, feature IDs only (H5, C4, T3).
 4. Nothing is drawn on the smart-glasses lens. Guidance is spoken (optional text-to-speech toggle, off by default).
 5. Plain language. Short sentences.
 6. Large touch targets, at least 56 px, for gloved hands.

@@ -150,7 +150,7 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
       <Panel title="Start a first-off check">
         <form onSubmit={submit} className="flex flex-col gap-5">
           <p className="text-[17px] text-ink-2">
-            SOP: {sopName(sop.label)}, 12 steps. The app follows the procedure only. Every reading goes on the tablet.
+            SOP: {sopName(sop.label)}, 12 steps. The app follows the procedure. At steps 7 to 10 it records the values you enter, as a working note: the tablet stays the record.
           </p>
           <Field id="part" label="Part" value={part} onChange={setPart} />
           <StationSelect value={fixture} onChange={setFixture} />

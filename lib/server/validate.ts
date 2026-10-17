@@ -106,6 +106,16 @@ const FIELDS: Record<Action["type"], Record<string, (v: unknown) => boolean>> = 
   proc_parts: { did: (v) => isStr(v, 64), count: (v) => typeof v === "number" && Number.isFinite(v) },
   trial_outcome: { did: (v) => isStr(v, 64), outcome: (v) => ["pass", "better", "no_better"].includes(v as string) },
   proc_close: { did: (v) => isStr(v, 64) },
+  measure: {
+    step: (v) => isInt(v) && (v as number) >= 7 && (v as number) <= 10,
+    point: (v) => isStr(v, 8),
+    value: (v) => v === null || (typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e6),
+    unit: (v) => isStr(v, 8),
+    source: (v) => v === "voice" || v === "typed",
+    heard: (v) => isStr(v, 200),
+    confidence: (v) => v === null || (typeof v === "number" && v >= 0 && v <= 1),
+    status: (v) => v === "recorded" || v === "missing" || v === "unclear",
+  },
 };
 
 function fieldProblem(a: Record<string, unknown>): string | null {
