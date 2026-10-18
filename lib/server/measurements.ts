@@ -2,6 +2,7 @@
 // never judged: no tolerance, no pass or fail. "Voice-entered, not a validated record".
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 import * as t from "@/db/schema";
+import { MEASUREMENT_UNIT } from "@/lib/config";
 import { getRepo } from "./repo";
 import { sessionWhere, stationExpr, type DashFilter } from "./sqlparts";
 
@@ -125,4 +126,98 @@ export function parseMeasurementParams(sp: Record<string, string | string[] | un
     dir: sp.dir === "asc" ? ("asc" as const) : ("desc" as const),
     page: Math.max(1, Math.floor(Number(sp.page) || 1)),
   };
+}
+
+// ---------- "All values in a line": one row per check ----------
+
+/** The 40 measured points in column order, grouped as on the fixture. */
+export const FEATURE_GROUPS = [
+  { label: "Holes", points: Array.from({ length: 14 }, (_, i) => `H${i + 1}`) },
+  { label: "Slots", points: ["S1", "S2", "S3", "S4"] },
+  { label: "Notches", points: ["N1", "N2", "N3", "N4"] },
+  { label: "Trim edges", points: Array.from({ length: 14 }, (_, i) => `T${i + 1}`) },
+  { label: "Flange gaps", points: ["F1", "F2", "F3", "F4"] },
+];
+export const FEATURE_POINTS = FEATURE_GROUPS.flatMap((g) => g.points);
+/** Above this many checks the line view asks to narrow the date range. */
+export const WIDE_LIMIT = 1000;
+
+export interface WideCell {
+  latest: number;
+  /** Earlier values of a corrected point, oldest first. Empty when not corrected. */
+  earlier: number[];
+}
+
+export interface WideRow {
+  sessionId: string;
+  startedAt: string;
+  technician: string;
+  station: string;
+  /** A demo (sample) session: its values carry a "D". */
+  demo: boolean;
+  cells: Record<string, WideCell>;
+}
+
+/**
+ * One grouped query: per check and point, the latest recorded value and the earlier ones. Only checks with at
+ * least one recorded value in the filters get a row. Sample (demo) checks are included and marked.
+ */
+export async function wideMeasurements(f: DashFilter, source: "voice" | "typed" | null): Promise<{ count: number; rows: WideRow[] | null }> {
+  const { db } = await getRepo().conn();
+  const w = and(
+    sessionWhere({ ...f, includeSample: true }),
+    eq(t.measurements.status, "recorded"),
+    sql`${t.measurements.value} is not null`,
+    source ? eq(t.measurements.source, source) : undefined,
+  );
+  const [{ n }] = await db
+    .select({ n: sql<number>`count(distinct ${t.measurements.sessionId})::int` })
+    .from(t.measurements)
+    .innerJoin(t.sessions, eq(t.sessions.id, t.measurements.sessionId))
+    .where(w);
+  const count = Number(n);
+  if (count > WIDE_LIMIT) return { count, rows: null };
+  const grouped = await db
+    .select({
+      sessionId: t.measurements.sessionId,
+      point: t.measurements.pointId,
+      values: sql<number[]>`array_agg(${t.measurements.value} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
+      startedAt: t.sessions.startedAt,
+      technician: t.sessions.operatorLabel,
+      station: sql<string>`${stationExpr}`,
+      demo: sql<boolean>`coalesce(${t.sessions.isSample}, false)`,
+    })
+    .from(t.measurements)
+    .innerJoin(t.sessions, eq(t.sessions.id, t.measurements.sessionId))
+    .where(w)
+    .groupBy(t.measurements.sessionId, t.measurements.pointId, t.sessions.startedAt, t.sessions.operatorLabel, stationExpr, t.sessions.isSample);
+  const bySession = new Map<string, WideRow>();
+  for (const g of grouped) {
+    let row = bySession.get(g.sessionId);
+    if (!row) {
+      row = { sessionId: g.sessionId, startedAt: new Date(g.startedAt).toISOString(), technician: g.technician, station: g.station, demo: g.demo === true, cells: {} };
+      bySession.set(g.sessionId, row);
+    }
+    const vals = (g.values ?? []).map(Number);
+    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1) };
+  }
+  const rows = [...bySession.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.sessionId.localeCompare(b.sessionId));
+  return { count, rows };
+}
+
+/** The line view as CSV: one row per check, the latest value per point, the note on every row. */
+export function toWideCsv(rows: WideRow[]): string {
+  const head = ["started_at", "technician", "station", "session", ...FEATURE_POINTS.map((p) => `${p}_${MEASUREMENT_UNIT}`), "corrected_points", "demo", "note"];
+  const lines = rows.map((r) =>
+    [
+      r.startedAt, r.technician, r.station, r.sessionId,
+      ...FEATURE_POINTS.map((p) => r.cells[p]?.latest ?? ""),
+      FEATURE_POINTS.filter((p) => (r.cells[p]?.earlier.length ?? 0) > 0).join(" "),
+      r.demo ? "yes" : "no",
+      "Voice-entered or typed, not a validated record",
+    ]
+      .map(cell)
+      .join(","),
+  );
+  return [head.join(","), ...lines].join("\r\n") + "\r\n";
 }

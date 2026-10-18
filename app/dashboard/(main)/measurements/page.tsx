@@ -5,12 +5,13 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { Card, Page, Skeleton } from "@/components/dashboard/light";
-import { ButtonLink, Chip, Table, Td, Th } from "@/components/ds";
+import { ButtonLink, Chip, Table, Tabs, Td, Th } from "@/components/ds";
 import { LocalTime } from "@/components/LocalTime";
 import { MeasurementFilters } from "@/components/measurements/MeasurementFilters";
 import { cx } from "@/components/ui";
-import { dashView } from "@/lib/server/dashView";
-import { PAGE_SIZE, listMeasurements, parseMeasurementParams, type Sort } from "@/lib/server/measurements";
+import { dashView, type DashView } from "@/lib/server/dashView";
+import { PAGE_SIZE, WIDE_LIMIT, listMeasurements, parseMeasurementParams, wideMeasurements, type Sort } from "@/lib/server/measurements";
+import { WideTable } from "@/components/measurements/WideTable";
 import { NotConfigured } from "@/lib/server/repo";
 
 export const metadata = { title: "FactoryLens AI: measurements" };
@@ -40,9 +41,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
   }
   const { stations, params, f } = view;
   const m = parseMeasurementParams(sp);
-  const { rows, total } = await listMeasurements({ f: { ...f, includeSample: false }, ...m });
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const base = { station: params.station, range: params.range, shift: params.shift ?? "all", step: m.step ? String(m.step) : "", source: m.source ?? "", sort: m.sort, dir: m.dir };
+  const viewKind = sp.view === "list" ? "list" : "line";
+  const base = { view: viewKind, station: params.station, range: params.range, shift: params.shift ?? "all", step: m.step ? String(m.step) : "", source: m.source ?? "", sort: m.sort, dir: m.dir };
   const href = (change: Record<string, string | number>) => `/dashboard/measurements?${new URLSearchParams({ ...base, page: String(m.page), ...Object.fromEntries(Object.entries(change).map(([k, v]) => [k, String(v)])) })}`;
   const csv = `/api/measurements/csv?${new URLSearchParams(base)}`;
 
@@ -55,11 +55,49 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
           Export CSV
         </ButtonLink>
       </div>
+      <Tabs
+        label="View"
+        items={[
+          { href: `/dashboard/measurements?${new URLSearchParams({ ...base, view: "line" })}`, label: "All values in a line", active: viewKind === "line" },
+          { href: `/dashboard/measurements?${new URLSearchParams({ ...base, view: "list" })}`, label: "List", active: viewKind === "list" },
+        ]}
+      />
       <MeasurementFilters stations={stations} value={base} />
-      <p className="rounded-card border border-amber-line bg-amber-soft px-5 py-3 text-[15px] text-amber-ink">
-        <b>Recorded as spoken or typed.</b> Voice-entered values are not a validated record; the tablet quality data tool stays the record. FactoryLens AI never
-        judges a value: no tolerance, no pass or fail.
+      {viewKind === "line" ? <Line f={f} source={m.source} /> : <List f={f} m={m} href={href} />}
+    </>
+  );
+}
+
+async function Line({ f, source }: { f: DashView["f"]; source: "voice" | "typed" | null }) {
+  const { count, rows } = await wideMeasurements(f, source);
+  return (
+    <Card className="flex flex-col gap-3 px-6 py-5">
+      <p className="text-[15px] font-semibold" data-testid="check-count">
+        {count} {count === 1 ? "check" : "checks"}
       </p>
+      {!rows ? (
+        <p className="rounded-card border border-amber-line bg-amber-soft px-4 py-3 text-[15px] text-amber-ink" data-testid="wide-too-many">
+          More than {WIDE_LIMIT.toLocaleString("en-US")} checks match. Narrow the date range to see them on one page.
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="py-4 text-[15px] text-ink-2" data-testid="measurements-empty">
+          No values recorded in this view yet.
+        </p>
+      ) : (
+        <>
+          <WideTable rows={rows} />
+          <p className="text-[13px] text-muted">The latest value of each point. A dot marks a corrected value (hover for the earlier ones); D marks a demo value. – : nothing recorded.</p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+async function List({ f, m, href }: { f: DashView["f"]; m: ReturnType<typeof parseMeasurementParams>; href: (change: Record<string, string | number>) => string }) {
+  const { rows, total } = await listMeasurements({ f: { ...f, includeSample: false }, ...m });
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  return (
+    <>
       <Card className="flex flex-col gap-3 px-6 py-5">
         <p className="text-[14px] text-muted" data-testid="measurement-count">
           {total} {total === 1 ? "value" : "values"}

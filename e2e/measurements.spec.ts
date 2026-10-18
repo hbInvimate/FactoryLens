@@ -108,7 +108,7 @@ test("the dashboard table: filters, sorting, paging and CSV export", async ({ pa
   const station = `Laser cell M · FX-${Math.random().toString(36).slice(2, 7)}`;
   expect((await request.post("/api/stations", { data: { name: station } })).ok()).toBeTruthy();
   const id = await postMany(request, station, 55);
-  const q = (extra = "") => `/dashboard/measurements?station=${encodeURIComponent(station)}&range=all&shift=all${extra}`;
+  const q = (extra = "") => `/dashboard/measurements?view=list&station=${encodeURIComponent(station)}&range=all&shift=all${extra}`;
 
   await page.goto(q());
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Measurements" })).toHaveAttribute("aria-current", "page");
@@ -133,7 +133,7 @@ test("the dashboard table: filters, sorting, paging and CSV export", async ({ pa
   await expect(page.getByTestId("measurement-count")).toContainText("44 values");
 
   // CSV: every row of the view, with the note.
-  const csv = await (await request.get(`/api/measurements/csv?station=${encodeURIComponent(station)}&range=all&shift=all`)).text();
+  const csv = await (await request.get(`/api/measurements/csv?view=list&station=${encodeURIComponent(station)}&range=all&shift=all`)).text();
   const lines = csv.trim().split("\r\n");
   expect(lines[0]).toBe("recorded_at,technician,station,session,step,point,value,unit,source,status,text_heard,note");
   expect(lines).toHaveLength(56);
