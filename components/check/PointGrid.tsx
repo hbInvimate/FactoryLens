@@ -6,7 +6,7 @@ import { cx } from "../ui";
 export type PointLook = "open" | "done" | "wrong" | "missing";
 
 export function PointGrid({
-  points, look, onTap, disabled, ordered, label,
+  points, look, onTap, disabled, ordered, label, doneTappable,
 }: {
   points: string[];
   look: (p: string) => PointLook;
@@ -15,6 +15,8 @@ export function PointGrid({
   /** Clamps: square tiles, as on the fixture. */
   ordered?: boolean;
   label: string;
+  /** Steps 7 to 10: a done point can be tapped to pick it for a correction of its value. */
+  doneTappable?: boolean;
 }) {
   const cols = points.length > 8 ? "grid-cols-7" : points.length > 6 ? "grid-cols-8" : "grid-cols-6";
   return (
@@ -27,7 +29,7 @@ export function PointGrid({
             type="button"
             aria-pressed={l === "done"}
             aria-label={p}
-            disabled={disabled || !onTap || l === "done"}
+            disabled={disabled || !onTap || (l === "done" && !doneTappable)}
             onClick={() => onTap?.(p)}
             data-look={l}
             className={cx(

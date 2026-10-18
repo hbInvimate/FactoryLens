@@ -4,7 +4,8 @@ import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
 import { useSopRevision, useSopStep } from "@/lib/client/sopContext";
 import type { Action } from "@/lib/check/types";
-import { MEASURED_STEPS, MeasureEntry, latestValues } from "./MeasureEntry";
+import { useState } from "react";
+import { MEASURED_STEPS, MeasureEntry, latestValues, missingValues } from "./MeasureEntry";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Tile, Warn, cx } from "../ui";
@@ -46,6 +47,13 @@ export function MainView({
   const devs = state.deviations.length;
   const conf = conformanceSoFar(state);
   const confirmed = new Set(run.confirmed.map((c) => c.point));
+  // Steps 7 to 10: a value for every point, in order, before the step can be left (new checks; see MeasureEntry).
+  const measured = !!onMeasure && MEASURED_STEPS.includes(cur) && def.points.length > 0;
+  const values = measured ? latestValues(actions, cur) : new Map();
+  const missing = measured ? missingValues(def.points, values) : [];
+  const [promptStep, setPromptStep] = useState<number | null>(null);
+  const [edit, setEdit] = useState<{ step: number; point: string } | null>(null);
+  const nudge = () => setPromptStep(cur);
 
   return (
     <div className="flex min-h-0 flex-1 gap-6 px-8 py-6">
@@ -85,15 +93,27 @@ export function MainView({
                         points={s.points}
                         ordered={s.ordered}
                         look={(p) => (confirmed.has(p) ? "done" : "open")}
-                        onTap={(p) => onTap(s.n, p)}
+                        doneTappable={measured}
+                        onTap={(p) => {
+                          if (!measured) return onTap(s.n, p);
+                          // A value confirms the point: a tap picks a recorded point to correct, or asks for the open one.
+                          if (!missing.includes(p)) setEdit({ step: s.n, point: p });
+                          else nudge();
+                        }}
                       />
-                      {onMeasure && MEASURED_STEPS.includes(s.n) && (
+                      {measured && onMeasure && (
                         <MeasureEntry
+                          key={s.n}
                           step={s.n}
                           points={s.points}
-                          confirmed={confirmed}
-                          values={latestValues(actions, s.n)}
-                          onRecord={(p, v, typed) => onMeasure(s.n, p, v, typed)}
+                          values={values}
+                          edit={edit?.step === s.n ? edit.point : null}
+                          onEdit={(p) => setEdit(p ? { step: s.n, point: p } : null)}
+                          prompt={promptStep === s.n}
+                          onRecord={(p, v, typed) => {
+                            onMeasure(s.n, p, v, typed);
+                            setPromptStep(null);
+                          }}
                         />
                       )}
                     </div>
@@ -101,7 +121,7 @@ export function MainView({
                   <div className="flex flex-wrap items-center gap-3">
                     <Btn onClick={() => onOpenStep(s.n)}>Step details</Btn>
                     <span className="flex-1" />
-                    <Btn variant="success" onClick={() => onNext(s.n)}>
+                    <Btn variant="success" onClick={() => (missing.length ? nudge() : onNext(s.n))}>
                       {s.points.length ? (s.n === 12 ? "Finish the check" : "Next step") : s.n === 12 ? "Done, finish the check" : "Done, next step"}
                     </Btn>
                   </div>

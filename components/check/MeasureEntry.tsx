@@ -1,10 +1,11 @@
 "use client";
-// Steps 7 to 10: type the value for a check point. Recording it also confirms the point (no double entry).
-// Values are recorded, never judged: no tolerance, no pass or fail. A correction is a new entry.
+// Steps 7 to 10: a value is required for every point, in order. The panel works on the current open point
+// only; a recorded point can be picked to correct it (a new entry, never counted twice). Recording a value
+// confirms the point. Values are recorded, never judged: no tolerance, no pass or fail.
 import { useState } from "react";
 import type { Action, MeasureSource } from "@/lib/check/types";
 import { MEASUREMENT_UNIT } from "@/lib/config";
-import { Btn, cx } from "../ui";
+import { Bars, Btn, Speaker, cx } from "../ui";
 
 export const MEASURED_STEPS = [7, 8, 9, 10];
 
@@ -23,6 +24,13 @@ export function latestValues(actions: Action[], step: number): Map<string, Lates
   return out;
 }
 
+export const hasValue = (v: LatestValue | undefined) => !!v && v.status === "recorded" && v.value !== null;
+
+/** The points of a step still without a value, in SOP order. */
+export function missingValues(points: string[], values: Map<string, LatestValue>): string[] {
+  return points.filter((p) => !hasValue(values.get(p)));
+}
+
 /** "12,4", "12.4", "-0.5" to a number; null if it is not one. */
 export function parseTyped(v: string): number | null {
   const t = v.trim().replace(",", ".");
@@ -35,44 +43,62 @@ export const SOURCE_NOTE: Record<MeasureSource, string> = {
   typed: "Typed, not a validated record",
 };
 
-export function MeasureEntry({ step, points, confirmed, values, onRecord }: {
+export function measurementPrompt(point: string): string {
+  return `Measurement required. Record the value for ${point} to continue.`;
+}
+
+export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRecord }: {
   step: number;
   points: string[];
-  confirmed: Set<string>;
   values: Map<string, LatestValue>;
+  /** A recorded point picked for a correction; null: the current open point. */
+  edit: string | null;
+  onEdit: (point: string | null) => void;
+  /** Show "Measurement required" (someone tried a later point or Next step). */
+  prompt: boolean;
   onRecord: (point: string, value: number, typed: string) => void;
 }) {
-  const next = points.find((p) => !confirmed.has(p) && !values.has(p)) ?? points.find((p) => !values.has(p)) ?? points[0];
-  const [point, setPoint] = useState<string | null>(null);
+  const missing = missingValues(points, values);
+  const current = missing[0] ?? null;
+  const recorded = points.filter((p) => hasValue(values.get(p)));
+  const chosen = edit && recorded.includes(edit) ? edit : current ?? recorded[0];
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const chosen = point && points.includes(point) ? point : next;
+
   const record = () => {
     const n = parseTyped(text);
     if (n === null) {
-      setError(`Type a number for ${chosen}, for example 12.4`);
+      setError("Enter a number, for example 12.4.");
       return;
     }
     onRecord(chosen, n, text.trim());
     setText("");
     setError(null);
-    setPoint(null); // on to the next point
+    onEdit(null); // back to the next open point
   };
+
   return (
     <div className="flex flex-col gap-2 rounded-[var(--fl-radius-md)] border border-line bg-surface px-4 py-3" data-testid="measure-entry">
+      {prompt && current && (
+        <div role="alert" data-testid="measure-prompt" className="flex items-center gap-3 rounded-[var(--fl-radius-md)] border-2 border-amber bg-amber-soft px-4 py-2 text-[18px] font-semibold text-amber-ink">
+          <Speaker size={30} />
+          <Bars live={false} />
+          <span>{measurementPrompt(current)}</span>
+        </div>
+      )}
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[15px] text-muted">Point</span>
+          <span className="text-[15px] text-muted">{edit && recorded.includes(edit) ? "Correct the value for" : "Point"}</span>
           <select
             aria-label={`Step ${step} point to record`}
             value={chosen}
-            onChange={(e) => setPoint(e.target.value)}
+            onChange={(e) => onEdit(e.target.value === current ? null : e.target.value)}
             className="tap rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 text-[20px]"
           >
-            {points.map((p) => (
+            {current && <option value={current}>{current}</option>}
+            {recorded.map((p) => (
               <option key={p} value={p}>
-                {p}
-                {values.has(p) ? " (recorded)" : ""}
+                {p} (recorded, correct it)
               </option>
             ))}
           </select>
@@ -91,25 +117,25 @@ export function MeasureEntry({ step, points, confirmed, values, onRecord }: {
         <Btn variant="success" onClick={record}>
           Record value
         </Btn>
-        <span className="text-[14px] text-muted">Recording a value also confirms the point.</span>
+        <span className="text-[14px] text-muted">
+          {current ? `${points.length - missing.length} of ${points.length} recorded. Next: ${current}.` : `All ${points.length} recorded.`} Recording a value confirms the point.
+        </span>
       </div>
       {error && (
-        <p role="alert" className="text-[16px] text-red-ink">
+        <p role="alert" data-testid="measure-error" className="text-[16px] text-red-ink">
           {error}
         </p>
       )}
-      {values.size > 0 && (
+      {recorded.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label={`Step ${step} recorded values`}>
-          {points
-            .filter((p) => values.has(p))
-            .map((p) => {
-              const v = values.get(p)!;
-              return (
-                <li key={p} data-point={p} title={SOURCE_NOTE[v.source]} className={cx("rounded-full border px-3 py-1 text-[15px]", v.status === "recorded" ? "border-line bg-surface-2 text-ink" : "border-amber-line bg-amber-soft text-amber-ink")}>
-                  <b>{p}</b> {v.value === null ? v.status : `${v.value} ${MEASUREMENT_UNIT}`}
-                </li>
-              );
-            })}
+          {recorded.map((p) => {
+            const v = values.get(p)!;
+            return (
+              <li key={p} data-point={p} title={SOURCE_NOTE[v.source]} className={cx("rounded-full border px-3 py-1 text-[15px]", "border-line bg-surface-2 text-ink")}>
+                <b>{p}</b> {v.value} {MEASUREMENT_UNIT}
+              </li>
+            );
+          })}
         </ul>
       )}
       <p className="text-[13px] text-muted">Values here are a working note: typed or voice-entered, not a validated record. The tablet stays the record. The app never judges a value.</p>

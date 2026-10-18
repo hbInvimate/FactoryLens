@@ -2,47 +2,78 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { STEPS } from "../lib/sop";
 import { signInAs } from "./auth-helpers";
-import { doSteps, grid, startCheck, waitSaved } from "./helpers";
+import { doSteps, grid, recordValues, startCheck, waitSaved } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
 let sessionId = "";
 const STATION = "Laser cell 3 · FX-014";
 
-test("typed values at step 7: recording confirms the point, a correction keeps the old value", async ({ page }) => {
+test("required values at step 7: the gate, the order, the prompt and a correction that does not double count", async ({ page }) => {
   sessionId = await startCheck(page);
   await doSteps(page, 1, 6);
-  const entry = page.getByTestId("measure-entry");
-  await expect(entry).toBeVisible();
+  const step = page.locator("li[aria-current=step]");
+  const entry = step.getByTestId("measure-entry");
+  const prompt = entry.getByTestId("measure-prompt");
   await expect(entry.getByLabel("Step 7 point to record")).toHaveValue("H1");
+  await expect(prompt).toHaveCount(0);
+
+  // The gate: Next step does not leave the step and raises no deviation; the prompt names the first missing point.
+  await step.getByRole("button", { name: "Next step", exact: true }).click();
+  await expect(prompt).toHaveText("Measurement required. Record the value for H1 to continue.");
+  await expect(step).toContainText(STEPS[6].name);
+  await expect(page.getByRole("heading", { name: "Step 7 skipped" })).toHaveCount(0);
 
   // Not a number: refused.
+  await entry.getByRole("button", { name: "Record value" }).click();
+  await expect(entry.getByTestId("measure-error")).toHaveText("Enter a number, for example 12.4.");
   await entry.getByLabel("Value for H1 in mm").fill("abc");
   await entry.getByRole("button", { name: "Record value" }).click();
-  await expect(entry.getByRole("alert")).toContainText("Type a number for H1");
+  await expect(entry.getByTestId("measure-error")).toHaveText("Enter a number, for example 12.4.");
 
-  await entry.getByLabel("Value for H1 in mm").fill("12,4");
-  await entry.getByRole("button", { name: "Record value" }).click();
+  await recordValues(page, 7, ["H1", "H2"], "12,4");
   await expect(entry.locator('li[data-point="H1"]')).toHaveText("H1 12.4 mm");
-  // H1 is confirmed by the value: the next point is offered, and the step counts it.
-  await expect(entry.getByLabel("Step 7 point to record")).toHaveValue("H2");
-  await expect(page.locator("li[aria-current=step]")).toContainText("1 of 14");
+  await expect(step).toContainText("2 of 14"); // the values confirmed H1 and H2
+  await expect(prompt).toHaveCount(0);
 
-  // A correction: a new value for H1. The latest shows; both are stored.
-  await entry.getByLabel("Step 7 point to record").selectOption("H1");
+  // Order: a later point cannot be recorded or confirmed. Tapping H5 asks for H3; H5 is not even offered.
+  await grid(page, 7).getByRole("button", { name: "H5", exact: true }).click();
+  await expect(prompt).toHaveText("Measurement required. Record the value for H3 to continue.");
+  await expect(step).toContainText("2 of 14");
+  await expect(entry.getByLabel("Step 7 point to record").locator("option")).toHaveText(["H3", "H1 (recorded, correct it)", "H2 (recorded, correct it)"]);
+
+  // A correction: tap the recorded H1, record again. A new row; the point is not counted twice.
+  await grid(page, 7).getByRole("button", { name: "H1", exact: true }).click();
+  await expect(entry.getByLabel("Step 7 point to record")).toHaveValue("H1");
   await entry.getByLabel("Value for H1 in mm").fill("12.5");
   await entry.getByRole("button", { name: "Record value" }).click();
   await expect(entry.locator('li[data-point="H1"]')).toHaveText("H1 12.5 mm");
-  await expect(page.locator("li[aria-current=step]")).toContainText("1 of 14"); // not counted twice
+  await expect(step).toContainText("2 of 14");
+  await expect(entry.getByLabel("Step 7 point to record")).toHaveValue("H3");
 
-  // The rest by tapping; no double entry for H1, and no deviation.
-  const g = grid(page, 7);
-  for (const p of STEPS[6].points.slice(1)) await g.getByRole("button", { name: p, exact: true }).click();
-  await page.getByRole("button", { name: "Next step", exact: true }).click();
+  // The rest, in order; then the step can be left, with no deviation.
+  await recordValues(page, 7, STEPS[6].points.slice(2));
+  await step.getByRole("button", { name: "Next step", exact: true }).click();
   await expect(page.locator("li[aria-current=step]")).toContainText(STEPS[7].name);
+  await expect(page.getByRole("heading", { name: "Step 7 skipped" })).toHaveCount(0);
   await waitSaved(page);
 });
 
+test("steps 8 to 10 are gated the same way; step 11 is not", async ({ page }) => {
+  await page.goto(`/check/${sessionId}`);
+  const step = page.locator("li[aria-current=step]");
+  for (const n of [8, 9, 10]) {
+    await expect(step).toContainText(STEPS[n - 1].name);
+    await step.getByRole("button", { name: "Next step", exact: true }).click();
+    await expect(step.getByTestId("measure-prompt")).toHaveText(`Measurement required. Record the value for ${STEPS[n - 1].points[0]} to continue.`);
+    await recordValues(page, n, STEPS[n - 1].points);
+    await step.getByRole("button", { name: "Next step", exact: true }).click();
+  }
+  // Step 11: visual points, tapped as before; no value panel.
+  await expect(step).toContainText(STEPS[10].name);
+  await expect(step.getByTestId("measure-entry")).toHaveCount(0);
+  await waitSaved(page);
+});
 test("the server refuses values outside steps 7 to 10", async ({ request }) => {
   const id = crypto.randomUUID();
   const meta = { id, part: "p", sop: "First-off check, rev A", fixture: STATION, operator: "x", createdAt: Date.now() - 1000 };
@@ -52,11 +83,11 @@ test("the server refuses values outside steps 7 to 10", async ({ request }) => {
 
 test("the report shows the measurements of the session, corrections included", async ({ page }) => {
   await page.goto(`/dashboard/${sessionId}`);
-  const rows = page.getByTestId("report-measurements-table").locator("tbody tr");
-  await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toContainText("H1");
-  await expect(rows.first()).toContainText("12.4");
-  await expect(rows.nth(1)).toContainText("12.5");
+  const h1 = page.getByTestId("report-measurements-table").locator('tbody tr[data-point="H1"]');
+  await expect(h1).toHaveCount(2); // the first value and its correction
+  await expect(h1.first()).toContainText("12.4");
+  await expect(h1.nth(1)).toContainText("12.5");
+  await expect(page.getByTestId("report-measurements-table").locator('tbody tr')).toHaveCount(2 + 13 + 8 + 14 + 4);
   await expect(page.getByTestId("report-measurements")).toContainText("not a validated record");
 });
 

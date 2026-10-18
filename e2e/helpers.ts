@@ -22,11 +22,26 @@ async function expectAt(page: Page, n: number) {
   await expect(page.locator("li[aria-current=step]")).toContainText(STEPS[n - 1].name);
 }
 
-/** Does step n correctly: confirms every point in order, then moves on. */
+/** Steps 7 to 10 need a value for every point, in order (the value confirms the point). */
+export const MEASURED = [7, 8, 9, 10];
+
+/** Records a value for each point, in order, with the Record value panel. */
+export async function recordValues(page: Page, n: number, points: string[], value = "10") {
+  const entry = page.locator("li[aria-current=step]").getByTestId("measure-entry");
+  for (const p of points) {
+    await expect(entry.getByLabel(`Step ${n} point to record`)).toHaveValue(p);
+    await entry.getByLabel(`Value for ${p} in mm`).fill(value);
+    await entry.getByRole("button", { name: "Record value" }).click();
+    await expect(entry.locator(`li[data-point="${p}"]`)).toBeVisible();
+  }
+}
+
+/** Does step n correctly: confirms every point in order (with a value at steps 7 to 10), then moves on. */
 export async function doStep(page: Page, n: number) {
   await expectAt(page, n);
   const s = STEPS[n - 1];
-  if (s.points.length) await tap(page, n, s.points);
+  if (MEASURED.includes(n)) await recordValues(page, n, s.points);
+  else if (s.points.length) await tap(page, n, s.points);
   const label = s.points.length ? (n === 12 ? "Finish the check" : "Next step") : n === 12 ? "Done, finish the check" : "Done, next step";
   await page.getByRole("button", { name: label, exact: true }).click();
 }
