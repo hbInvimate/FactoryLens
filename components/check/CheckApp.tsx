@@ -9,6 +9,7 @@ import { useNow, useSpeech } from "@/lib/client/hooks";
 import { uid } from "@/lib/client/local";
 import { SopProvider } from "@/lib/client/sopContext";
 import { MEASUREMENT_UNIT } from "@/lib/config";
+import { demoValue } from "./MeasureEntry";
 import { useCheckSession } from "@/lib/client/useCheckSession";
 import type { Issue } from "@/lib/issues";
 import { REV_A_ID, stepOf, type SopRevisionText } from "@/lib/sop-revisions";
@@ -268,6 +269,13 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
         onMeasure={(step, point, value, typed) =>
           act({ type: "measure", step, point, value, unit: MEASUREMENT_UNIT, source: "typed", heard: typed, confidence: null, status: "recorded" })
         }
+        onFillDemo={(step, points) => {
+          // In order, as normal measure actions; each confirms its point. Invented values, marked demo.
+          for (const point of points) {
+            const value = demoValue(point);
+            act({ type: "measure", step, point, value, unit: MEASUREMENT_UNIT, source: "demo", heard: "demo fill", confidence: null, status: "recorded" });
+          }
+        }}
         onNext={(step) => act({ type: "next_step", step })}
         onOpenStep={(step) => setView({ kind: "detail", step })}
         onLodge={() => setView({ kind: "lodge" })}

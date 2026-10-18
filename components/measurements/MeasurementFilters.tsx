@@ -49,9 +49,10 @@ export function MeasurementFilters({ stations, value }: { stations: string[]; va
       </select>
       )}
       <select name="source" aria-label="Source" defaultValue={value.source} onChange={submit} className={SELECT}>
-        <option value="">Voice and typed</option>
+        <option value="">All sources</option>
         <option value="voice">Voice</option>
         <option value="typed">Typed</option>
+        <option value="demo">Demo</option>
       </select>
     </Form>
   );

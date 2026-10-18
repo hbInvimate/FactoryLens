@@ -26,12 +26,14 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
 }
 
 export function MainView({
-  state, now, onTap, onNext, onOpenStep, onLodge, actions = [], onMeasure,
+  state, now, onTap, onNext, onOpenStep, onLodge, actions = [], onMeasure, onFillDemo,
 }: {
   state: CheckState;
   /** The session's actions, for the values recorded at steps 7 to 10. */
   actions?: Action[];
   onMeasure?: (step: number, point: string, value: number, typed: string) => void;
+  /** "Fill demo values": invented values for the given open points, in order. */
+  onFillDemo?: (step: number, points: string[]) => void;
   now: number;
   onTap: (step: number, point: string) => void;
   onNext: (step: number) => void;
@@ -83,10 +85,11 @@ export function MainView({
                   {s.points.length > 0 && (
                     <div className="flex flex-col gap-2">
                       <span className="text-[16px] text-muted">
-                        {s.ordered
-                          ? "Tap each clamp as you close it, in order."
-                          : "Tap each point when you have tried the pin or gauge there."}{" "}
-                        {r.confirmed.length} of {s.points.length}
+                        {measured
+                          ? `Record a value for each point, in order. ${s.points.length - missing.length} of ${s.points.length} recorded.`
+                          : s.ordered
+                            ? `Tap each clamp as you close it, in order. ${r.confirmed.length} of ${s.points.length}`
+                            : `Tap each point when you have tried the pin or gauge there. ${r.confirmed.length} of ${s.points.length}`}
                       </span>
                       <PointGrid
                         label={`Step ${s.n} points`}
@@ -114,6 +117,14 @@ export function MainView({
                             onMeasure(s.n, p, v, typed);
                             setPromptStep(null);
                           }}
+                          onFillDemo={
+                            onFillDemo
+                              ? (ps) => {
+                                  onFillDemo(s.n, ps);
+                                  setPromptStep(null);
+                                }
+                              : undefined
+                          }
                         />
                       )}
                     </div>

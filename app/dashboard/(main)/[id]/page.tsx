@@ -218,7 +218,7 @@ function Measurements({ rows }: { rows: MeasurementRow[] }) {
                   <Td className="font-semibold">{m.pointId}</Td>
                   <Td>{m.value === null ? "—" : m.value}</Td>
                   <Td>{m.unit}</Td>
-                  <Td>{m.source === "voice" ? "Voice-entered" : "Typed"}</Td>
+                  <Td>{m.source === "voice" ? "Voice-entered" : m.source === "demo" ? "Demo" : "Typed"}</Td>
                   <Td>{m.status}</Td>
                   <Td>
                     <LocalTime iso={m.recordedAt.toISOString()} timeOnly />

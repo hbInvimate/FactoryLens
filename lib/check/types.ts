@@ -101,7 +101,8 @@ export type ActionBody =
    */
   | { type: "measure"; step: number; point: string; value: number | null; unit: string; source: MeasureSource; heard: string; confidence: number | null; status: MeasureStatus };
 
-export type MeasureSource = "voice" | "typed";
+/** demo: invented by "Fill demo values" (lib/config.ts DEMO_FILL_ENABLED); never a measurement. */
+export type MeasureSource = "voice" | "typed" | "demo";
 export type MeasureStatus = "recorded" | "missing" | "unclear";
 
 export type ActionType = ActionBody["type"];

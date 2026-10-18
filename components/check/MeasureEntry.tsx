@@ -4,7 +4,7 @@
 // confirms the point. Values are recorded, never judged: no tolerance, no pass or fail.
 import { useState } from "react";
 import type { Action, MeasureSource } from "@/lib/check/types";
-import { MEASUREMENT_UNIT } from "@/lib/config";
+import { DEMO_FILL_ENABLED, DEMO_FILL_NOMINALS, DEMO_FILL_SPREAD, MEASUREMENT_UNIT } from "@/lib/config";
 import { Bars, Btn, Speaker, cx } from "../ui";
 
 export const MEASURED_STEPS = [7, 8, 9, 10];
@@ -41,13 +41,20 @@ export function parseTyped(v: string): number | null {
 export const SOURCE_NOTE: Record<MeasureSource, string> = {
   voice: "Voice-entered, not a validated record",
   typed: "Typed, not a validated record",
+  demo: "Demo only. Values are invented.",
 };
+
+/** An invented value near the feature's nominal (lib/config.ts). For demos only; never a measurement. */
+export function demoValue(point: string): number {
+  const nominal = DEMO_FILL_NOMINALS[point[0] as keyof typeof DEMO_FILL_NOMINALS] ?? 1;
+  return Math.round((nominal + (Math.random() * 2 - 1) * DEMO_FILL_SPREAD) * 100) / 100;
+}
 
 export function measurementPrompt(point: string): string {
   return `Measurement required. Record the value for ${point} to continue.`;
 }
 
-export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRecord }: {
+export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRecord, onFillDemo }: {
   step: number;
   points: string[];
   values: Map<string, LatestValue>;
@@ -57,6 +64,8 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
   /** Show "Measurement required" (someone tried a later point or Next step). */
   prompt: boolean;
   onRecord: (point: string, value: number, typed: string) => void;
+  /** "Fill demo values": every open point, in order. Absent when demo fill is off. */
+  onFillDemo?: (points: string[]) => void;
 }) {
   const missing = missingValues(points, values);
   const current = missing[0] ?? null;
@@ -117,6 +126,23 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
         <Btn variant="success" onClick={record}>
           Record value
         </Btn>
+        {DEMO_FILL_ENABLED && onFillDemo && (
+          <span className="flex flex-col gap-0.5">
+            <Btn
+              variant="amber"
+              disabled={missing.length === 0}
+              onClick={() => {
+                onFillDemo(missing);
+                setText("");
+                setError(null);
+                onEdit(null);
+              }}
+            >
+              Fill demo values
+            </Btn>
+            <span className="text-[13px] text-amber-ink">Demo only. Values are invented.</span>
+          </span>
+        )}
         <span className="text-[14px] text-muted">
           {current ? `${points.length - missing.length} of ${points.length} recorded. Next: ${current}.` : `All ${points.length} recorded.`} Recording a value confirms the point.
         </span>
@@ -133,6 +159,7 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
             return (
               <li key={p} data-point={p} title={SOURCE_NOTE[v.source]} className={cx("rounded-full border px-3 py-1 text-[15px]", "border-line bg-surface-2 text-ink")}>
                 <b>{p}</b> {v.value} {MEASUREMENT_UNIT}
+                {v.source === "demo" && <span className="ml-1.5 rounded-full bg-amber-soft px-1.5 text-[11px] font-bold text-amber-ink">DEMO</span>}
               </li>
             );
           })}

@@ -6,6 +6,14 @@ import { MEASUREMENT_UNIT } from "@/lib/config";
 import { getRepo } from "./repo";
 import { sessionWhere, stationExpr, type DashFilter } from "./sqlparts";
 
+/** Where a value came from. demo: invented by "Fill demo values", never a measurement. */
+export type Source = "voice" | "typed" | "demo";
+export const SOURCE_NOTE: Record<string, string> = {
+  voice: "Voice-entered, not a validated record",
+  typed: "Typed, not a validated record",
+  demo: "Demo value, not a measurement",
+};
+
 export const SORTS = ["recorded", "technician", "station", "step", "point", "value", "source", "status"] as const;
 export type Sort = (typeof SORTS)[number];
 export const PAGE_SIZE = 50;
@@ -13,7 +21,7 @@ export const PAGE_SIZE = 50;
 export interface MeasurementQuery {
   f: DashFilter;
   step: number | null;
-  source: "voice" | "typed" | null;
+  source: Source | null;
   sort: Sort;
   dir: "asc" | "desc";
   page: number;
@@ -108,7 +116,7 @@ const cell = (v: unknown) => {
 export function toCsv(rows: MeasurementView[]): string {
   const head = ["recorded_at", "technician", "station", "session", "step", "point", "value", "unit", "source", "status", "text_heard", "note"];
   const lines = rows.map((r) =>
-    [r.recordedAt, r.technician, r.station, r.sessionId, r.step, r.point, r.value, r.unit, r.source, r.status, r.textHeard, r.source === "voice" ? "Voice-entered, not a validated record" : "Typed, not a validated record"]
+    [r.recordedAt, r.technician, r.station, r.sessionId, r.step, r.point, r.value, r.unit, r.source === "demo" ? "Demo" : r.source, r.status, r.textHeard, SOURCE_NOTE[r.source] ?? ""]
       .map(cell)
       .join(","),
   );
@@ -121,7 +129,7 @@ export function parseMeasurementParams(sp: Record<string, string | string[] | un
   const sort = SORTS.includes(sp.sort as Sort) ? (sp.sort as Sort) : "recorded";
   return {
     step: [7, 8, 9, 10].includes(step) ? step : null,
-    source: sp.source === "voice" || sp.source === "typed" ? (sp.source as "voice" | "typed") : null,
+    source: sp.source === "voice" || sp.source === "typed" || sp.source === "demo" ? (sp.source as Source) : null,
     sort,
     dir: sp.dir === "asc" ? ("asc" as const) : ("desc" as const),
     page: Math.max(1, Math.floor(Number(sp.page) || 1)),
@@ -146,6 +154,8 @@ export interface WideCell {
   latest: number;
   /** Earlier values of a corrected point, oldest first. Empty when not corrected. */
   earlier: number[];
+  /** The latest value came from "Fill demo values". */
+  demo: boolean;
 }
 
 export interface WideRow {
@@ -162,7 +172,7 @@ export interface WideRow {
  * One grouped query: per check and point, the latest recorded value and the earlier ones. Only checks with at
  * least one recorded value in the filters get a row. Sample (demo) checks are included and marked.
  */
-export async function wideMeasurements(f: DashFilter, source: "voice" | "typed" | null): Promise<{ count: number; rows: WideRow[] | null }> {
+export async function wideMeasurements(f: DashFilter, source: Source | null): Promise<{ count: number; rows: WideRow[] | null }> {
   const { db } = await getRepo().conn();
   const w = and(
     sessionWhere({ ...f, includeSample: true }),
@@ -182,6 +192,7 @@ export async function wideMeasurements(f: DashFilter, source: "voice" | "typed" 
       sessionId: t.measurements.sessionId,
       point: t.measurements.pointId,
       values: sql<number[]>`array_agg(${t.measurements.value} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
+      sources: sql<string[]>`array_agg(${t.measurements.source} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
       startedAt: t.sessions.startedAt,
       technician: t.sessions.operatorLabel,
       station: sql<string>`${stationExpr}`,
@@ -199,7 +210,8 @@ export async function wideMeasurements(f: DashFilter, source: "voice" | "typed" 
       bySession.set(g.sessionId, row);
     }
     const vals = (g.values ?? []).map(Number);
-    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1) };
+    const sources = g.sources ?? [];
+    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1), demo: sources[sources.length - 1] === "demo" };
   }
   const rows = [...bySession.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.sessionId.localeCompare(b.sessionId));
   return { count, rows };
@@ -211,10 +223,11 @@ export function toWideCsv(rows: WideRow[]): string {
   const lines = rows.map((r) =>
     [
       r.startedAt, r.technician, r.station, r.sessionId,
-      ...FEATURE_POINTS.map((p) => r.cells[p]?.latest ?? ""),
+      // "D" marks a demo value: from a demo (sample) check, or from "Fill demo values".
+      ...FEATURE_POINTS.map((p) => (r.cells[p] ? `${r.cells[p].latest}${r.demo || r.cells[p].demo ? "D" : ""}` : "")),
       FEATURE_POINTS.filter((p) => (r.cells[p]?.earlier.length ?? 0) > 0).join(" "),
       r.demo ? "yes" : "no",
-      "Voice-entered or typed, not a validated record",
+      FEATURE_POINTS.some((p) => r.cells[p]?.demo) ? "Includes demo values, not measurements" : "Voice-entered or typed, not a validated record",
     ]
       .map(cell)
       .join(","),

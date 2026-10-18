@@ -1,5 +1,6 @@
 // Checks what the browser sends before it reaches the database.
 import { ACTION_TYPES, DECIDERS, HOLD_OUTCOMES, type Action, type SessionMeta } from "@/lib/check/types";
+import { DEMO_FILL_ENABLED } from "@/lib/config";
 
 export const MAX_ACTIONS_PER_SAVE = 500;
 const ID = /^[A-Za-z0-9_-]{6,64}$/;
@@ -111,7 +112,7 @@ const FIELDS: Record<Action["type"], Record<string, (v: unknown) => boolean>> = 
     point: (v) => isStr(v, 8),
     value: (v) => v === null || (typeof v === "number" && Number.isFinite(v) && Math.abs(v) < 1e6),
     unit: (v) => isStr(v, 8),
-    source: (v) => v === "voice" || v === "typed",
+    source: (v) => v === "voice" || v === "typed" || (v === "demo" && DEMO_FILL_ENABLED),
     heard: (v) => isStr(v, 200),
     confidence: (v) => v === null || (typeof v === "number" && v >= 0 && v <= 1),
     status: (v) => v === "recorded" || v === "missing" || v === "unclear",

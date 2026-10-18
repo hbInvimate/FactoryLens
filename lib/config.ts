@@ -65,3 +65,10 @@ export const REALISTIC_FASTER_THAN_PERCENT = 90;
 
 /** The unit every recorded value is in. The app records values; it never judges tolerance or pass/fail. */
 export const MEASUREMENT_UNIT = "mm";
+
+/** "Fill demo values" at steps 7 to 10, for demos and training. When false the button is hidden and the server refuses demo values. */
+export const DEMO_FILL_ENABLED = true;
+
+/** Invented values: the nominal per feature (by the first letter of the point id), plus or minus DEMO_FILL_SPREAD. Never a measurement. */
+export const DEMO_FILL_NOMINALS: Record<"H" | "S" | "N" | "T" | "F", number> = { H: 8.0, S: 6.2, N: 3.1, T: 0.4, F: 1.2 };
+export const DEMO_FILL_SPREAD = 0.05;

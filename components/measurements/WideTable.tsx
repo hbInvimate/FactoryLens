@@ -72,14 +72,14 @@ export function WideTable({ rows }: { rows: WideRow[] }) {
                       key={p}
                       data-point={p}
                       data-corrected={corrected ? "1" : undefined}
-                      title={corrected ? `Corrected. Earlier: ${c.earlier.join(", ")} ${MEASUREMENT_UNIT}` : r.demo && c ? "Demo value" : undefined}
+                      title={corrected ? `Corrected. Earlier: ${c.earlier.join(", ")} ${MEASUREMENT_UNIT}` : c && (r.demo || c.demo) ? "Demo value, not a measurement" : undefined}
                       className={cx("border-b border-line px-2 py-2 text-center tabular-nums whitespace-nowrap", i === 0 && "border-l", !c && "text-subtle")}
                     >
                       {c ? (
                         <>
                           {c.latest}
                           {corrected && <span aria-label="corrected" className="ml-0.5 inline-block size-1.5 rounded-full bg-amber align-top" data-testid="corrected-dot" />}
-                          {r.demo && (
+                          {(r.demo || c.demo) && (
                             <sup aria-label="demo value" className="ml-0.5 text-[10px] font-bold text-amber-ink">
                               D
                             </sup>

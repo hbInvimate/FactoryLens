@@ -10,7 +10,7 @@ import { LocalTime } from "@/components/LocalTime";
 import { MeasurementFilters } from "@/components/measurements/MeasurementFilters";
 import { cx } from "@/components/ui";
 import { dashView, type DashView } from "@/lib/server/dashView";
-import { PAGE_SIZE, WIDE_LIMIT, listMeasurements, parseMeasurementParams, wideMeasurements, type Sort } from "@/lib/server/measurements";
+import { PAGE_SIZE, WIDE_LIMIT, listMeasurements, parseMeasurementParams, wideMeasurements, type Sort, type Source } from "@/lib/server/measurements";
 import { WideTable } from "@/components/measurements/WideTable";
 import { NotConfigured } from "@/lib/server/repo";
 
@@ -68,7 +68,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
   );
 }
 
-async function Line({ f, source }: { f: DashView["f"]; source: "voice" | "typed" | null }) {
+async function Line({ f, source }: { f: DashView["f"]; source: Source | null }) {
   const { count, rows } = await wideMeasurements(f, source);
   return (
     <Card className="flex flex-col gap-3 px-6 py-5">
@@ -86,7 +86,7 @@ async function Line({ f, source }: { f: DashView["f"]; source: "voice" | "typed"
       ) : (
         <>
           <WideTable rows={rows} />
-          <p className="text-[13px] text-muted">The latest value of each point. A dot marks a corrected value (hover for the earlier ones); D marks a demo value. – : nothing recorded.</p>
+          <p className="text-[13px] text-muted">The latest value of each point. A dot marks a corrected value (hover for the earlier ones); D marks a demo value (invented, not a measurement). – : nothing recorded.</p>
         </>
       )}
     </Card>
@@ -147,8 +147,8 @@ async function List({ f, m, href }: { f: DashView["f"]; m: ReturnType<typeof par
                   <Td data-testid="value">{r.value === null ? "—" : r.value}</Td>
                   <Td>{r.unit}</Td>
                   <Td>
-                    <Chip tone={r.source === "voice" ? "blue" : "gray"} size="sm">
-                      {r.source === "voice" ? "Voice" : "Typed"}
+                    <Chip tone={r.source === "voice" ? "blue" : r.source === "demo" ? "amber" : "gray"} size="sm">
+                      {r.source === "voice" ? "Voice" : r.source === "demo" ? "Demo" : "Typed"}
                     </Chip>
                   </Td>
                   <Td>
