@@ -7,7 +7,7 @@ import { Button, StateBanner } from "@/components/ds";
 
 const LIMIT_MS = 20_000;
 
-export function VerifyActions({ revisionId }: { revisionId: string }) {
+export function VerifyActions({ revisionId, afterDiscard }: { revisionId: string; /** Where Discard goes: the Update SOP list. */ afterDiscard: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState<null | "confirm" | "discard">(null);
   const [error, setError] = useState<{ message: string; retry: "confirm" | "discard" } | null>(null);
@@ -21,7 +21,8 @@ export function VerifyActions({ revisionId }: { revisionId: string }) {
       const res = await fetch(`/api/sop/update/${encodeURIComponent(revisionId)}/${what}`, { method: "POST", signal: c.signal });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(body.error || `Could not save (${res.status}).`);
-      router.refresh();
+      if (what === "discard") router.push(afterDiscard);
+      else router.refresh();
     } catch (e) {
       const aborted = (e as Error).name === "AbortError";
       const message = aborted ? "Saving did not finish within 20 seconds." : (e as Error).message === "Failed to fetch" ? "The connection dropped while saving." : (e as Error).message;

@@ -8,6 +8,7 @@ import { BASELINE_WHO, candidateDataset, timedActions, type TimedSpec } from "./
 test.describe.configure({ mode: "serial" });
 
 let fastCheck = "";
+let fastStation = "";
 
 test("a failed Confirm, then Retry, activates exactly one revision", async ({ page, request, browser }) => {
   const station = `Laser cell U · FX-${Math.random().toString(36).slice(2, 7)}`;
@@ -28,6 +29,7 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
   await expect(tp).toHaveURL(/localhost:\d+\/$/);
   const fastId = await save(tctx.request, data.find((x) => x.key === "A5")!.spec);
   fastCheck = fastId;
+  fastStation = station;
   await tctx.close();
 
   // The dashboard's Update SOP button, then the last sessions: real only.
@@ -121,4 +123,33 @@ test("Discard draft: kept as Discarded, audited, and never blocks Use this way",
   const again = await propose();
   expect(again.ok(), await again.text()).toBeTruthy();
   await request.post(`/api/sop/update/${(await again.json()).revisionId}/discard`);
+});
+
+test("Discard, back to Update SOP: no pop-up, and Use this way starts fresh", async ({ page }) => {
+  // Arrive by clicks (client navigation), as a Quality Engineer would: the list page stays mounted while hidden.
+  await page.goto(`/dashboard/update-sop?station=${encodeURIComponent(fastStation)}`);
+  const row = () => page.getByTestId("last-sessions-table").locator(`tr[data-session="${fastCheck}"]`);
+  await row().getByRole("button", { name: "Use this way" }).click();
+  await page.waitForURL(/\/dashboard\/update-sop\/[^/?]+$/);
+  const first = page.url();
+  await expect(page.getByRole("heading", { name: "Check what the platform found" })).toBeVisible();
+
+  // Discard goes straight back to the list of the check's station.
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  await page.waitForURL((u) => u.pathname === "/dashboard/update-sop" && u.searchParams.get("station") === fastStation);
+  await expect(page.getByTestId("update-discarded")).toBeHidden(); // not the old "Discarded" page
+
+  // The list, in its normal state: no "The platform is working" pop-up.
+  await expect(page.getByRole("heading", { name: "Update SOP", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Finding what would change…")).toBeHidden();
+  await expect(row().getByRole("button", { name: "Use this way" })).toBeEnabled();
+
+  // Use this way again: a fresh run and a new proposal.
+  await row().getByRole("button", { name: "Use this way" }).click();
+  await page.waitForURL((u) => /\/dashboard\/update-sop\/[^/?]+$/.test(u.pathname) && u.href !== first);
+  await expect(page.getByRole("heading", { name: "Check what the platform found" })).toBeVisible();
+  await page.getByRole("button", { name: "Discard", exact: true }).click(); // leave nothing open
+  await page.waitForURL((u) => u.pathname === "/dashboard/update-sop");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

@@ -202,7 +202,10 @@ async function Body({ params }: { params: PageProps<"/dashboard/update-sop/[revi
               Applies to new checks only. A check that is running finishes on rev {active.label}. Times are button taps until video and hands-free are on. Part
               quality is judged in the tablet quality data tool.
             </p>
-            <VerifyActions revisionId={rev.id} />
+            <VerifyActions
+              revisionId={rev.id}
+              afterDiscard={latest?.station ? `/dashboard/update-sop?station=${encodeURIComponent(latest.station)}` : "/dashboard/update-sop"}
+            />
           </Card>
         </div>
       </div>

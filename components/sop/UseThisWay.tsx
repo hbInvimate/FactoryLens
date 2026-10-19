@@ -2,7 +2,7 @@
 // "Use this way": runs the comparison on one check (the "platform is working" pop-up), then opens the
 // verify screen. Over 20 seconds or an error: a clear message with Retry.
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LocalTime } from "@/components/LocalTime";
 import { Button } from "@/components/ds";
 import { Modal } from "@/components/check/Dialogs";
@@ -31,6 +31,15 @@ export function UseThisWay({ sessionId, label, startedAt, activeLabel }: { sessi
       clearTimeout(b);
     };
   }, [state.kind]);
+  // When the page is hidden (we went to the result page), forget the pop-up,
+  // so coming back shows the list and "Use this way" starts fresh.
+  useLayoutEffect(
+    () => () => {
+      setState({ kind: "idle" });
+      setPhase(0);
+    },
+    [],
+  );
 
   const run = async () => {
     setPhase(0);
