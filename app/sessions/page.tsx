@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
 import { Gate } from "@/components/auth/Gate";
-import { PageBar } from "@/components/PageBar";
+import { TechShell } from "@/components/tasks/TechShell";
 import { StatusChip } from "@/components/StatusChip";
 import { isTestMode } from "@/components/TestModeBanner";
 import { seesAllSessions } from "@/lib/auth/roles";
@@ -109,13 +109,14 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
 export default function SessionsPage(props: PageProps<"/sessions">) {
   return (
     <Gate area="check" next="/sessions">
-      <PageBar title="Past sessions" current="sessions" />
-      <main className="flex flex-1 flex-col gap-5 px-8 py-7">
-        <h1 className="text-[30px] font-semibold">Past sessions</h1>
-        <Suspense fallback={<TableSkeleton />}>
-          <SessionTable searchParams={props.searchParams} />
-        </Suspense>
-      </main>
+      <TechShell current="sessions">
+        <main className="flex flex-1 flex-col gap-5 px-8 py-7">
+          <h1 className="text-[30px] font-semibold">Past sessions</h1>
+          <Suspense fallback={<TableSkeleton />}>
+            <SessionTable searchParams={props.searchParams} />
+          </Suspense>
+        </main>
+      </TechShell>
     </Gate>
   );
 }

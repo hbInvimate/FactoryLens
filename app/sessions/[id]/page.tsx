@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { LocalTime } from "@/components/LocalTime";
 import { Gate } from "@/components/auth/Gate";
-import { PageBar } from "@/components/PageBar";
+import { TechShell } from "@/components/tasks/TechShell";
 import { StatusChip } from "@/components/StatusChip";
 import { Chip, KV, Panel, Tick, Ring, Warn } from "@/components/ui";
 import type { Projection } from "@/lib/check/project";
@@ -190,15 +190,16 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
 export default function SessionPage(props: PageProps<"/sessions/[id]">) {
   return (
     <Gate area="check" next="/sessions">
-      <PageBar title="Session" />
-      <main className="flex flex-1 flex-col gap-5 px-8 py-7">
-        <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
-          ← All sessions
-        </Link>
-        <Suspense fallback={<TableSkeleton />}>
-          <Detail params={props.params} />
-        </Suspense>
-      </main>
+      <TechShell current="sessions">
+        <main className="flex flex-1 flex-col gap-5 px-8 py-7">
+          <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
+            ← All sessions
+          </Link>
+          <Suspense fallback={<TableSkeleton />}>
+            <Detail params={props.params} />
+          </Suspense>
+        </main>
+      </TechShell>
     </Gate>
   );
 }

@@ -158,3 +158,34 @@ test("a check started on Start a check is listed too: Resume while in progress, 
   await expect(r.getByRole("link", { name: /^View / })).toHaveAttribute("href", `/sessions/${id}`);
   await ctx.close();
 });
+
+test("the sidebar is on every Quality Technician page; in a check it opens from the menu and leaves through Leave", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  for (const [path, label] of [["/tasks", "Sessions"], ["/", "Start a check"], ["/sessions", "Past sessions"]] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
+  }
+
+  const id = await startCheck(page);
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu).toBeHidden(); // hidden while the check runs
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(menu).toBeVisible();
+  await page.getByRole("button", { name: "Close menu" }).click();
+  await expect(menu).toBeHidden();
+
+  // Leaving through the menu asks first, like Leave; Stay keeps the check.
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await menu.getByRole("button", { name: "Past sessions" }).click();
+  await expect(page.getByRole("dialog", { name: "Leave this check?" })).toBeVisible();
+  await page.getByRole("button", { name: "Stay" }).click();
+  await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
+
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await menu.getByRole("button", { name: "Past sessions" }).click();
+  const leave = page.getByRole("dialog", { name: "Leave this check?" });
+  await leave.getByRole("button", { name: "Break" }).click();
+  await leave.getByRole("button", { name: "Leave the check" }).click();
+  await expect(page).toHaveURL(/\/sessions$/);
+  await ctx.close();
+});

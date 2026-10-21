@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { SessionMeta } from "@/lib/check/types";
 import type { SyncState } from "@/lib/client/useCheckSession";
 import { Dot, Info, Logo, cx } from "../ui";
+import { CheckMenu } from "./CheckMenu";
 
 function Connection({ sync }: { sync: SyncState }) {
   const [color, text] = sync.auth
@@ -40,7 +41,7 @@ function BarButton({ onClick, children, pressed, label }: { onClick: () => void;
 }
 
 export function TopBar({
-  meta, sync, voice, onVoice, onPause, onLeave, canPause,
+  meta, sync, voice, onVoice, onPause, onLeave, canPause, onNavigate,
 }: {
   meta: SessionMeta;
   sync: SyncState;
@@ -49,9 +50,12 @@ export function TopBar({
   onPause: () => void;
   onLeave: () => void;
   canPause: boolean;
+  /** A page from the menu: through the Leave flow while the check is in progress. */
+  onNavigate: (href: string) => void;
 }) {
   return (
     <header className="flex min-h-[72px] flex-none flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-surface px-5 py-2">
+      <CheckMenu operator={meta.operator} onNavigate={onNavigate} />
       <Logo />
       <span aria-hidden className="h-9 w-px bg-line" />
       <Info label="Part" value={meta.part} />

@@ -21,9 +21,9 @@
   --fl-on-strong: #ffffff; /* text on a strong state colour */
 
   /* Brand: green */
-  --fl-primary: #16a34a; /* buttons, active tab line, complete */
-  --fl-primary-hover: #15803d;
-  --fl-primary-ink: #15803d; /* green TEXT on white (readable) */
+  --fl-primary: #10b981; /* buttons, active tab line, complete */
+  --fl-primary-hover: #059669;
+  --fl-primary-ink: #059669; /* green TEXT on white */
   --fl-primary-soft: #ecfdf3; /* active nav item, success fills */
   --fl-primary-border: #86efac; /* thin green border of the active nav item */
 

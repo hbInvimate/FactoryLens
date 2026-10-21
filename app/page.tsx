@@ -1,5 +1,5 @@
 import { Gate } from "@/components/auth/Gate";
-import { PageBar } from "@/components/PageBar";
+import { TechShell } from "@/components/tasks/TechShell";
 import { StartForm } from "@/components/StartForm";
 import { currentUser } from "@/lib/auth/server";
 import { activeRevision } from "@/lib/server/sop";
@@ -22,10 +22,11 @@ async function Start() {
 export default function Home() {
   return (
     <Gate area="check" next="/">
-      <PageBar title="Quality Technician workstation" current="start" />
-      <main className="flex flex-1 flex-col px-8 py-8">
-        <Start />
-      </main>
+      <TechShell current="start">
+        <main className="flex flex-1 flex-col px-8 py-8">
+          <Start />
+        </main>
+      </TechShell>
     </Gate>
   );
 }

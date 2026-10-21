@@ -19,15 +19,12 @@ async function wrongClampsThenFix(page: Page) {
   await page.getByRole("button", { name: "Fixed, continue" }).click();
 }
 
-test("Navigation: Dashboard button on the first screen and in the top navigation", async ({ page }) => {
+test("Navigation: Dashboard button on the first screen", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("main").getByRole("link", { name: "Dashboard" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   // Sign-in protects the dashboard now, so the old "Anyone with the link" note is gone.
   await expect(page.getByText("Anyone with the link")).toHaveCount(0);
-  await page.goto("/sessions");
-  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboard" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
 });
 
 test("Station list: seeded station, Add a station, empty station on the dashboard", async ({ page }) => {

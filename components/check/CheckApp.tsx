@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { activeStop, openDeviation, openHolds, undoCandidate } from "@/lib/check/reducer";
 import { deviationText } from "@/lib/check/text";
-import { STATUS_LABEL, type ActionBody, type CheckState } from "@/lib/check/types";
+import { ENDED_STATUSES, STATUS_LABEL, type ActionBody, type CheckState } from "@/lib/check/types";
 import { useNow, useSpeech } from "@/lib/client/hooks";
 import { uid } from "@/lib/client/local";
 import { SopProvider } from "@/lib/client/sopContext";
@@ -99,6 +99,8 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
   const now = useNow(1000);
   const [view, setView] = useState<View>({ kind: "main" });
   const [leaving, setLeaving] = useState(false);
+  // Where Leave goes: the start page, or the page picked in the menu.
+  const [leaveTo, setLeaveTo] = useState("/");
   const [flash, setFlash] = useState<string | null>(null);
 
   const say = voice.say;
@@ -294,8 +296,20 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
         voice={voice.enabled}
         onVoice={voice.toggle}
         onPause={() => act({ type: "pause" })}
-        onLeave={() => setLeaving(true)}
+        onLeave={() => {
+          setLeaveTo("/");
+          setLeaving(true);
+        }}
         canPause={!ended && state.status !== "complete"}
+        onNavigate={(href) => {
+          // A check that is over is simply left; one in progress goes through Leave, as the Leave button does.
+          if (ended || state.status === "stopped" || ENDED_STATUSES.includes(state.status)) {
+            router.push(href);
+            return;
+          }
+          setLeaveTo(href);
+          setLeaving(true);
+        }}
       />
       <SyncNotice sync={sync} onRetry={retry} />
       <SignInPrompt sync={sync} onSignedIn={resumeAfterSignIn} />
@@ -316,7 +330,7 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
           onLeave={(reason) => {
             act({ type: "leave", reason });
             setLeaving(false);
-            router.push("/");
+            router.push(leaveTo);
           }}
         />
       )}
