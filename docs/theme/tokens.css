@@ -23,9 +23,9 @@
   /* Brand: green */
   --fl-primary: #10b981; /* buttons, active tab line, complete */
   --fl-primary-hover: #059669;
-  --fl-primary-ink: #059669; /* green TEXT on white */
-  --fl-primary-soft: #ecfdf3; /* active nav item, success fills */
-  --fl-primary-border: #86efac; /* thin green border of the active nav item */
+  --fl-primary-ink: #047857; /* green TEXT on white (readable) */
+  --fl-primary-soft: #ecfdf5; /* active nav item, success fills */
+  --fl-primary-border: #a7f3d0; /* thin green border of the active nav item */
 
   /* States: amber = skipped / warning */
   --fl-amber: #f59e0b;

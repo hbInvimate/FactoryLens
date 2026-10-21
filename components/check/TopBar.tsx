@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import type { SessionMeta } from "@/lib/check/types";
 import type { SyncState } from "@/lib/client/useCheckSession";
 import { Dot, Info, Logo, cx } from "../ui";
@@ -79,9 +78,7 @@ export function TopBar({
           {voice ? "Voice on" : "Voice off"}
         </BarButton>
         {canPause && <BarButton onClick={onPause}>Pause</BarButton>}
-        <Link href="/tasks" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3.5 text-[17px] font-semibold text-ink hover:bg-surface-2">
-          Sessions
-        </Link>
+        <BarButton onClick={() => onNavigate("/tasks")}>Sessions</BarButton>
         <BarButton onClick={onLeave}>Leave</BarButton>
       </div>
     </header>

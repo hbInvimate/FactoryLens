@@ -89,8 +89,7 @@ test("opening a task starts its check, with the step video and details; the stat
   await waitSaved(page);
 
   // In progress, and Open goes back to the same check.
-  await page.getByRole("link", { name: "Sessions", exact: true }).click();
-  await expect(page).toHaveURL(/\/tasks$/);
+  await page.goto("/tasks");
   await expect(row(page, title).getByTestId("task-status")).toHaveText("In progress");
   await row(page, title).getByRole("link", { name: `Open ${title}` }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
@@ -187,5 +186,14 @@ test("the sidebar is on every Quality Technician page; in a check it opens from 
   await leave.getByRole("button", { name: "Break" }).click();
   await leave.getByRole("button", { name: "Leave the check" }).click();
   await expect(page).toHaveURL(/\/sessions$/);
+
+  // The top bar's Sessions button asks too.
+  await page.goto(`/check/${id}`);
+  await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "Resume" }).click(); // left: paused
+  await page.getByRole("banner").getByRole("button", { name: "Sessions", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Leave this check?" })).toBeVisible();
+  await page.getByRole("button", { name: "Break" }).click();
+  await page.getByRole("button", { name: "Leave the check" }).click();
+  await expect(page).toHaveURL(/\/tasks$/);
   await ctx.close();
 });
