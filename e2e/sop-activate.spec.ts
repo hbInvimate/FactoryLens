@@ -19,7 +19,7 @@ async function signedIn(browser: Browser, who: "technician" | "technician2") {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const page = await ctx.newPage();
   await signInAs(page, who, "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
   return { ctx, page };
 }
 

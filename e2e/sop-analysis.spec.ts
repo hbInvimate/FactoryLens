@@ -198,7 +198,7 @@ test("access: a Quality Technician gets the access message and 403; signed out g
   const tech = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const tp = await tech.newPage();
   await signInAs(tp, "technician", "/signin");
-  await expect(tp).toHaveURL(/localhost:\d+\/$/);
+  await expect(tp).toHaveURL(/localhost:\d+\/tasks$/);
   await tp.goto("/dashboard/sop");
   await expect(tp.getByRole("heading", { name: "This page is for Quality Engineers" })).toBeVisible();
   await tp.goto("/dashboard/sop/new?step=7");

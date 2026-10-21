@@ -10,6 +10,7 @@ import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Tile, Warn, cx } from "../ui";
 import { PartDrawing } from "./PartDrawing";
+import { StepDetails, StepVideo } from "./StepMedia";
 import { PointGrid } from "./PointGrid";
 
 export function LodgeButton({ onClick }: { onClick: () => void }) {
@@ -156,7 +157,7 @@ export function MainView({
         </ol>
       </section>
 
-      <div className="flex min-w-0 flex-[1.1] flex-col gap-4">
+      <div className="flex min-h-0 min-w-0 flex-[1.1] flex-col gap-4 overflow-y-auto pr-1">
         <Panel>
           <div className="flex flex-wrap items-center gap-3.5">
             <h2 className="text-[22px] font-semibold">What the camera sees</h2>
@@ -167,6 +168,9 @@ export function MainView({
           <PartDrawing step={cur} className="block h-auto w-full rounded-[10px]" />
           <span className="text-[18px] text-ink-2">Now: {def.name}.</span>
         </Panel>
+
+        <StepVideo step={cur} />
+        <StepDetails step={cur} />
 
         <div className="grid grid-cols-3 gap-3">
           <Tile label="Steps done" value={`${done} / 12`} sub={devs ? "Deviations corrected" : "On track"} />

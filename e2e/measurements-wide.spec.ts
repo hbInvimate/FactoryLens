@@ -78,7 +78,7 @@ test("a Quality Technician gets 403 from the export and the access message on th
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const p = await ctx.newPage();
   await signInAs(p, "technician", "/signin");
-  await expect(p).toHaveURL(/localhost:\d+\/$/);
+  await expect(p).toHaveURL(/localhost:\d+\/tasks$/);
   expect((await ctx.request.get(`/api/measurements/csv?station=${encodeURIComponent(STATION)}`)).status()).toBe(403);
   await p.goto(url());
   await expect(p.getByRole("heading", { name: "This page is for Quality Engineers" })).toBeVisible();

@@ -9,7 +9,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 async function signedIn(page: Page, who: Who) {
   await signInAs(page, who, "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
 }
 
 /** Saves an empty session through the API, with a typed label the server must not trust. */
@@ -29,6 +29,7 @@ async function serverActions(request: APIRequestContext, id: string) {
 
 test("the start form shows the signed-in Quality Technician, read-only, and the session is stored under them", async ({ page, context }) => {
   await signedIn(page, "technician");
+  await page.goto("/");
   const me = testUser("technician").name;
   await expect(page.getByTestId("operator-name")).toHaveText(me);
   await expect(page.getByRole("textbox", { name: "Quality Technician" })).toHaveCount(0);

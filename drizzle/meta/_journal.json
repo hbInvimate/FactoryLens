@@ -71,6 +71,13 @@
       "when": 1792241301366,
       "tag": "0009_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792550463441,
+      "tag": "0010_tasks",
+      "breakpoints": true
     }
   ]
 }

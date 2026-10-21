@@ -407,3 +407,27 @@ export const measurements = pgTable(
   },
   (t) => [index("measurements_session_idx").on(t.sessionId, t.step), index("measurements_recorded_idx").on(t.recordedAt)],
 );
+
+/**
+ * A task: one first-off check to do, made with "New Task" on /tasks. Its status is never stored: it follows
+ * the linked check (none: Not started; running: In progress; finished: Completed; ended without a check: Closed).
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    part: text("part").notNull(),
+    station: text("station").notNull(),
+    /** high, medium or low. */
+    priority: text("priority").notNull(),
+    /** users.id of the Quality Technician who does it. */
+    assignedTo: text("assigned_to").notNull(),
+    assignedName: text("assigned_name").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    /** The check started from this task (sessions.id). Null until it is opened. */
+    sessionId: text("session_id"),
+  },
+  (t) => [index("tasks_assigned_idx").on(t.assignedTo, t.createdAt), uniqueIndex("tasks_session_idx").on(t.sessionId)],
+);

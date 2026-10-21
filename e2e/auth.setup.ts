@@ -5,6 +5,6 @@ import { ADMIN_STATE, signInAs } from "./auth-helpers";
 
 setup("sign in as the test admin", async ({ page }) => {
   await signInAs(page, "admin", "/signin");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/tasks$/);
   await page.context().storageState({ path: ADMIN_STATE });
 });

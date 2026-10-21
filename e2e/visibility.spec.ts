@@ -16,7 +16,8 @@ test("a check finished by a Quality Technician appears at once for a Quality Eng
   const techCtx = await browser.newContext();
   const tech = await techCtx.newPage();
   await signInAs(tech, "technician", "/signin");
-  await expect(tech).toHaveURL(/localhost:\d+\/$/);
+  await expect(tech).toHaveURL(/localhost:\d+\/tasks$/);
+  await tech.goto("/");
   await tech.getByLabel("Cell and fixture", { exact: true }).selectOption("__add__");
   await tech.getByLabel("New station: cell and fixture").fill(station);
   await tech.getByRole("button", { name: "Add", exact: true }).click();
@@ -68,7 +69,7 @@ test("test mode is shown on every page, and an empty dashboard says it is test m
   await page.goto("/signin");
   await expect(banner).toHaveText("TEST MODE: data is temporary and is not saved to Neon");
   await signInAs(page, "admin", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
   for (const path of ["/", "/sessions", "/dashboard"]) {
     await page.goto(path);
     await expect(banner, path).toBeVisible();

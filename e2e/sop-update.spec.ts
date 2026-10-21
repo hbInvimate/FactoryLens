@@ -26,7 +26,7 @@ test("a failed Confirm, then Retry, activates exactly one revision", async ({ pa
   const tctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const tp = await tctx.newPage();
   await signInAs(tp, "technician", "/signin");
-  await expect(tp).toHaveURL(/localhost:\d+\/$/);
+  await expect(tp).toHaveURL(/localhost:\d+\/tasks$/);
   const fastId = await save(tctx.request, data.find((x) => x.key === "A5")!.spec);
   fastCheck = fastId;
   fastStation = station;

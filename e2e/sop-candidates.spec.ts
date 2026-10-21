@@ -68,7 +68,7 @@ test("the page: the candidate with their label and the video note, others not li
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const p = await ctx.newPage();
     await signInAs(p, who, "/signin");
-    await expect(p).toHaveURL(/localhost:\d+\/$/);
+    await expect(p).toHaveURL(/localhost:\d+\/tasks$/);
     return ctx;
   };
   const by = (prefix: string) => data.filter((d) => d.key.startsWith(prefix)).map((d) => d.spec);

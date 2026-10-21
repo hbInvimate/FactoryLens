@@ -67,7 +67,7 @@ export function canUse(role: string, area: Area): boolean {
 
 /** Only same-site paths inside the area, so ?next= cannot send anyone elsewhere. */
 export function safeNext(next: unknown, area: Area): string {
-  const home = area === "check" ? "/" : "/dashboard";
+  const home = area === "check" ? "/tasks" : "/dashboard";
   if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return home;
   const inDashboard = next === "/dashboard" || next.startsWith("/dashboard/") || next.startsWith("/dashboard?");
   if (next.startsWith("/dashboard/signin") || next.startsWith("/signin")) return home;

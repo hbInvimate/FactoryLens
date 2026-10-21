@@ -11,7 +11,7 @@ test("a Quality Technician signs in at /signin and starts a check", async ({ pag
   await expect(page).toHaveURL(/\/signin\?next=%2F$/);
   await expect(page.getByText("Quality Technician", { exact: true })).toBeVisible();
   await signInAs(page, "technician", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/$/); // ?next=/ is kept
   await expect(page.getByTestId("signed-in-user")).toContainText(testUser("technician").name);
   await page.getByRole("button", { name: "Start the check" }).click();
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
@@ -20,7 +20,7 @@ test("a Quality Technician signs in at /signin and starts a check", async ({ pag
 
 test("a Quality Technician cannot open the dashboard", async ({ page, context }) => {
   await signInAs(page, "technician", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { name: "This page is for Quality Engineers" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in as a Quality Engineer" })).toHaveAttribute("href", "/dashboard/signin");
@@ -107,7 +107,7 @@ test("anonymous API reads and writes get 401", async ({ request }) => {
 
 test("sign out ends the session", async ({ page, context }) => {
   await signInAs(page, "technician", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/signin$/);
   await page.goto("/sessions");
