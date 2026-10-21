@@ -16,7 +16,8 @@
     "db:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/backfill.mts",
     "user:create": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts create",
     "user:reset-password": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts reset-password",
-    "user:disable": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts disable"
+    "user:disable": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts disable",
+    "task:create": "node --env-file-if-exists=.env.local --import tsx scripts/task.mts create"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

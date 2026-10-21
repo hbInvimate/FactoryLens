@@ -91,3 +91,9 @@ export const IconChevronUpDown = (p: P) => (
     <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
   </Icon>
 );
+export const IconSearch = (p: P) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </Icon>
+);

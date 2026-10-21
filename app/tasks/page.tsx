@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTone } from "@/components/ds";
-import { IconChecklist, IconClock, IconTarget } from "@/components/ds/icons";
+import { IconChecklist, IconClock, IconSearch, IconTarget } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
 import { NewTask } from "@/components/tasks/NewTask";
@@ -72,7 +72,13 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       </div>
 
       <Form action="/tasks" className="flex flex-wrap items-center gap-3" role="search">
-        <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search task" aria-label="Search task" className="max-w-[420px] flex-1" />
+        <span className="relative w-full max-w-[460px] flex-1">
+          <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
+            <IconSearch />
+          </span>
+          <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search task" aria-label="Search task" className="pl-11" />
+        </span>
+        <span className="flex-1" />
         <AutoSubmitSelect name="status" value={status} label="Status">
           <option value="active">Active (Not started, In progress)</option>
           <option value="all">All Status</option>
