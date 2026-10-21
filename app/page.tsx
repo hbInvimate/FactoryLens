@@ -5,6 +5,7 @@ import { currentUser } from "@/lib/auth/server";
 import { activeRevision } from "@/lib/server/sop";
 import { bannerFor } from "@/lib/server/sopActivate";
 import { SopBanner } from "@/components/SopBanner";
+import { LastChecks, UpNext } from "@/components/tasks/StartCards";
 
 /** Inside the Gate, so someone is signed in. */
 async function Start() {
@@ -15,6 +16,12 @@ async function Start() {
     <div className="flex flex-col gap-6">
       {banner && <SopBanner {...banner} />}
       <StartForm operatorName={user?.name ?? ""} sop={{ id: rev.id, label: rev.label }} />
+      {user && (
+        <div className="mx-auto grid w-full max-w-[880px] gap-6 md:grid-cols-2">
+          <UpNext user={user} sop={{ id: rev.id, label: rev.label }} />
+          <LastChecks user={user} />
+        </div>
+      )}
     </div>
   );
 }

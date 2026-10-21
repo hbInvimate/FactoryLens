@@ -198,3 +198,37 @@ test("the sidebar is on every Quality Technician page; in a check it opens from 
   await expect(page).toHaveURL(/\/tasks$/);
   await ctx.close();
 });
+
+test("start page: Up next shows my sessions to do, My last 3 checks shows my newest checks", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  const title = unique("Up next");
+  await newTask(page, title, "UN-1", "High");
+  await page.goto("/");
+  const up = page.getByTestId("up-next");
+  await expect(up.locator("li", { hasText: title })).toContainText("High");
+  await expect(up.locator("li", { hasText: title }).getByRole("button", { name: `Start ${title}` })).toBeVisible();
+  expect(await up.locator("li").count()).toBeLessThanOrEqual(3);
+
+  const id = await startCheck(page);
+  await doSteps(page, 1, 1);
+  await waitSaved(page);
+  await page.goto("/");
+  const last = page.getByTestId("last-checks");
+  expect(await last.locator("li").count()).toBeLessThanOrEqual(3);
+  await expect(last.locator(`li[data-session="${id}"]`).getByRole("link", { name: /^View / })).toHaveAttribute("href", `/sessions/${id}`);
+  await ctx.close();
+});
+
+test("below 1024 px the sidebar is behind the menu button", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  await page.setViewportSize({ width: 900, height: 1200 });
+  await page.goto("/tasks");
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  const menu = page.getByRole("dialog", { name: "Menu" });
+  await expect(menu.getByTestId("signed-in-user")).toBeVisible();
+  await menu.getByRole("link", { name: "Past sessions" }).click();
+  await expect(page).toHaveURL(/\/sessions$/);
+  await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
+  await ctx.close();
+});
