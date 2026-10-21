@@ -5,7 +5,7 @@ import { Logo, cx } from "./ui";
 const NAV = [
   { href: "/tasks", label: "Sessions", key: "tasks" },
   { href: "/", label: "Start a check", key: "start" },
-  { href: "/sessions", label: "Session history", key: "sessions" },
+  { href: "/sessions", label: "Past sessions", key: "sessions" },
   { href: "/dashboard", label: "Dashboard", key: "dashboard" },
 ] as const;
 

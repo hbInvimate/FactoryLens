@@ -14,7 +14,7 @@ import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { SampleSwitch } from "./SampleSwitch";
 import { NotConfiguredNotice, TableSkeleton } from "./shared";
 
-export const metadata = { title: "FactoryLens AI: session history" };
+export const metadata = { title: "FactoryLens AI: past sessions" };
 
 async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessions">["searchParams"] }) {
   const sp = await searchParams;
@@ -109,9 +109,9 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
 export default function SessionsPage(props: PageProps<"/sessions">) {
   return (
     <Gate area="check" next="/sessions">
-      <PageBar title="Session history" current="sessions" />
+      <PageBar title="Past sessions" current="sessions" />
       <main className="flex flex-1 flex-col gap-5 px-8 py-7">
-        <h1 className="text-[30px] font-semibold">Session history</h1>
+        <h1 className="text-[30px] font-semibold">Past sessions</h1>
         <Suspense fallback={<TableSkeleton />}>
           <SessionTable searchParams={props.searchParams} />
         </Suspense>

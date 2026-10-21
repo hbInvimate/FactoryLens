@@ -188,7 +188,7 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
             {active && <span className="text-base text-muted">Resume or leave the check in progress first.</span>}
             <span className="flex-1" />
             <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
-              Session history
+              Past sessions
             </Link>
             <Link href="/dashboard" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Dashboard

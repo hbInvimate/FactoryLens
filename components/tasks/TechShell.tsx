@@ -8,7 +8,7 @@ import { IconChecklist, IconHistory, IconPlay } from "@/components/ds/icons";
 const NAV = [
   { href: "/tasks", label: "Sessions", icon: <IconChecklist />, key: "tasks" },
   { href: "/", label: "Start a check", icon: <IconPlay />, key: "start" },
-  { href: "/sessions", label: "Session history", icon: <IconHistory />, key: "sessions" },
+  { href: "/sessions", label: "Past sessions", icon: <IconHistory />, key: "sessions" },
 ] as const;
 
 export function TechShell({ current, children }: { current: (typeof NAV)[number]["key"]; children: ReactNode }) {

@@ -287,7 +287,7 @@ export function EndedView({ state, meta, sync }: { state: CheckState; meta: Sess
               Start a new check
             </Link>
             <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
-              Session history
+              Past sessions
             </Link>
           </div>
         </div>
