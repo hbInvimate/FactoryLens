@@ -133,22 +133,16 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
           <p className="text-[18px] text-ink-2">
             {active.label}. Step {active.step} of 12.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
             <Chip tone={active.status === "running" ? "green" : "amber"}>{STATUS_LABEL[active.status]}</Chip>
             <span className="flex-1" />
-            <Btn onClick={() => setLeaving(true)}>Leave this check and start a new one</Btn>
-            <Link
-              href="/tasks"
-              className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2"
-            >
-              Sessions
-            </Link>
             <Link
               href={`/check/${active.id}`}
               className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover"
             >
               Resume the check
             </Link>
+            <Btn onClick={() => setLeaving(true)}>End this check</Btn>
           </div>
         </Panel>
       )}
@@ -171,7 +165,7 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
             >
               {operatorName}
             </span>
-            <span className="text-[15px] text-muted">You are signed in as this Quality Technician. Not you? Sign out at the top right.</span>
+            <span className="text-[15px] text-muted">You are signed in as this Quality Technician. Not you? Sign out at the bottom of the left menu.</span>
           </div>
           {error && (
             <div role="alert" className="flex flex-wrap items-center gap-4 rounded-[var(--fl-radius-md)] border-2 border-red bg-red-soft px-4 py-2 text-[18px] text-red-ink">
@@ -181,18 +175,11 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
               </Btn>
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="flex flex-col items-start gap-2 pt-2">
             <Btn type="submit" variant="success" disabled={starting || !!active} className="px-10">
               {starting ? "Starting…" : "Start the check"}
             </Btn>
-            {active && <span className="text-base text-muted">Resume or leave the check in progress first.</span>}
-            <span className="flex-1" />
-            <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
-              Past sessions
-            </Link>
-            <Link href="/dashboard" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
-              Dashboard
-            </Link>
+            {active && <span className="text-base text-muted">Resume or end the check in progress before starting a new one.</span>}
           </div>
         </form>
       </Panel>

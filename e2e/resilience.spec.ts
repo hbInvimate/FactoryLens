@@ -156,7 +156,7 @@ test("A check still running: resume it, or leave it with a reason and start a ne
   await expect(page.getByRole("button", { name: "Start the check" })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Resume the check" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Leave this check and start a new one" }).click();
+  await page.getByRole("button", { name: "End this check" }).click();
   const confirm = page.getByRole("button", { name: "Leave it and start a new check" });
   await expect(confirm).toBeDisabled();
   await page.getByRole("button", { name: "Wrong part or session" }).click();

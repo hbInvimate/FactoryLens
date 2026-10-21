@@ -42,8 +42,9 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(r).toContainText("Test Quality Technician");
   await expect(r).toContainText("First-off check");
   await expect(r.getByTestId("task-status")).toHaveText("Not started");
-  await expect(page.getByTestId("stat-total")).toHaveText(String(total + 1));
-  await expect(page.getByTestId("stat-not-started")).toHaveText(String(notStarted + 1));
+  // Other tests add sessions for this technician at the same time: at least one more.
+  await expect.poll(async () => Number(await page.getByTestId("stat-total").innerText())).toBeGreaterThanOrEqual(total + 1);
+  await expect.poll(async () => Number(await page.getByTestId("stat-not-started").innerText())).toBeGreaterThanOrEqual(notStarted + 1);
 
   // Priority filter.
   await page.getByLabel("Priority").selectOption("low");
