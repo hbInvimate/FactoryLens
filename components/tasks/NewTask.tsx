@@ -37,7 +37,7 @@ export function NewTask({ assignees }: { /** Only for an admin: the Quality Tech
         body: JSON.stringify({ title, part, station, priority, ...(assignees ? { assignedTo } : {}) }),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) throw new Error(body.error || `The task was not saved (${res.status}).`);
+      if (!res.ok) throw new Error(body.error || `The session was not saved (${res.status}).`);
       setOpen(false);
       setTitle("");
       router.refresh();
@@ -51,12 +51,12 @@ export function NewTask({ assignees }: { /** Only for an admin: the Quality Tech
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)}>
-        + New Task
+        + New Session
       </Button>
       {open && (
-        <Modal title="New task" onClose={() => setOpen(false)}>
+        <Modal title="New session" onClose={() => setOpen(false)}>
           <form onSubmit={submit} className="flex flex-col gap-4">
-            <Field label="Task (optional)" htmlFor="task-title" hint="Left empty: First-off check: and the part.">
+            <Field label="Session (optional)" htmlFor="task-title" hint="Left empty: First-off check: and the part.">
               <Input id="task-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
             </Field>
             <Field label="Part" htmlFor="task-part">
@@ -89,7 +89,7 @@ export function NewTask({ assignees }: { /** Only for an admin: the Quality Tech
             <div className="flex justify-end gap-3">
               <Button onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" variant="primary" disabled={busy}>
-                {busy ? "Saving…" : "Create task"}
+                {busy ? "Saving…" : "Create session"}
               </Button>
             </div>
           </form>

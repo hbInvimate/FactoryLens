@@ -76,7 +76,7 @@ export function TopBar({
         </BarButton>
         {canPause && <BarButton onClick={onPause}>Pause</BarButton>}
         <Link href="/tasks" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3.5 text-[17px] font-semibold text-ink hover:bg-surface-2">
-          Tasks
+          Sessions
         </Link>
         <BarButton onClick={onLeave}>Leave</BarButton>
       </div>

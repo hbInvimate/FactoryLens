@@ -15,12 +15,12 @@ async function signedIn(browser: Browser, who: Who) {
 }
 
 async function newTask(page: Page, title: string, part: string, priority: "High" | "Medium" | "Low") {
-  await page.getByRole("button", { name: "+ New Task" }).click();
-  const dialog = page.getByRole("dialog", { name: "New task" });
-  await dialog.getByLabel("Task (optional)").fill(title);
+  await page.getByRole("button", { name: "+ New Session" }).click();
+  const dialog = page.getByRole("dialog", { name: "New session" });
+  await dialog.getByLabel("Session (optional)").fill(title);
   await dialog.getByLabel("Part", { exact: true }).fill(part);
   await dialog.getByLabel("Priority").selectOption({ label: priority });
-  await dialog.getByRole("button", { name: "Create task" }).click();
+  await dialog.getByRole("button", { name: "Create session" }).click();
   await expect(dialog).toHaveCount(0);
 }
 
@@ -28,9 +28,9 @@ const row = (page: Page, title: string) => page.getByTestId("tasks-table").locat
 
 test("a Quality Technician lands on Tasks, adds a task, filters and searches", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
-  await expect(page.getByRole("heading", { name: "Tasks", exact: true })).toBeVisible();
-  await expect(page.getByText("View and manage all tasks")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
+  await expect(page.getByText("View and manage all sessions")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");
   const total = Number(await page.getByTestId("stat-total").innerText());
   const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
 
@@ -60,12 +60,12 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(row(page, title)).toHaveCount(1);
 
   // Search.
-  await page.getByLabel("Search task").fill("no such task anywhere");
-  await page.getByLabel("Search task").press("Enter");
+  await page.getByLabel("Search session").fill("no such task anywhere");
+  await page.getByLabel("Search session").press("Enter");
   await expect(page).toHaveURL(/q=no\+such/);
-  await expect(page.getByText("No tasks match these filters.")).toBeVisible();
-  await page.getByLabel("Search task").fill(title);
-  await page.getByLabel("Search task").press("Enter");
+  await expect(page.getByText("No sessions match these filters.")).toBeVisible();
+  await page.getByLabel("Search session").fill(title);
+  await page.getByLabel("Search session").press("Enter");
   await expect(page.getByTestId("tasks-table").locator("tbody tr")).toHaveCount(1);
   await ctx.close();
 });
@@ -89,7 +89,7 @@ test("opening a task starts its check, with the step video and details; the stat
   await waitSaved(page);
 
   // In progress, and Open goes back to the same check.
-  await page.getByRole("link", { name: "Tasks" }).click();
+  await page.getByRole("link", { name: "Sessions", exact: true }).click();
   await expect(page).toHaveURL(/\/tasks$/);
   await expect(row(page, title).getByTestId("task-status")).toHaveText("In progress");
   await row(page, title).getByRole("link", { name: `Open ${title}` }).click();
@@ -114,9 +114,9 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
   const taskId = await row(a.page, title).getAttribute("data-task");
 
   const b = await signedIn(browser, "technician2");
-  await b.page.getByLabel("Search task").fill(title);
-  await b.page.getByLabel("Search task").press("Enter");
-  await expect(b.page.getByText(/No tasks (yet|match)/)).toBeVisible();
+  await b.page.getByLabel("Search session").fill(title);
+  await b.page.getByLabel("Search session").press("Enter");
+  await expect(b.page.getByText(/No sessions (yet|match)/)).toBeVisible();
   const res = await b.ctx.request.post(`/api/tasks/${taskId}/start`, { data: { sessionId: crypto.randomUUID() } });
   expect(res.status()).toBe(403);
   const list = await (await b.ctx.request.get("/api/tasks")).json();

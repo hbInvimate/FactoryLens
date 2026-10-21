@@ -79,7 +79,7 @@ export function OpenTask({
         router.push(`/check/${body.sessionId}`);
         return;
       }
-      if (!res.ok) throw new Error(body.error || `The task did not open (${res.status}).`);
+      if (!res.ok) throw new Error(body.error || `The session did not open (${res.status}).`);
       router.push(`/check/${id}`);
     } catch (e) {
       setActiveId(null);

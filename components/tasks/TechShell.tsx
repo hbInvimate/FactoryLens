@@ -6,7 +6,7 @@ import { NavItem } from "@/components/ds";
 import { IconChecklist, IconHistory, IconPlay } from "@/components/ds/icons";
 
 const NAV = [
-  { href: "/tasks", label: "Tasks", icon: <IconChecklist />, key: "tasks" },
+  { href: "/tasks", label: "Sessions", icon: <IconChecklist />, key: "tasks" },
   { href: "/", label: "Start a check", icon: <IconPlay />, key: "start" },
   { href: "/sessions", label: "Session history", icon: <IconHistory />, key: "sessions" },
 ] as const;

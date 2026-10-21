@@ -18,7 +18,7 @@ import { activeRevision } from "@/lib/server/sop";
 import { PRIORITIES, PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
 import Link from "next/link";
 
-export const metadata = { title: "FactoryLens AI: Tasks" };
+export const metadata = { title: "FactoryLens AI: Sessions" };
 
 const PRIORITY_TONE: Record<Priority, ChipTone> = { high: "red", medium: "amber", low: "gray" };
 const DOT: Record<TaskStatus, string> = { not_started: "bg-line-strong", in_progress: "bg-amber", completed: "bg-primary", closed: "bg-red" };
@@ -59,16 +59,16 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
     <>
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-1 flex-col">
-          <h1 className="text-[30px] font-bold">Tasks</h1>
-          <p className="text-[16px] text-muted">View and manage all tasks</p>
+          <h1 className="text-[30px] font-bold">Sessions</h1>
+          <p className="text-[16px] text-muted">View and manage all sessions</p>
         </div>
         <NewTask assignees={assignees} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile icon={<IconChecklist />} tone="blue" value={tasks.length} label="Total Task" testId="stat-total" />
+        <StatTile icon={<IconChecklist />} tone="blue" value={tasks.length} label="Total Session" testId="stat-total" />
         <StatTile icon={<IconClock />} tone="amber" value={count("not_started")} label="Not Started" testId="stat-not-started" />
-        <StatTile icon={<IconTarget />} tone="green" value={count("completed")} label="Completed Tasks" testId="stat-completed" />
+        <StatTile icon={<IconTarget />} tone="green" value={count("completed")} label="Completed Sessions" testId="stat-completed" />
       </div>
 
       <Form action="/tasks" className="flex flex-wrap items-center gap-3" role="search">
@@ -76,7 +76,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
           <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
             <IconSearch />
           </span>
-          <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search task" aria-label="Search task" className="pl-11" />
+          <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search session" aria-label="Search session" className="pl-11" />
         </span>
         <span className="flex-1" />
         <AutoSubmitSelect name="status" value={status} label="Status">
@@ -101,7 +101,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       <Table testId="tasks-table" minWidth={980}>
         <thead>
           <tr>
-            <Th>Task</Th>
+            <Th>Session</Th>
             <Th>Priority</Th>
             <Th>Assigned</Th>
             <Th>Created Date</Th>
@@ -155,7 +155,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
           {shown.length === 0 && (
             <tr>
               <Td colSpan={8} className="py-8 text-center text-[16px] text-muted">
-                {tasks.length === 0 ? "No tasks yet. Tap + New Task to add one." : "No tasks match these filters."}
+                {tasks.length === 0 ? "No sessions yet. Tap + New Session to add one." : "No sessions match these filters."}
               </Td>
             </tr>
           )}
@@ -170,7 +170,7 @@ export default function TasksPage(props: PageProps<"/tasks">) {
     <Gate area="check" next="/tasks">
       <TechShell current="tasks">
         <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-6 py-6 md:px-8">
-          <Suspense fallback={<p className="text-[17px] text-muted">Loading tasks…</p>}>
+          <Suspense fallback={<p className="text-[17px] text-muted">Loading sessions…</p>}>
             <Body searchParams={props.searchParams} />
           </Suspense>
         </main>

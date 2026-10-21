@@ -3,7 +3,7 @@ import { SignedInUser } from "./auth/SignedInUser";
 import { Logo, cx } from "./ui";
 
 const NAV = [
-  { href: "/tasks", label: "Tasks", key: "tasks" },
+  { href: "/tasks", label: "Sessions", key: "tasks" },
   { href: "/", label: "Start a check", key: "start" },
   { href: "/sessions", label: "Session history", key: "sessions" },
   { href: "/dashboard", label: "Dashboard", key: "dashboard" },

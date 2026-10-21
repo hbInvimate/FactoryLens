@@ -37,11 +37,11 @@ async function create() {
   if (station.length < 2 || station.length > 80) throw new Error("The station must be 2 to 80 characters.");
   const priority = ((await ask("Priority (high, medium, low) [medium]: ")) || "medium").toLowerCase();
   if (!PRIORITIES.includes(priority)) throw new Error("The priority must be high, medium or low.");
-  const title = (await ask("Task title (leave empty for First-off check: <part>): ")) || `First-off check: ${part}`;
+  const title = (await ask("Session title (leave empty for First-off check: <part>): ")) || `First-off check: ${part}`;
   if (title.length > 120) throw new Error("The title must be at most 120 characters.");
   const id = crypto.randomUUID();
   await db.insert(t.tasks).values({ id, title, part, station, priority, assignedTo: u.id, assignedName: u.name, createdBy: "task:create" });
-  console.log(`\nCreated "${title}" for ${u.name}, ${priority} priority. It shows on their Tasks page as Not started.`);
+  console.log(`\nCreated "${title}" for ${u.name}, ${priority} priority. It shows on their Sessions page as Not started.`);
 }
 
 try {

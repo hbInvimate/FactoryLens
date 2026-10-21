@@ -120,9 +120,9 @@ export async function startTask(user: Viewer, taskId: string, sessionId: unknown
   if (typeof sessionId !== "string" || !/^[A-Za-z0-9_-]{6,64}$/.test(sessionId)) return { ok: false, status: 400, error: "sessionId is not a session id" };
   const { db } = await getRepo().conn();
   const [task] = await db.select().from(t.tasks).where(eq(t.tasks.id, taskId));
-  if (!task) return { ok: false, status: 404, error: "This task was not found." };
-  if (!seesAllSessions(user.role) && task.assignedTo !== user.id) return { ok: false, status: 403, error: "This task belongs to another Quality Technician." };
-  if (task.sessionId) return task.sessionId === sessionId ? { ok: true, sessionId } : { ok: false, status: 409, error: "This task already has a check.", sessionId: task.sessionId };
+  if (!task) return { ok: false, status: 404, error: "This session was not found." };
+  if (!seesAllSessions(user.role) && task.assignedTo !== user.id) return { ok: false, status: 403, error: "This session belongs to another Quality Technician." };
+  if (task.sessionId) return task.sessionId === sessionId ? { ok: true, sessionId } : { ok: false, status: 409, error: "This session already has a check.", sessionId: task.sessionId };
   const owner = await getRepo().ownerOf(sessionId);
   if (owner.exists && owner.ownerId !== null && owner.ownerId !== user.id && !seesAllSessions(user.role)) {
     return { ok: false, status: 403, error: "That check belongs to another Quality Technician." };
@@ -130,5 +130,5 @@ export async function startTask(user: Viewer, taskId: string, sessionId: unknown
   const linked = await db.update(t.tasks).set({ sessionId }).where(and(eq(t.tasks.id, taskId), isNull(t.tasks.sessionId))).returning({ id: t.tasks.id });
   if (linked.length) return { ok: true, sessionId };
   const [now] = await db.select({ sessionId: t.tasks.sessionId }).from(t.tasks).where(eq(t.tasks.id, taskId));
-  return { ok: false, status: 409, error: "This task already has a check.", sessionId: now?.sessionId ?? undefined };
+  return { ok: false, status: 409, error: "This session already has a check.", sessionId: now?.sessionId ?? undefined };
 }

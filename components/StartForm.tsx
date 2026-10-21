@@ -138,6 +138,12 @@ export function StartForm({ operatorName, sop }: { operatorName: string; /** The
             <span className="flex-1" />
             <Btn onClick={() => setLeaving(true)}>Leave this check and start a new one</Btn>
             <Link
+              href="/tasks"
+              className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2"
+            >
+              Sessions
+            </Link>
+            <Link
               href={`/check/${active.id}`}
               className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover"
             >
