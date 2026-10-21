@@ -2,7 +2,7 @@
 // task into its check, the status following the check, and own tasks only.
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { signInAs, type Who } from "./auth-helpers";
-import { doSteps, unique, waitSaved } from "./helpers";
+import { doSteps, startCheck, unique, waitSaved } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -130,4 +130,31 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
   await expect(ep.getByTestId("wrong-area")).toHaveText("This page is for Quality Technicians");
   expect((await eng.request.get("/api/tasks")).status()).toBe(403);
   await Promise.all([a.ctx.close(), b.ctx.close(), eng.close()]);
+});
+
+test("a check started on Start a check is listed too: Resume while in progress, View when finished", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  const before = Number(await page.getByTestId("stat-total").innerText());
+  const id = await startCheck(page);
+  await doSteps(page, 1, 1);
+  await waitSaved(page);
+
+  await page.goto("/tasks");
+  const r = page.getByTestId("tasks-table").locator(`tr[data-session="${id}"]`);
+  await expect(r.getByTestId("task-status")).toHaveText("In progress");
+  await expect(r).toContainText("—"); // no priority
+  await expect(page.getByTestId("stat-total")).toHaveText(String(before + 1));
+  await page.getByLabel("Priority").selectOption("high");
+  await expect(r).toHaveCount(0);
+  await page.goto("/tasks");
+  await r.getByRole("link", { name: /^Resume / }).click();
+  await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
+
+  await doSteps(page, 2, 12);
+  await expect(page.getByRole("heading", { name: "Check complete" })).toBeVisible();
+  await waitSaved(page);
+  await page.goto("/tasks?status=completed");
+  await expect(r.getByTestId("task-status")).toHaveText("Completed");
+  await expect(r.getByRole("link", { name: /^View / })).toHaveAttribute("href", `/sessions/${id}`);
+  await ctx.close();
 });

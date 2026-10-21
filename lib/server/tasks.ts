@@ -1,6 +1,6 @@
 // Tasks: first-off checks to do, on the Quality Technician's /tasks page. A task's status is never stored:
 // it follows the check started from it, so the check logic stays the only source of truth.
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import * as t from "@/db/schema";
 import { seesAllSessions, type Role } from "@/lib/auth/roles";
 import type { SessionStatus } from "@/lib/check/types";
@@ -21,11 +21,15 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 export interface Task {
+  /** "task": assigned with New Session or task:create. "check": started by the person on Start a check. */
+  kind: "task" | "check";
+  /** The task id, or for a "check" the session id. */
   id: string;
   title: string;
   part: string;
   station: string;
-  priority: Priority;
+  /** Null for a "check": it has no priority. */
+  priority: Priority | null;
   assignedTo: string;
   assignedName: string;
   createdAt: string;
@@ -55,6 +59,7 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
     .orderBy(desc(t.tasks.createdAt))
     .limit(500);
   return rows.map(({ task: r, status }) => ({
+    kind: "task" as const,
     id: r.id,
     title: r.title,
     part: r.part,
@@ -67,6 +72,38 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
     status: taskStatus(r.sessionId, (status as SessionStatus | null) ?? null),
     sessionStatus: (status as SessionStatus | null) ?? null,
   }));
+}
+
+/**
+ * Checks started on Start a check, not from a task: a Quality Technician's own; an admin's view has every
+ * real one. Newest first.
+ */
+export async function listOwnChecks(user: Viewer): Promise<Task[]> {
+  const { db } = await getRepo().conn();
+  const rows = await db
+    .select({ s: t.sessions })
+    .from(t.sessions)
+    .leftJoin(t.tasks, eq(t.tasks.sessionId, t.sessions.id))
+    .where(and(isNull(t.tasks.id), seesAllSessions(user.role) ? sql`coalesce(${t.sessions.isSample}, false) = false` : eq(t.sessions.userId, user.id)))
+    .orderBy(desc(t.sessions.startedAt))
+    .limit(500);
+  return rows.map(({ s }) => {
+    const status = s.status as SessionStatus;
+    return {
+      kind: "check" as const,
+      id: s.id,
+      title: `First-off check: ${s.part}`,
+      part: s.part,
+      station: s.station ?? s.fixture,
+      priority: null,
+      assignedTo: s.userId ?? "",
+      assignedName: s.operatorLabel,
+      createdAt: s.startedAt.toISOString(),
+      sessionId: s.id,
+      status: taskStatus(s.id, status),
+      sessionStatus: status,
+    };
+  });
 }
 
 /** Quality Technicians a task can be given to (for an admin's New Task form). */

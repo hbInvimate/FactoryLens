@@ -4,7 +4,7 @@ import Form from "next/form";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
-import { Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTone } from "@/components/ds";
+import { ButtonLink, Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTone } from "@/components/ds";
 import { IconChecklist, IconClock, IconSearch, IconTarget } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
@@ -15,7 +15,7 @@ import { seesAllSessions } from "@/lib/auth/roles";
 import { currentUser } from "@/lib/auth/server";
 import { NotConfigured } from "@/lib/server/repo";
 import { activeRevision } from "@/lib/server/sop";
-import { PRIORITIES, PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
+import { PRIORITIES, PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, listOwnChecks, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
 import Link from "next/link";
 
 export const metadata = { title: "FactoryLens AI: Sessions" };
@@ -44,14 +44,17 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
   const q = one(sp.q).trim().slice(0, 120);
 
   let tasks: Task[];
+  let checks: Task[];
   let assignees: { id: string; name: string }[] | null;
   let rev;
   try {
-    [tasks, assignees, rev] = await Promise.all([listTasks(user), seesAllSessions(user.role) ? technicians() : Promise.resolve(null), activeRevision()]);
+    [tasks, checks, assignees, rev] = await Promise.all([listTasks(user), listOwnChecks(user), seesAllSessions(user.role) ? technicians() : Promise.resolve(null), activeRevision()]);
   } catch (e) {
     if (e instanceof NotConfigured) return <Card className="px-6 py-5 text-[17px]">{e.message}</Card>;
     throw e;
   }
+  // Assigned tasks and the checks started on Start a check, in one list, newest first.
+  tasks = [...tasks, ...checks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const shown = tasks.filter((t) => matches(t, status, priority, q));
   const count = (s: TaskStatus) => tasks.filter((t) => t.status === s).length;
 
@@ -113,7 +116,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </thead>
         <tbody>
           {shown.map((t) => (
-            <tr key={t.id} data-task={t.id} data-status={t.status}>
+            <tr key={`${t.kind}-${t.id}`} data-task={t.kind === "task" ? t.id : undefined} data-session={t.sessionId ?? undefined} data-status={t.status}>
               <Td>
                 <span className="flex flex-col">
                   <b className="text-[16px]">{t.title}</b>
@@ -123,9 +126,13 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
                 </span>
               </Td>
               <Td>
-                <Chip tone={PRIORITY_TONE[t.priority]} size="sm">
-                  {PRIORITY_LABEL[t.priority]}
-                </Chip>
+                {t.priority ? (
+                  <Chip tone={PRIORITY_TONE[t.priority]} size="sm">
+                    {PRIORITY_LABEL[t.priority]}
+                  </Chip>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
               </Td>
               <Td>{t.assignedName}</Td>
               <Td>
@@ -148,7 +155,17 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
                 )}
               </Td>
               <Td>
-                <OpenTask task={t} operatorName={user.name} sop={{ id: rev.id, label: rev.label }} />
+                {t.kind === "task" ? (
+                  <OpenTask task={t} operatorName={user.name} sop={{ id: rev.id, label: rev.label }} />
+                ) : t.status === "in_progress" ? (
+                  <ButtonLink href={`/check/${t.id}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Resume ${t.title}`}>
+                    Resume
+                  </ButtonLink>
+                ) : (
+                  <ButtonLink href={`/sessions/${t.id}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`View ${t.title}`}>
+                    View
+                  </ButtonLink>
+                )}
               </Td>
             </tr>
           ))}
