@@ -1,7 +1,7 @@
 // Tasks for Quality Technicians, from the command line. Works on the database in DATABASE_URL.
 //   npm run task:create   technician's email, part, station, priority, title (optional)
 // The task shows on that Quality Technician's /tasks page as Not started. Same as + New Task on that page.
-import { createInterface } from "node:readline/promises";
+import { createInterface } from "node:readline";
 import { neonConnection } from "../db/client";
 import * as t from "../db/schema";
 import { findUser, normalizeEmail } from "../lib/auth/users";
@@ -14,8 +14,16 @@ if (!conn) {
   process.exit(1);
 }
 const { db } = conn;
-const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: process.stdin.isTTY === true });
-const ask = async (q: string) => (await rl.question(q)).trim();
+// Answers are read line by line, so they can be typed or piped in (all at once).
+const rl = createInterface({ input: process.stdin, terminal: false });
+const lines = rl[Symbol.asyncIterator]();
+async function ask(q: string): Promise<string> {
+  process.stdout.write(q);
+  const next = await lines.next();
+  if (next.done) throw new Error("No answer given. Run it again and answer every question.");
+  if (!process.stdin.isTTY) process.stdout.write("\n");
+  return next.value.trim();
+}
 
 async function create() {
   const email = normalizeEmail(await ask("Quality Technician's email: "));
