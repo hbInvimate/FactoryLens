@@ -2,7 +2,7 @@
 // it follows the check started from it, so the check logic stays the only source of truth.
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import * as t from "@/db/schema";
-import { seesAllSessions, type Role } from "@/lib/auth/roles";
+import { readsAllSessions, seesAllSessions, type Role } from "@/lib/auth/roles";
 import type { SessionStatus } from "@/lib/check/types";
 import { getRepo } from "./repo";
 import { BadRequest } from "./validate";
@@ -48,14 +48,14 @@ export function taskStatus(sessionId: string | null, s: SessionStatus | null): T
 
 type Viewer = { id: string; role: Role };
 
-/** A Quality Technician's own tasks; an admin's view has them all. Newest first. */
+/** A Quality Technician's own tasks; an admin's or Supervisor's view has them all. Newest first. */
 export async function listTasks(user: Viewer): Promise<Task[]> {
   const { db } = await getRepo().conn();
   const rows = await db
     .select({ task: t.tasks, status: t.sessions.status })
     .from(t.tasks)
     .leftJoin(t.sessions, eq(t.sessions.id, t.tasks.sessionId))
-    .where(seesAllSessions(user.role) ? undefined : eq(t.tasks.assignedTo, user.id))
+    .where(readsAllSessions(user.role) ? undefined : eq(t.tasks.assignedTo, user.id))
     .orderBy(desc(t.tasks.createdAt))
     .limit(500);
   return rows.map(({ task: r, status }) => ({
@@ -75,8 +75,8 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
 }
 
 /**
- * Checks started on Start a check, not from a task: a Quality Technician's own; an admin's view has every
- * real one. Newest first.
+ * Checks started on Start a check, not from a task: a Quality Technician's own; an admin's or Supervisor's view
+ * has every real one. Newest first.
  */
 export async function listOwnChecks(user: Viewer): Promise<Task[]> {
   const { db } = await getRepo().conn();
@@ -84,7 +84,7 @@ export async function listOwnChecks(user: Viewer): Promise<Task[]> {
     .select({ s: t.sessions })
     .from(t.sessions)
     .leftJoin(t.tasks, eq(t.tasks.sessionId, t.sessions.id))
-    .where(and(isNull(t.tasks.id), seesAllSessions(user.role) ? sql`coalesce(${t.sessions.isSample}, false) = false` : eq(t.sessions.userId, user.id)))
+    .where(and(isNull(t.tasks.id), readsAllSessions(user.role) ? sql`coalesce(${t.sessions.isSample}, false) = false` : eq(t.sessions.userId, user.id)))
     .orderBy(desc(t.sessions.startedAt))
     .limit(500);
   return rows.map(({ s }) => {

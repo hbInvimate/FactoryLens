@@ -12,7 +12,9 @@ import { ENDED_STATUSES, STATUS_LABEL } from "@/lib/check/types";
 import { missedPoints } from "@/lib/dashboard/missed";
 import { getRepo, NotConfigured } from "@/lib/server/repo";
 import { isSessionId } from "@/lib/server/validate";
-import { canOpenSession } from "@/lib/auth/roles";
+import { canOpenSession, canViewSession } from "@/lib/auth/roles";
+import { SupervisorShell } from "@/components/supervisor/SupervisorShell";
+import type { ReactNode } from "react";
 import { currentUser } from "@/lib/auth/server";
 import { STEPS, stepLabel } from "@/lib/sop";
 import { NotConfiguredNotice, TableSkeleton } from "../shared";
@@ -54,7 +56,9 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
   }
   // Someone else's check looks the same as one that does not exist. The page's Gate has already checked the role.
   const user = await currentUser();
-  if (!p || !user || !canOpenSession(user, p.session.userId ?? null)) notFound();
+  if (!p || !user || !canViewSession(user, p.session.userId ?? null)) notFound();
+  // A Supervisor watches: no Resume, nothing to change.
+  const canResume = canOpenSession(user, p.session.userId ?? null);
   const s = p.session;
   const open = !ENDED_STATUSES.includes(s.status);
   const deviations = p.stepEvents.filter((e) => e.kind !== "done");
@@ -68,7 +72,7 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
         </h1>
         <StatusChip status={s.status} />
         <span className="flex-1" />
-        {open && (
+        {open && canResume && (
           <Link href={`/check/${s.id}`} className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
             Resume this check
           </Link>
@@ -187,19 +191,28 @@ async function Detail({ params }: { params: PageProps<"/sessions/[id]">["params"
   );
 }
 
+/** A Supervisor sees their own sidebar and goes back to Tasks; everyone else, the check app's. */
+async function Shell({ children }: { children: (back: { href: string; label: string }) => ReactNode }) {
+  const user = await currentUser();
+  if (user?.role === "supervisor") return <SupervisorShell current="tasks">{children({ href: "/supervisor/tasks", label: "← All checks" })}</SupervisorShell>;
+  return <TechShell current="sessions">{children({ href: "/sessions", label: "← All sessions" })}</TechShell>;
+}
+
 export default function SessionPage(props: PageProps<"/sessions/[id]">) {
   return (
-    <Gate area="check" next="/sessions">
-      <TechShell current="sessions">
+    <Gate area="session" next="/sessions">
+      <Shell>
+        {(back) => (
         <main className="flex flex-1 flex-col gap-5 px-8 py-7">
-          <Link href="/sessions" className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
-            ← All sessions
+          <Link href={back.href} className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
+            {back.label}
           </Link>
           <Suspense fallback={<TableSkeleton />}>
             <Detail params={props.params} />
           </Suspense>
         </main>
-      </TechShell>
+        )}
+      </Shell>
     </Gate>
   );
 }

@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { ButtonLink, Card } from "@/components/ds";
 import { signOut } from "@/app/auth-actions";
-import { AREA_FOR, ROLE_LABEL, SIGN_IN_PATH, canUse, type Area } from "@/lib/auth/roles";
+import { AREA_FOR, AREA_HOME, ROLE_LABEL, SIGN_IN_MODES, SIGN_IN_PATH, canUse, type Area } from "@/lib/auth/roles";
+
+/** The account each area needs, in "Sign in as a ...". */
+const NEEDS: Record<Area, string> = { check: "Quality Technician", dashboard: "Quality Engineer", supervisor: "Supervisor", session: "Quality Technician" };
+const HOME_TEXT: Record<Area, string> = { check: "Go to the check app", dashboard: "Go to the dashboard", supervisor: "Go to the Supervisor pages", session: "Go to the check app" };
 import { AuthNotConfigured, currentUser } from "@/lib/auth/server";
 import { NotConfigured } from "@/lib/server/repo";
 import { Logo } from "../ui";
@@ -44,23 +48,24 @@ async function Check({ area, next, children }: { area: Area; next: string; child
   }
   if (!user) redirect(`${SIGN_IN_PATH[area]}?next=${encodeURIComponent(next)}`);
   if (!canUse(user.role, area)) {
-    const other: Area = area === "check" ? "dashboard" : "check";
+    // Their own pages; an admin (who may use every area) gets the other of check and dashboard.
+    const other: Area = SIGN_IN_MODES.find((m) => m.role === user.role && m.area !== area)?.area ?? (area === "check" ? "dashboard" : "check");
     return (
-      <Centered logo={area === "check"}>
+      <Centered logo={area !== "dashboard"}>
         <h1 className="text-[26px] font-bold" data-testid="wrong-area">
           This page is for {AREA_FOR[area]}
         </h1>
         <p className="text-[17px] text-ink-2">
-          You are signed in as {user.name}, {ROLE_LABEL[user.role]}. To open it, sign in with a {area === "check" ? "Quality Technician" : "Quality Engineer"} account.
+          You are signed in as {user.name}, {ROLE_LABEL[user.role]}. To open it, sign in with a {NEEDS[area]} account.
         </p>
         <div className="flex flex-wrap gap-3">
           <ButtonLink variant="primary" href={SIGN_IN_PATH[area]}>
-            Sign in as a {area === "check" ? "Quality Technician" : "Quality Engineer"}
+            Sign in as a {NEEDS[area]}
           </ButtonLink>
-          <ButtonLink href={other === "check" ? "/" : "/dashboard"}>{other === "check" ? "Go to the check app" : "Go to the dashboard"}</ButtonLink>
+          <ButtonLink href={other === "check" ? "/" : AREA_HOME[other]}>{HOME_TEXT[other]}</ButtonLink>
         </div>
         {/* The dashboard's sidebar card has its own Sign out. */}
-        {area === "check" && (
+        {area !== "dashboard" && (
           <form action={signOut.bind(null, area)}>
             <button type="submit" className="tap text-[16px] font-semibold text-primary-ink hover:underline">
               Sign out

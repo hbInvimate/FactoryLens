@@ -6,7 +6,7 @@ import { NavItem } from "@/components/ds";
 import { MenuDrawer } from "./MenuDrawer";
 import { TECH_NAV, type TechNavKey } from "./nav";
 
-function Brand() {
+export function Brand() {
   return (
     <div className="flex items-center gap-2.5 px-2">
       <span aria-hidden className="flex size-9 items-center justify-center rounded-[10px] bg-primary text-[15px] font-bold text-on-strong">FL</span>

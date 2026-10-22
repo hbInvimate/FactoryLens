@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { addressHash, clearFailures, clientAddress, isLocked, recordFailure } from "@/lib/auth/attempts";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { GENERIC_SIGN_IN_ERROR, LOGIN_LIMIT, SIGN_IN_PATH, canUse, safeNext, type Area } from "@/lib/auth/roles";
+import { GENERIC_SIGN_IN_ERROR, LOGIN_LIMIT, SIGN_IN_MODES, SIGN_IN_PATH, canUse, safeNext, type Area } from "@/lib/auth/roles";
 import { AuthNotConfigured, authConn, authSecret, getAuth } from "@/lib/auth/server";
 import { findUser, normalizeEmail } from "@/lib/auth/users";
 import { NotConfigured } from "@/lib/server/repo";
@@ -66,6 +66,13 @@ export async function signIn(area: Area, _prev: SignInState, form: FormData): Pr
   const failed = await attempt(area, form);
   if (failed) return failed;
   redirect(safeNext(form.get("next"), area));
+}
+
+/** The sign-in page with the mode cards: the mode picked says which area to sign in to. */
+export async function signInMode(_prev: SignInState, form: FormData): Promise<SignInState> {
+  const area = SIGN_IN_MODES.find((m) => m.area === form.get("area"))?.area;
+  if (!area) return { error: "Pick how you work: Quality Technician, Supervisor or Quality Engineer.", email: String(form.get("email") ?? "") };
+  return signIn(area, _prev, form);
 }
 
 /** Inside a running check, when the sign-in has ended: sign in without leaving the check. Same limit and rules. */

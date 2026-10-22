@@ -10,6 +10,7 @@ export type Who = Role | "locked" | "technician2";
 const EMAIL: Record<Who, string> = {
   technician: "technician@test.local",
   technician2: "technician2@test.local",
+  supervisor: "supervisor@test.local",
   engineer: "engineer@test.local",
   admin: "admin@test.local",
   locked: "locked@test.local",
@@ -22,7 +23,7 @@ export function testUser(who: Who) {
 }
 
 /** Fills in a sign-in page and submits. `password` overrides the right one. */
-export async function signInAs(page: Page, role: Who, path: "/signin" | "/dashboard/signin", password?: string) {
+export async function signInAs(page: Page, role: Who, path: "/signin" | "/dashboard/signin" | "/supervisor/signin", password?: string) {
   const u = testUser(role);
   if (new URL(page.url()).pathname !== path) await page.goto(path);
   await page.getByLabel("Email").fill(u.email);

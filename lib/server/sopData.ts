@@ -22,7 +22,7 @@ function fromRow(r: typeof t.sessionActions.$inferSelect): Action {
   return { ...(r.payload as object), id: r.id, seq: r.seq, at: r.at.getTime(), type: r.type } as Action;
 }
 
-async function withActions(db: AnyDb, rows: (typeof t.sessions.$inferSelect)[]): Promise<StatSession[]> {
+export async function withActions(db: AnyDb, rows: (typeof t.sessions.$inferSelect)[]): Promise<StatSession[]> {
   if (!rows.length) return [];
   const acts = await db.select().from(t.sessionActions).where(inArray(t.sessionActions.sessionId, rows.map((r) => r.id))).orderBy(asc(t.sessionActions.seq));
   const by = new Map<string, Action[]>();
