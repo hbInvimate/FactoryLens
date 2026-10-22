@@ -21,14 +21,14 @@ export function SignInForm({ area, next }: { area: Area; next: string }) {
               key={m.area}
               data-testid={`mode-${m.role}`}
               className={cx(
-                "flex min-h-[64px] cursor-pointer items-center gap-3 rounded-[var(--fl-radius-md)] border-2 px-4 py-2",
+                "flex min-h-[96px] cursor-pointer items-center gap-3 rounded-[var(--fl-radius-md)] border-2 px-4 py-2",
                 on ? "border-primary bg-primary-soft" : "border-line bg-surface hover:bg-surface-2",
               )}
             >
               <input type="radio" name="area" value={m.area} checked={on} onChange={() => setMode(m.area)} className="size-5 accent-[var(--fl-primary)]" />
               <span className="flex flex-col">
-                <span className={cx("text-[17px] font-semibold", on ? "text-primary-ink" : "text-ink")}>{ROLE_LABEL[m.role]}</span>
-                <span className="text-[14px] text-ink-2">{m.text}</span>
+                <span className={cx("text-[18px] font-semibold", on ? "text-primary-ink" : "text-ink")}>{ROLE_LABEL[m.role]}</span>
+                <span className="text-[16px] text-ink-2">{m.text}</span>
               </span>
             </label>
           );
@@ -40,12 +40,12 @@ export function SignInForm({ area, next }: { area: Area; next: string }) {
         </StateBanner>
       )}
       <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="username" required defaultValue={state.email ?? ""} autoFocus />
+        <Input id="email" name="email" type="email" autoComplete="username" className="h-[56px] text-[16px]" required defaultValue={state.email ?? ""} autoFocus />
       </Field>
       <Field label="Password" htmlFor="password">
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <Input id="password" name="password" type="password" autoComplete="current-password" className="h-[56px] text-[16px]" required />
       </Field>
-      <Button type="submit" variant="primary" disabled={pending}>
+      <Button type="submit" variant="primary" disabled={pending} className="h-[56px] w-full text-[16px]">
         {pending ? "Signing in…" : `Sign in as ${ROLE_LABEL[picked.role]}`}
       </Button>
     </form>
