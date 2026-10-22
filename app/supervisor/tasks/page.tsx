@@ -58,34 +58,42 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
 
   return (
     <>
-      <Form action="/supervisor/tasks" className="flex flex-wrap items-center gap-3" role="search">
-        <span className="relative w-full max-w-[460px] flex-1">
+      <Form
+        action="/supervisor/tasks"
+        className="flex flex-wrap items-center gap-3 [&_select]:truncate [&_select[name=status]]:w-[200px] [&_select[name=who]]:w-[220px]"
+        role="search"
+      >
+        <span className="relative w-full max-w-[380px] min-w-[280px] flex-1">
           <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
             <IconSearch />
           </span>
           <Input name="q" type="search" defaultValue={one(sp.q)} key={one(sp.q)} placeholder="Search part, station or person" aria-label="Search" className="pl-11" />
         </span>
-        <span className="flex-1" />
-        <AutoSubmitSelect name="status" value={status} label="Status">
-          <option value="active">Active (Not started, In progress)</option>
-          <option value="all">All Status</option>
-          {TASK_STATUSES.map((x) => (
-            <option key={x} value={x}>
-              {TASK_STATUS_LABEL[x]}
+        {/* The two dropdowns stay together: next to the search, or both under it on a narrow screen. */}
+        <span className="flex gap-3">
+          <AutoSubmitSelect name="status" value={status} label="Status">
+            <option value="active" title="Not started and In progress">
+              Active
             </option>
-          ))}
-        </AutoSubmitSelect>
-        <AutoSubmitSelect name="who" value={who} label="Quality Technician">
-          <option value="all">Everyone</option>
-          {people.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </AutoSubmitSelect>
-        {station && <input type="hidden" name="station" value={station} />}
-        {step && <input type="hidden" name="step" value={step} />}
-        {dev && <input type="hidden" name="dev" value={dev} />}
+            <option value="all">All statuses</option>
+            {TASK_STATUSES.map((x) => (
+              <option key={x} value={x}>
+                {TASK_STATUS_LABEL[x]}
+              </option>
+            ))}
+          </AutoSubmitSelect>
+          <AutoSubmitSelect name="who" value={who} label="Quality Technician">
+            <option value="all">Everyone</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </AutoSubmitSelect>
+          {station && <input type="hidden" name="station" value={station} />}
+          {step && <input type="hidden" name="step" value={step} />}
+          {dev && <input type="hidden" name="dev" value={dev} />}
+        </span>
       </Form>
 
       {focus && (
