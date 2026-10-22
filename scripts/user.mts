@@ -28,15 +28,26 @@ const out = new Writable({
 });
 const rl = createInterface({ input: process.stdin, output: out, terminal: process.stdin.isTTY === true });
 
+// Answers are read line by line, so they can be typed or piped in (all at once).
+const lines = rl[Symbol.asyncIterator]();
+async function nextLine(): Promise<string> {
+  const next = await lines.next();
+  if (next.done) throw new Error("No answer given. Run it again and answer every question.");
+  return next.value;
+}
+
 async function ask(q: string): Promise<string> {
-  return (await rl.question(q)).trim();
+  process.stdout.write(q);
+  const a = (await nextLine()).trim();
+  if (!process.stdin.isTTY) process.stdout.write("\n");
+  return a;
 }
 
 async function askHidden(q: string): Promise<string> {
   process.stdout.write(q);
   muted = true;
   try {
-    return await rl.question("");
+    return await nextLine();
   } finally {
     muted = false;
     process.stdout.write("\n");
