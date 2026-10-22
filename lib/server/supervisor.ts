@@ -1,12 +1,13 @@
 // The Supervisor pages (/supervisor): read-only figures from real sessions (never sample data).
 // First-time right: a completed check with all 12 steps correct on the first attempt.
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import * as t from "@/db/schema";
-import { ENDED_STATUSES, ON_HOLD_STATUSES, type SessionStatus } from "@/lib/check/types";
-import { stepStats } from "@/lib/sop-stats";
+import { reduce, stepActiveMs } from "@/lib/check/reducer";
+import { ENDED_STATUSES, ON_HOLD_STATUSES, type DeviationKind, type SessionStatus } from "@/lib/check/types";
 import { STEPS } from "@/lib/sop";
 import { getRepo } from "./repo";
 import { activeRevision } from "./sop";
+import { stationExpr } from "./sqlparts";
 import { withActions } from "./sopData";
 
 const DAY = 86_400_000;
@@ -124,28 +125,134 @@ export interface StepTime {
   step: number;
   name: string;
   sessions: number;
-  medianSeconds: number | null;
+  /** Mean active time of the step in completed checks, seconds. */
+  avgSeconds: number | null;
   targetSeconds: number | null;
 }
 
-/** Analytics: first-time right per week (last 8 weeks) and each step's median time against its target (last 30 days). */
-export async function analytics(now = new Date()): Promise<{ weeks: Week[]; steps: StepTime[] }> {
-  const rows = await recent(56);
-  const monday = new Date(now);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  const weeks: Week[] = Array.from({ length: 8 }, (_, i) => {
-    const from = new Date(monday.getTime() - (7 - i) * 7 * DAY);
-    const to = new Date(from.getTime() + 7 * DAY);
-    const done = rows.filter((r) => r.status === "complete" && r.startedAt >= from && r.startedAt < to);
-    const y = from.getFullYear(), m = String(from.getMonth() + 1).padStart(2, "0"), d = String(from.getDate()).padStart(2, "0");
-    return { start: `${y}-${m}-${d}`, completed: done.length, ftrPct: pct(done.filter(ftr).length, done.length) };
-  });
+export interface DeviationCount {
+  step: number;
+  kind: DeviationKind;
+  count: number;
+}
+
+export const DEVIATION_LABEL: Record<DeviationKind, string> = { skipped: "skipped", wrong_order: "wrong order" };
+export const isDeviationKind = (v: unknown): v is DeviationKind => v === "skipped" || v === "wrong_order";
+
+/** The Analytics header filters: how many weeks back, and one station or all. */
+export const PERIOD_WEEKS = [4, 8, 12] as const;
+export interface AnalyticsFilter {
+  weeks: number;
+  station: string | null;
+}
+
+export function analyticsFilter(sp: Record<string, string | string[] | undefined>): AnalyticsFilter {
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+  const w = Number(one(sp.weeks));
+  const station = one(sp.station).trim().slice(0, 80);
+  return { weeks: (PERIOD_WEEKS as readonly number[]).includes(w) ? w : 8, station: station && station !== "all" ? station : null };
+}
+
+export interface Analytics {
+  weeks: Week[];
+  steps: StepTime[];
+  /** Top 5, most first. */
+  deviations: DeviationCount[];
+  byStation: { station: string; count: number }[];
+  /** For the station filter. */
+  stations: string[];
+}
+
+function mondayOf(now: Date): Date {
+  const m = new Date(now);
+  m.setHours(0, 0, 0, 0);
+  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
+  return m;
+}
+
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/**
+ * Analytics, for the filter's weeks and station: first-time right per week, each step's average time against its
+ * target, the most common deviations and discrepancies per station. Real sessions only.
+ */
+export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<Analytics> {
   const { db } = await getRepo().conn();
-  const recentDone = rows.filter((r) => r.status === "complete" && r.startedAt.getTime() > now.getTime() - 30 * DAY).slice(0, 300);
-  const [stats, rev] = await Promise.all([withActions(db, recentDone).then(stepStats), activeRevision()]);
+  const monday = mondayOf(now);
+  const from = new Date(monday.getTime() - (f.weeks - 1) * 7 * DAY);
+  const where = and(real, gte(t.sessions.startedAt, from), f.station ? eq(stationExpr, f.station) : undefined);
+  const [rows, devs, discs, stations, rev] = await Promise.all([
+    db.select().from(t.sessions).where(and(where, eq(t.sessions.status, "complete"))).orderBy(desc(t.sessions.startedAt)).limit(3000),
+    db
+      .select({ step: t.stepEvents.step, kind: t.stepEvents.kind, count: count() })
+      .from(t.stepEvents)
+      .innerJoin(t.sessions, eq(t.sessions.id, t.stepEvents.sessionId))
+      .where(and(where, inArray(t.stepEvents.kind, ["skipped", "wrong_order"])))
+      .groupBy(t.stepEvents.step, t.stepEvents.kind),
+    db
+      .select({ station: stationExpr, count: count() })
+      .from(t.discrepancies)
+      .innerJoin(t.sessions, eq(t.sessions.id, t.discrepancies.sessionId))
+      .where(where)
+      .groupBy(stationExpr),
+    getRepo().stations(),
+    activeRevision(),
+  ]);
+  const weeks: Week[] = Array.from({ length: f.weeks }, (_, i) => {
+    const start = new Date(monday.getTime() - (f.weeks - 1 - i) * 7 * DAY);
+    const end = new Date(start.getTime() + 7 * DAY);
+    const done = rows.filter((r) => r.startedAt >= start && r.startedAt < end);
+    return { start: ymd(start), completed: done.length, ftrPct: pct(done.filter(ftr).length, done.length) };
+  });
+  const sums = STEPS.map(() => ({ n: 0, ms: 0 }));
+  for (const s of await withActions(db, rows.slice(0, 300))) {
+    const st = reduce(s.actions, s.startedAt);
+    sums.forEach((x, i) => {
+      const ms = stepActiveMs(st, i + 1);
+      if (ms === null) return;
+      x.n++;
+      x.ms += ms;
+    });
+  }
   return {
     weeks,
-    steps: STEPS.map((s, i) => ({ step: s.n, name: s.name, sessions: stats[i]?.sessions ?? 0, medianSeconds: stats[i]?.medianSeconds ?? null, targetSeconds: rev.steps[i]?.targetCtSeconds ?? null })),
+    steps: STEPS.map((s, i) => ({
+      step: s.n, name: s.name, sessions: sums[i].n, avgSeconds: sums[i].n ? Math.round(sums[i].ms / sums[i].n / 1000) : null, targetSeconds: rev.steps[i]?.targetCtSeconds ?? null,
+    })),
+    deviations: devs
+      .filter((d): d is typeof d & { kind: DeviationKind } => isDeviationKind(d.kind))
+      .map((d) => ({ step: d.step, kind: d.kind, count: Number(d.count) }))
+      .sort((a, b) => b.count - a.count || a.step - b.step)
+      .slice(0, 5),
+    byStation: discs.map((d) => ({ station: d.station, count: Number(d.count) })).sort((a, b) => b.count - a.count || a.station.localeCompare(b.station)),
+    stations,
   };
+}
+
+/**
+ * Tasks filtered from Analytics. A step and a deviation kind: checks with that deviation on that step. A step alone:
+ * checks where that step took longer than its target in the Active SOP. Returns the matching session ids.
+ */
+export async function sessionsMatching(step: number, kind: DeviationKind | null): Promise<Set<string>> {
+  const { db } = await getRepo().conn();
+  if (kind) {
+    const rows = await db
+      .selectDistinct({ id: t.stepEvents.sessionId })
+      .from(t.stepEvents)
+      .innerJoin(t.sessions, eq(t.sessions.id, t.stepEvents.sessionId))
+      .where(and(real, eq(t.stepEvents.step, step), eq(t.stepEvents.kind, kind)));
+    return new Set(rows.map((r) => r.id));
+  }
+  const [rows, rev] = await Promise.all([
+    db.select().from(t.sessions).where(and(real, gte(t.sessions.stepsDone, step))).orderBy(desc(t.sessions.startedAt)).limit(300),
+    activeRevision(),
+  ]);
+  const target = rev.steps[step - 1]?.targetCtSeconds ?? null;
+  if (target === null) return new Set();
+  const over = new Set<string>();
+  for (const s of await withActions(db, rows)) {
+    const ms = stepActiveMs(reduce(s.actions, s.startedAt), step);
+    if (ms !== null && ms / 1000 > target) over.add(s.id);
+  }
+  return over;
 }

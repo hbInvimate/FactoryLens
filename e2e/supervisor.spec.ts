@@ -52,8 +52,21 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
   await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
   await expect(page.locator('[data-testid^="member-"]', { hasText: "Test Quality Technician" }).first()).toBeVisible();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Analytics" }).click();
-  await expect(page.getByTestId("ftr-weeks")).toBeVisible();
-  await expect(page.getByTestId("step-times")).toBeVisible();
+  for (const c of ["ftr-weeks", "step-times", "top-deviations", "station-discrepancies"]) await expect(page.getByTestId(c)).toBeVisible();
+  const filters = page.getByTestId("analytics-filters");
+  await expect(filters.getByLabel("Period")).toHaveValue("8");
+  await expect(filters.getByLabel("Station")).toHaveValue("all");
+  const csv = await page.request.get((await page.getByTestId("export-csv").getAttribute("href")) as string);
+  expect(csv.headers()["content-type"]).toContain("text/csv");
+  expect((await csv.text()).split("\n")[0]).toBe("Chart,Item,Value,Target seconds,Checks,Station");
+
+  // From Analytics to Tasks: a station shows only its checks; a deviation filter shows what it is filtering.
+  await page.goto(`/supervisor/tasks?status=all&step=3&dev=skipped`);
+  await expect(page.getByTestId("tasks-focus")).toContainText("Step 3 skipped");
+  await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`)).toHaveCount(0);
+  await page.goto(`/supervisor/tasks?status=all&station=No such station`);
+  await expect(page.getByTestId("tasks-focus")).toContainText("Station: No such station");
+  await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`)).toHaveCount(0);
 
   // Read-only: the check app is not theirs.
   await page.goto("/");

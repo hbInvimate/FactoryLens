@@ -1,6 +1,7 @@
 // /supervisor/tasks: every check and assigned session, with filters. Read-only: Watch opens the session's page.
 import Form from "next/form";
 import { connection } from "next/server";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { ButtonLink, Card, Input, Table, Td, Th, cx } from "@/components/ds";
@@ -10,6 +11,7 @@ import { SupervisorPage } from "@/components/supervisor/SupervisorShell";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
 import { currentUser } from "@/lib/auth/server";
 import { NotConfigured } from "@/lib/server/repo";
+import { DEVIATION_LABEL, isDeviationKind, sessionsMatching } from "@/lib/server/supervisor";
 import { TASK_STATUSES, TASK_STATUS_LABEL, listOwnChecks, listTasks, technicians, type Task, type TaskStatus } from "@/lib/server/tasks";
 
 export const metadata = { title: "FactoryLens AI: Tasks" };
@@ -26,11 +28,19 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
   const status = s === "all" || (TASK_STATUSES as readonly string[]).includes(s) ? s : "active";
   const who = one(sp.who) || "all";
   const q = one(sp.q).trim().slice(0, 120).toLowerCase();
+  // From Analytics: a station, a step over its target, or a deviation on a step.
+  const station = one(sp.station).trim().slice(0, 80);
+  const stepN = Number(one(sp.step));
+  const step = Number.isInteger(stepN) && stepN >= 1 && stepN <= 12 ? stepN : null;
+  const dev = isDeviationKind(one(sp.dev)) ? (one(sp.dev) as "skipped" | "wrong_order") : null;
+  const focus = station ? `Station: ${station}` : step && dev ? `Step ${step} ${DEVIATION_LABEL[dev]}` : step ? `Step ${step} over its target time` : null;
 
   let rows: Task[];
   let people: { id: string; name: string }[];
+  let matching: Set<string> | null = null;
   try {
-    const [tasks, checks, techs] = await Promise.all([listTasks(user), listOwnChecks(user), technicians()]);
+    const [tasks, checks, techs, m] = await Promise.all([listTasks(user), listOwnChecks(user), technicians(), step ? sessionsMatching(step, dev) : null]);
+    matching = m;
     rows = [...tasks, ...checks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     people = techs;
   } catch (e) {
@@ -41,6 +51,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
     (t) =>
       (status === "all" || (status === "active" ? t.status === "not_started" || t.status === "in_progress" : t.status === status)) &&
       (who === "all" || t.assignedTo === who) &&
+      (!station || t.station.trim() === station) &&
+      (!matching || (t.sessionId !== null && matching.has(t.sessionId))) &&
       (!q || [t.title, t.part, t.station, t.assignedName].some((x) => x.toLowerCase().includes(q))),
   );
 
@@ -71,7 +83,19 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
             </option>
           ))}
         </AutoSubmitSelect>
+        {station && <input type="hidden" name="station" value={station} />}
+        {step && <input type="hidden" name="step" value={step} />}
+        {dev && <input type="hidden" name="dev" value={dev} />}
       </Form>
+
+      {focus && (
+        <p className="flex flex-wrap items-center gap-3 text-[16px]" data-testid="tasks-focus">
+          <span className="rounded-full border border-primary-line bg-primary-soft px-4 py-2 font-semibold text-primary-ink">{focus}</span>
+          <Link href={`/supervisor/tasks?status=${status}`} className="inline-flex min-h-[56px] items-center px-2 text-primary-ink underline">
+            Clear
+          </Link>
+        </p>
+      )}
 
       <Table testId="supervisor-tasks" minWidth={880}>
         <thead>
