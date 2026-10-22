@@ -16,7 +16,7 @@ const MIN = 60_000;
 const SEC = 1_000;
 
 /** Small seeded random generator (mulberry32). */
-function rng(seed: number) {
+export function rng(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -27,7 +27,7 @@ function rng(seed: number) {
   };
 }
 
-type Plan =
+export type Plan =
   | { kind: "clean" }
   | { kind: "skip"; step: number; missing: string[] }
   | { kind: "clamp"; step: 5 | 6; tapped: string; expected: string }
@@ -36,7 +36,7 @@ type Plan =
   | { kind: "left"; atStep: number; reason: string }
   | { kind: "open_stop"; issueStep: number; issue: string };
 
-interface Extra {
+export interface Extra {
   /** A lodged issue during the check, cleared by the people called (or left open). */
   lodge?: { step: number; issue: string; decideAfterMin: number | null; by: string; reason: string };
   fixedOnSpot?: { step: number; issue: string; done: string[] };
@@ -154,7 +154,8 @@ export function generateSample(now: number = Date.now()): SampleSession[] {
   });
 }
 
-function build(id: string, start: number, plan: Plan, extra: Extra, pace: number, r: () => number): Action[] {
+/** The actions of one check that follows the plan. Also used by the demo seed (lib/sample/demo.ts). */
+export function build(id: string, start: number, plan: Plan, extra: Extra, pace: number, r: () => number): Action[] {
   const actions: Action[] = [];
   let t = start;
   let seq = 0;

@@ -50,7 +50,16 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
 
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Team" }).click();
   await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
-  await expect(page.locator('[data-testid^="member-"]', { hasText: "Test Quality Technician" }).first()).toBeVisible();
+  await expect(page.getByTestId("page-sub").filter({ hasText: "Quality Technician" })).toHaveText(/^\d+ Quality Technicians? · This week$/);
+  for (const k of ["total-ftr", "total-checks", "total-time", "total-coach"]) await expect(page.getByTestId(k)).toBeVisible();
+  await expect(page.getByTestId("team-filters").getByLabel("Sort")).toHaveValue("ftr");
+  const card = page.locator('[data-testid^="member-"]').filter({ has: page.getByText("Test Quality Technician", { exact: true }) }).first();
+  await expect(card.getByTestId("checks")).toHaveText(/^[1-9]\d*$/);
+  await expect(card.getByTestId("time-bar")).toBeVisible();
+  // A card opens Tasks filtered to that person.
+  await card.click();
+  await expect(page).toHaveURL(/\/supervisor\/tasks\?status=all&who=/);
+  await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`)).toBeVisible();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Analytics" }).click();
   for (const c of ["ftr-weeks", "step-times", "top-deviations", "station-discrepancies"]) await expect(page.getByTestId(c)).toBeVisible();
   const filters = page.getByTestId("analytics-filters");

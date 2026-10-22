@@ -45,14 +45,14 @@ export function SupervisorShell({ current, children }: { current?: SupervisorNav
 
 /** A Supervisor page: the shell, the heading and the page body. */
 /** A Supervisor page: title, sub-line and optional header controls (filters, export) on the right. */
-export function SupervisorPage({ current, title, sub, actions, children }: { current: SupervisorNavKey; title: string; sub: string; actions?: ReactNode; children: ReactNode }) {
+export function SupervisorPage({ current, title, sub, actions, children }: { current: SupervisorNavKey; title: string; sub: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
     <SupervisorShell current={current}>
       <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-6 py-6 md:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col">
             <h1 className="text-[30px] font-bold">{title}</h1>
-            <p className="text-[16px] text-muted">{sub}</p>
+            <p className="text-[16px] text-muted" data-testid="page-sub">{sub}</p>
           </div>
           {actions}
         </div>

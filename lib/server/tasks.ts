@@ -1,10 +1,11 @@
 // Tasks: first-off checks to do, on the Quality Technician's /tasks page. A task's status is never stored:
 // it follows the check started from it, so the check logic stays the only source of truth.
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import * as t from "@/db/schema";
 import { readsAllSessions, seesAllSessions, type Role } from "@/lib/auth/roles";
 import type { SessionStatus } from "@/lib/check/types";
 import { getRepo } from "./repo";
+import { shown } from "./supervisor";
 import { BadRequest } from "./validate";
 
 export const PRIORITIES = ["high", "medium", "low"] as const;
@@ -76,7 +77,7 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
 
 /**
  * Checks started on Start a check, not from a task: a Quality Technician's own; an admin's or Supervisor's view
- * has every real one. Newest first.
+ * has every real one (and the demo people's, see supervisor.ts). Newest first.
  */
 export async function listOwnChecks(user: Viewer): Promise<Task[]> {
   const { db } = await getRepo().conn();
@@ -84,7 +85,7 @@ export async function listOwnChecks(user: Viewer): Promise<Task[]> {
     .select({ s: t.sessions })
     .from(t.sessions)
     .leftJoin(t.tasks, eq(t.tasks.sessionId, t.sessions.id))
-    .where(and(isNull(t.tasks.id), readsAllSessions(user.role) ? sql`coalesce(${t.sessions.isSample}, false) = false` : eq(t.sessions.userId, user.id)))
+    .where(and(isNull(t.tasks.id), readsAllSessions(user.role) ? shown : eq(t.sessions.userId, user.id)))
     .orderBy(desc(t.sessions.startedAt))
     .limit(500);
   return rows.map(({ s }) => {
