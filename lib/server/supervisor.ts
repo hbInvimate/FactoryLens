@@ -5,6 +5,7 @@ import * as t from "@/db/schema";
 import { reduce, stepActiveMs } from "@/lib/check/reducer";
 import { ENDED_STATUSES, ON_HOLD_STATUSES, type DeviationKind, type SessionStatus } from "@/lib/check/types";
 import { STEPS } from "@/lib/sop";
+import { percentile } from "@/lib/sop-stats";
 import { getRepo } from "./repo";
 import { activeRevision } from "./sop";
 import { stationExpr } from "./sqlparts";
@@ -125,8 +126,8 @@ export interface StepTime {
   step: number;
   name: string;
   sessions: number;
-  /** Mean active time of the step in completed checks, seconds. */
-  avgSeconds: number | null;
+  /** Median active time of the step in completed checks, seconds. */
+  medianSeconds: number | null;
   targetSeconds: number | null;
 }
 
@@ -173,7 +174,7 @@ function mondayOf(now: Date): Date {
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /**
- * Analytics, for the filter's weeks and station: first-time right per week, each step's average time against its
+ * Analytics, for the filter's weeks and station: first-time right per week, each step's median time against its
  * target, the most common deviations and discrepancies per station. Real sessions only.
  */
 export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<Analytics> {
@@ -204,20 +205,18 @@ export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<A
     const done = rows.filter((r) => r.startedAt >= start && r.startedAt < end);
     return { start: ymd(start), completed: done.length, ftrPct: pct(done.filter(ftr).length, done.length) };
   });
-  const sums = STEPS.map(() => ({ n: 0, ms: 0 }));
+  const secs: number[][] = STEPS.map(() => []);
   for (const s of await withActions(db, rows.slice(0, 300))) {
     const st = reduce(s.actions, s.startedAt);
-    sums.forEach((x, i) => {
+    secs.forEach((x, i) => {
       const ms = stepActiveMs(st, i + 1);
-      if (ms === null) return;
-      x.n++;
-      x.ms += ms;
+      if (ms !== null) x.push(ms / 1000);
     });
   }
   return {
     weeks,
     steps: STEPS.map((s, i) => ({
-      step: s.n, name: s.name, sessions: sums[i].n, avgSeconds: sums[i].n ? Math.round(sums[i].ms / sums[i].n / 1000) : null, targetSeconds: rev.steps[i]?.targetCtSeconds ?? null,
+      step: s.n, name: s.name, sessions: secs[i].length, medianSeconds: secs[i].length ? Math.round(percentile(secs[i], 0.5) as number) : null, targetSeconds: rev.steps[i]?.targetCtSeconds ?? null,
     })),
     deviations: devs
       .filter((d): d is typeof d & { kind: DeviationKind } => isDeviationKind(d.kind))

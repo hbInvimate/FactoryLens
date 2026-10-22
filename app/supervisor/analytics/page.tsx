@@ -1,4 +1,4 @@
-// /supervisor/analytics: four charts in a 2×2 grid (first-time right per week, average time per step, most common
+// /supervisor/analytics: four charts in a 2×2 grid (first-time right per week, typical time per step, most common
 // deviations, discrepancies by station), for the header's weeks and station. Bars and rows open Tasks filtered to them.
 import Form from "next/form";
 import { connection } from "next/server";
@@ -63,7 +63,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
       <ChartCard title="First-time right per week" sub={`All 12 steps correct on the first attempt${where}, per week.`} testId="ftr-weeks" empty={!a.weeks.some((w) => w.completed > 0)}>
         <FtrLine weeks={a.weeks.map((w) => ({ ...w, label: dayMonth(w.start) }))} />
       </ChartCard>
-      <ChartCard title="Average time per step" sub={`Completed checks${where}. Dark mark: target; amber: over it.`} testId="step-times" empty={!a.steps.some((s) => s.avgSeconds !== null)}>
+      <ChartCard title="Typical time per step (median)" sub={`Completed checks${where}. Dark mark: target; amber: over it.`} testId="step-times" empty={!a.steps.some((s) => s.medianSeconds !== null)}>
         <StepBars steps={a.steps.map((s) => ({ ...s, href: tasks({ step: String(s.step) }) }))} />
       </ChartCard>
       <ChartCard title="Most common deviations" sub={`Skipped or wrong order, top 5${where}.`} testId="top-deviations" empty={a.deviations.length === 0}>

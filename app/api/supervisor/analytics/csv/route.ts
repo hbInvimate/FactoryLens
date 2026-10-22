@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const rows: (string | number | null)[][] = [
       ["Chart", "Item", "Value", "Target seconds", "Checks", "Station"],
       ...a.weeks.map((w) => ["First-time right per week (%)", `Week of ${w.start}`, w.ftrPct, null, w.completed, f.station ?? "All stations"]),
-      ...a.steps.map((s) => ["Average time per step (seconds)", `${s.step}. ${s.name}`, s.avgSeconds, s.targetSeconds, s.sessions, f.station ?? "All stations"]),
+      ...a.steps.map((s) => ["Typical time per step, median (seconds)", `${s.step}. ${s.name}`, s.medianSeconds, s.targetSeconds, s.sessions, f.station ?? "All stations"]),
       ...a.deviations.map((d) => ["Most common deviations (count)", `Step ${d.step} ${DEVIATION_LABEL[d.kind]}`, d.count, null, null, f.station ?? "All stations"]),
       ...a.byStation.map((s) => ["Discrepancies by station (count)", s.station, s.count, null, null, s.station]),
     ];

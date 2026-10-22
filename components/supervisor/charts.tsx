@@ -72,16 +72,16 @@ export function FtrLine({ weeks }: { weeks: { start: string; label: string; comp
   );
 }
 
-/** Average time per step: a bar per step, a dark target tick on each; amber when over the target. Each bar is a link. */
-export function StepBars({ steps }: { steps: { step: number; name: string; avgSeconds: number | null; targetSeconds: number | null; href: string }[] }) {
+/** Typical (median) time per step: a bar per step, a dark target tick on each; amber when over the target. Each bar is a link. */
+export function StepBars({ steps }: { steps: { step: number; name: string; medianSeconds: number | null; targetSeconds: number | null; href: string }[] }) {
   const iw = W - PAD.l - PAD.r;
   const ih = H - PAD.t - PAD.b;
-  const max = Math.max(1, ...steps.map((s) => Math.max(s.avgSeconds ?? 0, s.targetSeconds ?? 0))) * 1.1;
+  const max = Math.max(1, ...steps.map((s) => Math.max(s.medianSeconds ?? 0, s.targetSeconds ?? 0))) * 1.1;
   const slot = iw / steps.length;
   const bw = Math.min(30, slot * 0.6);
   const y = (sec: number) => PAD.t + ih - (sec / max) * ih;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Average time per step against the target">
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Typical (median) time per step against the target">
       <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} stroke="var(--fl-border-strong)" />
       <text x={PAD.l - 8} y={y(0) + 4} textAnchor="end" fontSize="13" fill="var(--fl-text-muted)">
         0:00
@@ -91,13 +91,13 @@ export function StepBars({ steps }: { steps: { step: number; name: string; avgSe
       </text>
       {steps.map((s, i) => {
         const cx0 = PAD.l + slot * i + slot / 2;
-        const over = s.avgSeconds !== null && s.targetSeconds !== null && s.avgSeconds > s.targetSeconds;
-        const tip = `${s.step}. ${s.name}: average ${minutes(s.avgSeconds)}, target ${s.targetSeconds === null ? "none" : minutes(s.targetSeconds)}`;
+        const over = s.medianSeconds !== null && s.targetSeconds !== null && s.medianSeconds > s.targetSeconds;
+        const tip = `${s.step}. ${s.name}: median ${minutes(s.medianSeconds)}, target ${s.targetSeconds === null ? "none" : minutes(s.targetSeconds)}`;
         return (
           <Link key={s.step} href={s.href} aria-label={tip} data-step={s.step} data-over={over || undefined}>
             <title>{tip}</title>
             <rect x={cx0 - slot / 2} y={PAD.t} width={slot} height={ih + PAD.b} fill="transparent" />
-            {s.avgSeconds !== null && <rect x={cx0 - bw / 2} y={y(s.avgSeconds)} width={bw} height={y(0) - y(s.avgSeconds)} rx="3" fill={over ? "var(--fl-amber)" : "var(--fl-primary)"} />}
+            {s.medianSeconds !== null && <rect x={cx0 - bw / 2} y={y(s.medianSeconds)} width={bw} height={y(0) - y(s.medianSeconds)} rx="3" fill={over ? "var(--fl-amber)" : "var(--fl-primary)"} />}
             {s.targetSeconds !== null && <line x1={cx0 - bw / 2 - 4} x2={cx0 + bw / 2 + 4} y1={y(s.targetSeconds)} y2={y(s.targetSeconds)} stroke="var(--fl-text)" strokeWidth="3" />}
             <text x={cx0} y={H - PAD.b + 20} textAnchor="middle" fontSize="13" fill="var(--fl-text-2)">
               {s.step}
