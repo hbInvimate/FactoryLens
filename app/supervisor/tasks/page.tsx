@@ -1,4 +1,4 @@
-// /supervisor/tasks: every check and assigned session, with filters. Read-only: Watch opens the session's page.
+// /supervisor/tasks: every check and assigned session, with filters. Read-only: Watch opens the live view of the check.
 import Form from "next/form";
 import { connection } from "next/server";
 import Link from "next/link";
@@ -138,7 +138,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
               </Td>
               <Td>
                 {t.sessionId ? (
-                  <ButtonLink href={`/sessions/${t.sessionId}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Watch ${t.title}`}>
+                  <ButtonLink href={`/supervisor/live/${t.sessionId}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Watch ${t.title}`}>
                     Watch
                   </ButtonLink>
                 ) : (

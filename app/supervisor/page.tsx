@@ -1,5 +1,5 @@
 // /supervisor: the Supervisor's home. 4 KPI cards (each opens Tasks or Analytics), the checks in progress
-// with Watch, and alerts. Read-only: Watch opens the session's page.
+// with Watch, and alerts. Read-only: Watch opens the live view of the check.
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
@@ -73,7 +73,7 @@ async function Body() {
                       <StatusChip status={c.status} />
                     </Td>
                     <Td>
-                      <ButtonLink href={`/sessions/${c.id}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Watch ${c.part}`}>
+                      <ButtonLink href={`/supervisor/live/${c.id}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Watch ${c.part}`}>
                         Watch
                       </ButtonLink>
                     </Td>
@@ -94,7 +94,7 @@ async function Body() {
                     {a.tone === "red" ? "Hold" : "Check"}
                   </Chip>
                   <span className="flex-1 text-[15px]">{a.text}</span>
-                  <ButtonLink href={`/sessions/${a.id}`} className="min-h-[56px] px-3 text-[14px] shadow-none">
+                  <ButtonLink href={`/supervisor/live/${a.id}`} className="min-h-[56px] px-3 text-[14px] shadow-none">
                     Watch
                   </ButtonLink>
                 </li>

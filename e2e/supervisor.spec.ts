@@ -1,7 +1,7 @@
 // Supervisor mode: the sign-in mode cards, the four Supervisor pages, Watch opening a session read-only, and Analytics from real rows.
 import { expect, test, type Page } from "@playwright/test";
 import { signInAs } from "./auth-helpers";
-import { decideHold, doSteps, lodge, startAt, startCheck, tap, unique, waitSaved } from "./helpers";
+import { decideHold, doSteps, lodge, recordValues, startAt, startCheck, tap, unique, waitSaved } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -36,17 +36,40 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
   for (const k of ["kpi-ongoing", "kpi-today", "kpi-ftr", "kpi-hold"]) await expect(page.getByTestId(k)).toBeVisible();
   await expect(page.getByTestId("ongoing").locator(`tr[data-session="${id}"]`)).toBeVisible();
 
-  // Watch: the session page, without Resume.
+  // Watch: the live view. Read-only, refreshed every 5 seconds while the check runs.
   await page.getByTestId("ongoing").locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Watch/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/sessions/${id}$`));
+  await expect(page).toHaveURL(new RegExp(`/supervisor/live/${id}$`));
+  await expect(page.getByRole("heading", { name: "B-pillar outer · First-off check" })).toBeVisible();
+  await expect(page.getByTestId("live-chip")).toHaveText("LIVE");
+  await expect(page.getByTestId("live-sub")).toContainText("Test Quality Technician · Laser cell 3 · FX-014 · SOP rev A · started");
+  await expect(page.getByTestId("stat-step")).toHaveText("3/12");
+  await expect(page.getByTestId("stat-time")).toHaveText(/^\d+:\d\d \/ 45:00$/);
+  await expect(page.getByTestId("stat-deviations")).toHaveText("0");
+  await expect(page.getByTestId("live-steps").locator("li[data-state=done]")).toHaveCount(2);
+  await expect(page.getByTestId("live-steps").locator("li[data-state=current]")).toHaveAttribute("data-step", "3");
+  await expect(page.getByTestId("live-now")).toContainText("Now: Step 3 · Lower the part onto pads P1 to P3");
+  await expect(page.getByTestId("live-values")).toContainText("Nothing to record at this step.");
+  await expect(page.getByTestId("live-activity").locator("li").first()).toContainText("Step 2 done");
+  await expect(page.getByTestId("live-activity").locator("li").last()).toContainText("Check started by Test Quality Technician");
   await expect(page.getByRole("link", { name: "Resume this check" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "← All checks" })).toBeVisible();
+  await page.getByTestId("flag-review").click();
+  await expect(page.getByRole("status").filter({ hasText: "Coming soon" })).toBeVisible();
+
+  // The technician records two values at step 7; the open page shows them without a reload.
+  await doSteps(tp, 3, 6);
+  await recordValues(tp, 7, ["H1", "H2"], "10.05");
+  await waitSaved(tp);
+  await expect(page.getByTestId("live-values-count")).toHaveText("2 of 14", { timeout: 15_000 });
+  await expect(page.getByTestId("stat-step")).toHaveText("7/12");
+  await expect(page.getByTestId("live-values").locator("li[data-point=H1]")).toHaveText("H1 · 10.05 mm");
+  await expect(page.getByTestId("live-values").locator("li[data-point=H3]")).not.toHaveAttribute("data-recorded");
+  await expect(page.getByRole("link", { name: "← Tasks" })).toBeVisible();
 
   // The KPI card opens Tasks; the check is there with Watch.
   await page.goto("/supervisor");
   await page.getByTestId("kpi-ongoing").click();
   await expect(page).toHaveURL(/\/supervisor\/tasks\?status=in_progress$/);
-  await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Watch/ })).toHaveAttribute("href", `/sessions/${id}`);
+  await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Watch/ })).toHaveAttribute("href", `/supervisor/live/${id}`);
 
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Team" }).click();
   await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
