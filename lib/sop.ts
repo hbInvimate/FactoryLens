@@ -32,11 +32,11 @@ const CLAMPS = range("C", 1, 6);
 
 export const STEPS: SopStep[] = [
   {
-    n: 1, name: "Put on gloves and safety glasses", short: "Gloves, glasses", phase: "Setup",
-    spoken: "Step 1 — Put on gloves and glasses.",
-    todo: "Put on cut-resistant gloves and safety glasses before touching the part.",
-    correct: "Gloves and glasses worn before the part is touched.",
-    mistake: "Starting without them.", rule: "Trimmed hot stamped edges are sharp.",
+    n: 1, name: "Confirm part, fixture and SOP", short: "Part, fixture, SOP", phase: "Setup",
+    spoken: "Step 1 — Confirm the part, fixture and SOP.",
+    todo: "Check the part number and fixture ID match the job and the SOP revision shown.",
+    correct: "Part B-pillar outer on fixture FX-014, SOP rev shown on screen.",
+    mistake: "Starting on the wrong part, fixture or SOP revision.", rule: "The part, fixture and SOP revision must match the job before anything else.",
     camera: "Camera can see this step", points: [], ordered: false, seating: [], pointSet: "",
   },
   {

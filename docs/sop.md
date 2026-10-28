@@ -8,13 +8,14 @@ The Quality Technician takes every measurement and enters it on a tablet that is
 
 ## The 12 steps
 
-### Step 1: Put on gloves and safety glasses
+### Step 1: Confirm part, fixture and SOP
 - Phase: Setup
-- Spoken line: "Step 1 — Put on gloves and glasses."
-- What to do: Put on cut-resistant gloves and safety glasses before touching the part.
-- What correct looks like: Gloves and glasses worn before the part is touched.
-- Common mistake: Starting without them.
-- Safety or rule: Trimmed hot stamped edges are sharp.
+- Spoken line: "Step 1 — Confirm the part, fixture and SOP."
+- What to do: Check the part number and fixture ID match the job and the SOP revision shown.
+- What correct looks like: Part B-pillar outer on fixture FX-014, SOP rev shown on screen.
+- Target time: 0:30
+- Common mistake: Starting on the wrong part, fixture or SOP revision.
+- Safety or rule: The part, fixture and SOP revision must match the job before anything else. (The Quality Technician already wears the smart glasses, the wearable edge device.)
 - Camera visibility (assumed): Camera can see this step
 - Check points in this step: none (single confirmation)
 

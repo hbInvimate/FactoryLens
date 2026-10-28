@@ -79,6 +79,7 @@ const isStrList = (v: unknown) => Array.isArray(v) && v.length <= 50 && v.every(
 const FIELDS: Record<Action["type"], Record<string, (v: unknown) => boolean>> = {
   tap_point: { step: isInt, point: (v) => isStr(v, 8) },
   next_step: { step: isInt },
+  go_back: { from: isInt, to: isInt, by: (v) => isStr(v, 100) },
   release_clamps: { step: isInt },
   fix_continue: { deviation: (v) => isStr(v, 64) },
   call_trainer: { deviation: (v) => isStr(v, 64) },

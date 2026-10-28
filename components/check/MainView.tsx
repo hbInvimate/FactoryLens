@@ -8,9 +8,10 @@ import { useState } from "react";
 import { MEASURED_STEPS, MeasureEntry, latestValues, missingValues } from "./MeasureEntry";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
-import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Tile, Warn, cx } from "../ui";
+import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Warn, cx } from "../ui";
+import { Modal } from "./Dialogs";
 import { PartDrawing } from "./PartDrawing";
-import { StepDetails, StepVideo } from "./StepMedia";
+import { IdealStep, StepDetails } from "./StepMedia";
 import { PointGrid } from "./PointGrid";
 
 export function LodgeButton({ onClick }: { onClick: () => void }) {
@@ -26,9 +27,22 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** One of the six compact metric cards in the row above the media panel. */
+function Metric({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "green" | "amber" }) {
+  return (
+    <div className="flex min-w-0 flex-col rounded-[10px] border border-line bg-surface px-2.5 py-2 shadow-card">
+      <span className="truncate text-[12px] text-muted">{label}</span>
+      <span className={cx("truncate text-[22px] font-semibold leading-tight", tone === "amber" ? "text-amber-ink" : tone === "green" ? "text-primary-ink" : "text-ink")}>{value}</span>
+      {sub && <span className="truncate text-[12px] text-muted">{sub}</span>}
+    </div>
+  );
+}
+
 export function MainView({
-  state, now, onTap, onNext, onOpenStep, onLodge, actions = [], onMeasure, onFillDemo,
+  state, now, onTap, onNext, onOpenStep, onLodge, onBack, actions = [], onMeasure, onFillDemo,
 }: {
+  /** Reopen an earlier, done step. The steps after it are then confirmed again, in order. */
+  onBack?: (to: number) => void;
   state: CheckState;
   /** The session's actions, for the values recorded at steps 7 to 10. */
   actions?: Action[];
@@ -57,6 +71,9 @@ export function MainView({
   const [promptStep, setPromptStep] = useState<number | null>(null);
   const [edit, setEdit] = useState<{ step: number; point: string } | null>(null);
   const nudge = () => setPromptStep(cur);
+  // Going back asks first: it reopens a step and marks the ones after it "re-confirm".
+  const [backTo, setBackTo] = useState<number | null>(null);
+  const canBack = (n: number) => !!onBack && state.current <= 12 && n >= 1 && n < cur && state.steps[n - 1].doneAt !== null;
 
   return (
     <div className="flex min-h-0 flex-1 gap-6 px-8 py-6">
@@ -79,7 +96,10 @@ export function MainView({
                   <div className="flex items-start gap-4">
                     <Ring n={s.n} active />
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                      <span className="text-[26px] font-semibold leading-tight">{s.name}</span>
+                      <span className="flex flex-wrap items-center gap-3 text-[26px] font-semibold leading-tight">
+                        {s.name}
+                        {r.reconfirm && <Chip tone="amber">Re-confirm</Chip>}
+                      </span>
                       <span className="text-[17px] text-ink-2">Correct: {sopStep(s.n).correct}</span>
                     </div>
                   </div>
@@ -133,6 +153,11 @@ export function MainView({
                   <div className="flex flex-wrap items-center gap-3">
                     <Btn onClick={() => onOpenStep(s.n)}>Step details</Btn>
                     <span className="flex-1" />
+                    {canBack(s.n - 1) && (
+                      <Btn onClick={() => setBackTo(s.n - 1)} data-testid="back-step">
+                        ← Back
+                      </Btn>
+                    )}
                     <Btn variant="success" onClick={() => (missing.length ? nudge() : onNext(s.n))}>
                       {s.points.length ? (s.n === 12 ? "Finish the check" : "Next step") : s.n === 12 ? "Done, finish the check" : "Done, next step"}
                     </Btn>
@@ -145,11 +170,20 @@ export function MainView({
               <li key={s.n}>
                 <button
                   type="button"
-                  onClick={() => onOpenStep(s.n)}
+                  // A done step reopens it (after a confirm); a step not reached yet shows its details.
+                  onClick={() => (canBack(s.n) ? setBackTo(s.n) : onOpenStep(s.n))}
+                  data-step={s.n}
                   className="tap flex w-full items-center gap-4 rounded-[10px] px-3.5 text-left hover:bg-surface"
                 >
                   {isDone ? <Tick tone={r.outcome === "corrected" ? "amber" : "green"} /> : <Ring n={s.n} />}
                   <span className={cx("text-[19px]", isDone ? "text-muted" : "text-ink")}>{s.name}</span>
+                  {r.reconfirm && (
+                    <span className="ml-auto">
+                      <Chip small tone="amber">
+                        re-confirm
+                      </Chip>
+                    </span>
+                  )}
                 </button>
               </li>
             );
@@ -157,35 +191,59 @@ export function MainView({
         </ol>
       </section>
 
-      <div className="flex min-h-0 min-w-0 flex-[1.1] flex-col gap-4 overflow-y-auto pr-1">
+      <div className="flex min-h-0 min-w-0 flex-[1.1] flex-col gap-3 overflow-y-auto pr-1">
+        <div className="grid grid-cols-6 gap-2" data-testid="metrics">
+          <Metric label="Steps done" value={`${done} / 12`} sub={devs ? "Deviations corrected" : "On track"} />
+          <Metric label="Check points" value={`${checkPointsDone(state)} / ${TOTAL_CHECK_POINTS}`} sub="Sequence" />
+          <Metric label="Time elapsed" value={fmtClock(elapsedMs(state, now))} sub={`Target ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
+          <Metric label="Deviations" value={String(devs)} sub={devs ? "See the step list" : "None yet"} tone={devs ? "amber" : "green"} />
+          <Metric label="Conformance" value={conf === null ? "—" : `${conf}%`} sub="So far" tone="green" />
+          <Metric label="Phase" value={def.phase} />
+        </div>
+
         <Panel>
-          <div className="flex flex-wrap items-center gap-3.5">
-            <h2 className="text-[22px] font-semibold">What the camera sees</h2>
-            <Chip>Placeholder view</Chip>
-            <span className="flex-1" />
-            <Chip tone="green">On track</Chip>
+          <div className="grid grid-cols-2 items-stretch gap-4" data-testid="media">
+            <div className="flex min-w-0 flex-col gap-2" data-testid="camera-view">
+              <h2 className="truncate text-[20px] font-semibold" title="Placeholder view">
+                What the camera sees
+              </h2>
+              <div className="aspect-[16/10] w-full overflow-hidden rounded-[10px] bg-[var(--fl-draw-bg)]">
+                <PartDrawing step={cur} className="block h-full w-full" />
+              </div>
+              <span className="truncate text-[16px] text-ink-2">Now: {def.name}.</span>
+            </div>
+            <IdealStep step={cur} />
           </div>
-          <PartDrawing step={cur} className="block h-auto w-full rounded-[10px]" />
-          <span className="text-[18px] text-ink-2">Now: {def.name}.</span>
         </Panel>
 
-        <StepVideo step={cur} />
         <StepDetails step={cur} />
-
-        <div className="grid grid-cols-3 gap-3">
-          <Tile label="Steps done" value={`${done} / 12`} sub={devs ? "Deviations corrected" : "On track"} />
-          <Tile label="Check points" value={`${checkPointsDone(state)} / ${TOTAL_CHECK_POINTS}`} sub="Sequence only" />
-          <Tile label="Time elapsed" value={fmtClock(elapsedMs(state, now))} sub={`Target: ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
-          <Tile label="Deviations" value={String(devs)} sub={devs ? "See the step list" : "None yet"} tone={devs ? "amber" : "green"} />
-          <Tile label="Conformance" value={conf === null ? "—" : `${conf}%`} sub="So far" tone="green" />
-          <Tile label="Phase" value={def.phase} sub="" />
-        </div>
 
         <div className="flex items-center gap-4 rounded-xl bg-surface px-5 py-3.5">
           <TabletIcon />
           <span className="text-[17px] text-ink-2">Reminder: enter readings on the tablet as you go. They are not shown here.</span>
         </div>
       </div>
+      {backTo !== null && onBack && (
+        <Modal title={`Go back to step ${backTo}?`} onClose={() => setBackTo(null)}>
+          <p className="text-[19px] text-ink-2">
+            Step {backTo} opens again. {backTo < cur - 1 ? `Steps ${backTo} to ${cur - 1} stay recorded and are` : `Step ${backTo} stays recorded and is`} marked
+            re-confirm: confirm each again, in order. This is logged. It is not a deviation.
+          </p>
+          <div className="flex flex-wrap justify-end gap-3">
+            <Btn onClick={() => setBackTo(null)}>Cancel</Btn>
+            <Btn
+              variant="success"
+              data-testid="confirm-back"
+              onClick={() => {
+                onBack(backTo);
+                setBackTo(null);
+              }}
+            >
+              Go back to step {backTo}
+            </Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

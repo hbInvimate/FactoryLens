@@ -78,6 +78,13 @@
       "when": 1792550463441,
       "tag": "0010_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793185340614,
+      "tag": "0011_step1_confirm_part",
+      "breakpoints": true
     }
   ]
 }

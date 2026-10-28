@@ -73,6 +73,11 @@ export interface SessionMeta {
 export type ActionBody =
   | { type: "tap_point"; step: number; point: string }
   | { type: "next_step"; step: number }
+  /**
+   * Back to an earlier step (tap a done step, or Back). That step and the ones after it stay recorded but must be
+   * confirmed again, in order. Not a deviation. by: who did it (the audit trail is the action log itself).
+   */
+  | { type: "go_back"; from: number; to: number; by: string }
   | { type: "release_clamps"; step: number }
   | { type: "fix_continue"; deviation: string }
   | { type: "call_trainer"; deviation: string }
@@ -109,7 +114,7 @@ export type ActionType = ActionBody["type"];
 export type Action = ActionBody & { id: string; seq: number; at: number };
 
 export const ACTION_TYPES: ActionType[] = [
-  "tap_point", "next_step", "release_clamps", "fix_continue", "call_trainer", "undo", "pause", "resume",
+  "tap_point", "next_step", "go_back", "release_clamps", "fix_continue", "call_trainer", "undo", "pause", "resume",
   "leave", "fixed_on_spot", "lodge", "call_marked", "todo_tick", "handoff", "clear", "hold_decision", "proc_tick",
   "proc_holes", "proc_parts", "trial_outcome", "proc_close", "measure",
 ];
@@ -134,6 +139,8 @@ export interface StepRun {
   startedAt: number | null;
   doneAt: number | null;
   outcome: StepOutcome;
+  /** Done, then reopened by a go-back: recorded, but to be confirmed again before moving on. */
+  reconfirm: boolean;
 }
 
 export type DeviationKind = "wrong_order" | "skipped";
@@ -229,6 +236,8 @@ export interface CheckState {
   /** Set when a hold decision ended the session (scrapped, rework, concession, abandoned). */
   final: { outcome: Exclude<HoldOutcome, "cleared">; at: number; did: string } | null;
   stepEvents: StepEvent[];
+  /** Every go-back, oldest first. Not deviations. */
+  goBacks: { at: number; from: number; to: number; by: string }[];
   status: SessionStatus;
   /** Actions that raised a deviation. They cannot be undone. */
   raisers: Set<string>;

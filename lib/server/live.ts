@@ -85,7 +85,8 @@ export async function liveView(id: string, now = Date.now()): Promise<LiveView |
     return {
       n: st.n,
       name: st.name,
-      state: run.doneAt !== null ? "done" : st.n === s.current && !ended ? "current" : "upcoming",
+      // A reopened step (go-back) is current again, though it was done before.
+      state: st.n === s.current && !ended ? "current" : run.doneAt !== null ? "done" : "upcoming",
       seconds: ms === null ? null : Math.round(ms / 1000),
       targetSeconds: targets[i],
       deviation: s.deviations.some((d) => d.step === st.n),
@@ -126,6 +127,9 @@ export async function liveView(id: string, now = Date.now()): Promise<LiveView |
   for (const d of s.discrepancies) {
     ev.push({ at: d.loggedAt, tone: d.effect === "stop" ? "red" : "amber", text: `${d.status === "fixed_on_spot" ? "Fixed on the spot" : "Discrepancy lodged"} at step ${d.step}: ${d.issue}` });
     if (d.closedAt !== null && d.status !== "fixed_on_spot") ev.push({ at: d.closedAt, tone: "gray", text: `Hold closed${d.clearedBy ? ` by ${d.clearedBy}` : ""}: ${d.issue}` });
+  }
+  for (const g of s.goBacks) {
+    ev.push({ at: g.at, tone: "gray", text: `Went back from step ${g.from} to step ${g.to}${g.by ? `, by ${g.by}` : ""}` });
   }
   for (const p of s.pauses) {
     ev.push({ at: p.from, tone: "gray", text: "Paused" });

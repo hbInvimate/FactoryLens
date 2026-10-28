@@ -29,7 +29,7 @@ function initial(startedAt: number): CheckState {
     endedAt: null,
     current: 1,
     steps: STEPS.map((s) => ({
-      n: s.n, confirmed: [], wrong: [], needsRelease: false, startedAt: null, doneAt: null, outcome: "pending",
+      n: s.n, confirmed: [], wrong: [], needsRelease: false, startedAt: null, doneAt: null, outcome: "pending", reconfirm: false,
     })),
     deviations: [],
     discrepancies: [],
@@ -39,6 +39,7 @@ function initial(startedAt: number): CheckState {
     left: null,
     final: null,
     stepEvents: [],
+    goBacks: [],
     status: "running",
     raisers: new Set(),
     lastAt: startedAt,
@@ -218,8 +219,23 @@ function apply(s: CheckState, a: Action) {
         event(s, a, a.step, "skipped", 1, `${describePoints(missing)} ${missingVerb(a.step)}`, missing);
         return;
       }
+      if (run.reconfirm) {
+        // Confirmed again after a go-back: the first time and its outcome stay; no new event, not a deviation.
+        run.reconfirm = false;
+        s.current = run.n + 1;
+        return;
+      }
       event(s, a, a.step, "done", 1);
       completeStep(s, run, a.at);
+      return;
+    }
+
+    case "go_back": {
+      if (isLocked(s) || openDeviation(s) || s.current > STEP_COUNT || a.from !== s.current) return;
+      if (!Number.isInteger(a.to) || a.to < 1 || a.to >= s.current || s.steps[a.to - 1].doneAt === null) return;
+      for (let n = a.to; n < s.current; n++) s.steps[n - 1].reconfirm = true;
+      s.goBacks.push({ at: a.at, from: a.from, to: a.to, by: String(a.by ?? "").slice(0, 100) });
+      s.current = a.to;
       return;
     }
 

@@ -335,6 +335,18 @@
    "index": 3,
    "label": "Tag missing or part not labelled",
    "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 1,
+   "index": 3,
+   "label": "Part or fixture does not match the job",
+   "category": "Setup, cleanliness and labelling"
+  },
+  {
+   "step": 1,
+   "index": 4,
+   "label": "SOP revision shown is not the one on the job",
+   "category": "Procedure and sequence"
   }
  ]
 }

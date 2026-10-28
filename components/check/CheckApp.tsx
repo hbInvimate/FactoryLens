@@ -280,6 +280,7 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
         }}
         onNext={(step) => act({ type: "next_step", step })}
         onOpenStep={(step) => setView({ kind: "detail", step })}
+        onBack={(to) => act({ type: "go_back", from: state.current, to, by: meta?.operator ?? "" })}
         onLodge={() => setView({ kind: "lodge" })}
       />
     );

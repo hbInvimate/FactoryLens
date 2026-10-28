@@ -157,7 +157,10 @@ test.describe("missed points", () => {
 test("every issue in the catalogue has one of the 9 categories, stored on lodged discrepancies", () => {
   expect(CATEGORIES).toHaveLength(9);
   const all = Object.values(ISSUES).flat();
-  expect(all).toHaveLength(54);
+  expect(all).toHaveLength(56);
+  // The two old step 1 glove issues are retired: not offered, still known to past checks.
+  expect(all.filter((i) => i.retired).map((i) => i.label)).toEqual(["Gloves or glasses missing", "Gloves cut or damaged"]);
+  expect(issuesFor(1).map((i) => i.label).join(" ")).not.toMatch(/glove|glasses/i);
   for (const i of all) expect(CATEGORIES).toContain(i.category);
   expect(issuesFor(7).find((i) => i.label === "Several holes will not take the pin, same direction")!.category).toBe("Laser cut quality");
 

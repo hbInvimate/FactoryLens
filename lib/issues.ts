@@ -1,4 +1,4 @@
-// The 54-issue catalogue. Single source of truth: docs/issues.json, categories from docs/dashboard/issue_categories.json.
+// The issue catalogue (54 in use, 2 retired). Single source of truth: docs/issues.json, categories from docs/dashboard/issue_categories.json.
 import raw from "@/docs/issues.json";
 import categoriesRaw from "@/docs/dashboard/issue_categories.json";
 
@@ -24,6 +24,8 @@ export interface Issue {
   note: string;
   /** From docs/dashboard/issue_categories.json. */
   category: string;
+  /** No longer offered (the old step 1 glove issues). Kept so past checks that used it still rebuild. */
+  retired?: boolean;
 }
 
 function load(): Record<number, Issue[]> {
@@ -44,11 +46,12 @@ export const ISSUES = load();
 
 /** Issues for a step; 0 is "Not about a step". */
 export function issuesFor(stepN: number): Issue[] {
-  return ISSUES[stepN] ?? [];
+  return (ISSUES[stepN] ?? []).filter((i) => !i.retired);
 }
 
+/** Retired issues too: a past check that lodged one must still rebuild the same. */
 export function findIssue(stepN: number, label: string): Issue | undefined {
-  return issuesFor(stepN).find((i) => i.label === label);
+  return (ISSUES[stepN] ?? []).find((i) => i.label === label);
 }
 
 export const KIND_LABEL: Record<IssueKind, string> = {

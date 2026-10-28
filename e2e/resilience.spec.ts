@@ -127,7 +127,7 @@ test("After a completed check, a new check starts at once and nothing shows as i
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
   const second = page.url().split("/check/")[1];
   expect(second).not.toBe(first);
-  await expect(page.locator("li[aria-current=step]")).toContainText("Put on gloves and safety glasses");
+  await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
   expect(await statusOf(request, first)).toBe("complete");
 
   // Leave on a finished check must not turn it back into one in progress.
@@ -164,7 +164,7 @@ test("A check still running: resume it, or leave it with a reason and start a ne
 
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
   expect(page.url()).not.toContain(old);
-  await expect(page.locator("li[aria-current=step]")).toContainText("Put on gloves and safety glasses");
+  await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
   await waitSavedFor(request, old, "left");
 
   const journal = await (await request.get(`/api/sessions/${old}`)).json();

@@ -94,7 +94,7 @@ const CATEGORY_ISSUES: Extra["lodge"][] = [
 
 const FIXED_ON_SPOT: Extra["fixedOnSpot"][] = [
   { step: 2, issue: "Swarf, dross or dust on pads or pins", done: ["Wipe the pads and pins with a clean cloth", "Blow off loose swarf", "Look again: all clear?"] },
-  { step: 1, issue: "Gloves cut or damaged", done: ["Take off the damaged gloves", "Put on a new pair"] },
+  { step: 1, issue: "SOP revision shown is not the one on the job", done: ["Open the job again on the tablet", "Check the SOP revision shown matches the job"] },
   { step: 11, issue: "Hard to see: poor light", done: ["Use the inspection lamp", "Look again"] },
   { step: 12, issue: "Tag missing or part not labelled", done: ["Fill in the tag", "Attach it to the part"] },
 ];

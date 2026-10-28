@@ -1,31 +1,32 @@
 "use client";
-// The task page, per step: the step's video (a placeholder until recording exists) and its details from the
+// The task page, per step: the ideal step (its video; a placeholder until a clip exists) and its details from the
 // SOP revision the check runs on. Display only: the check logic is not touched.
 import { fmtClock } from "@/lib/client/hooks";
 import { useSopStep } from "@/lib/client/sopContext";
 import { Chip, Panel } from "../ui";
 
-export function StepVideo({ step }: { step: number }) {
+/** The right half of the media panel: the step done the ideal way. No clip is recorded yet, so a placeholder. */
+export function IdealStep({ step }: { step: number }) {
   const s = useSopStep()(step);
   return (
-    <Panel>
-      <div className="flex flex-wrap items-center gap-3.5">
-        <h2 className="text-[22px] font-semibold">Step video</h2>
+    <div className="flex min-w-0 flex-col gap-2" data-testid="ideal-step">
+      <div className="flex items-center gap-3">
+        <h2 className="text-[20px] font-semibold">Ideal step</h2>
         <Chip>Step {step}</Chip>
       </div>
       <div
         role="img"
         aria-label={`Video of step ${step}: not recorded yet`}
         data-testid="step-video"
-        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-[10px] bg-ink text-on-strong"
+        className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-1.5 rounded-[10px] bg-ink px-3 text-center text-on-strong"
       >
-        <span aria-hidden className="flex size-14 items-center justify-center rounded-full border-2 border-on-strong text-[22px]">
+        <span aria-hidden className="flex size-11 items-center justify-center rounded-full border-2 border-on-strong text-[18px]">
           ▶
         </span>
-        <span className="text-[17px]">Video: not recorded yet</span>
-        <span className="text-[14px] opacity-80">{s.name}</span>
+        <span className="text-[16px]">Video: not recorded yet</span>
       </div>
-    </Panel>
+      <span className="truncate text-[16px] text-ink-2">{s.name}</span>
+    </div>
   );
 }
 
@@ -36,7 +37,7 @@ export function StepDetails({ step }: { step: number }) {
       <h2 className="text-[22px] font-semibold" data-testid="step-details-title">
         Step details
       </h2>
-      <dl className="flex flex-col gap-3 text-[18px]" data-testid="step-details">
+      <dl className="grid grid-cols-[1fr_1fr_auto] gap-4 text-[17px]" data-testid="step-details">
         <div>
           <dt className="text-[15px] text-muted">What to do</dt>
           <dd>{s.todo}</dd>
