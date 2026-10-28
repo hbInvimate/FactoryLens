@@ -22,6 +22,7 @@
   --color-primary-ink: var(--fl-primary-ink);
   --color-primary-soft: var(--fl-primary-soft);
   --color-primary-line: var(--fl-primary-border);
+  --color-primary-faint: var(--fl-primary-faint);
 
   --color-amber: var(--fl-amber);
   --color-amber-ink: var(--fl-amber-ink);
@@ -127,5 +128,54 @@ textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .eq-bar {
     animation: none;
+  }
+}
+
+/* Check screen step timeline (components/check/StepTimeline.tsx): 450 ms, the same easing everywhere. */
+.tl-open {
+  display: grid;
+  animation: tl-open 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tl-close {
+  display: grid;
+  animation: tl-close 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tl-fade {
+  animation: tl-fade 450ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+.tl-pop {
+  animation: tl-pop 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.tl-line {
+  transition: height 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes tl-open {
+  from { grid-template-rows: 0fr; }
+  to { grid-template-rows: 1fr; }
+}
+@keyframes tl-close {
+  from { grid-template-rows: 1fr; opacity: 1; }
+  to { grid-template-rows: 0fr; opacity: 0; }
+}
+@keyframes tl-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes tl-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Instant, but the animations still end (the collapsing card is removed on animationend). */
+  .tl-open,
+  .tl-close,
+  .tl-fade,
+  .tl-pop {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+  .tl-line {
+    transition: none;
   }
 }

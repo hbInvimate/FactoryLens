@@ -8,10 +8,11 @@ import { useState } from "react";
 import { MEASURED_STEPS, MeasureEntry, latestValues, missingValues } from "./MeasureEntry";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
-import { Btn, Chip, Panel, Ring, TabletIcon, Tick, Warn, cx } from "../ui";
+import { Btn, Panel, TabletIcon, Warn, cx } from "../ui";
 import { Modal } from "./Dialogs";
 import { StepDetails, VideoBox } from "./StepMedia";
 import { PointGrid } from "./PointGrid";
+import { StepTimeline } from "./StepTimeline";
 
 export function LodgeButton({ onClick }: { onClick: () => void }) {
   return (
@@ -78,33 +79,24 @@ export function MainView({
     <div className="flex min-h-0 flex-1 gap-6 px-8 py-4">
       {/* About 35% wide (at least 420 px); the right column takes the rest. */}
       <section className="flex min-h-0 w-[35%] min-w-[420px] flex-none flex-col rounded-[14px] bg-surface px-3 py-3">
-        <div className="flex items-center gap-3 px-2 pb-2">
-          <h2 className="text-[20px] font-semibold">
+        <div className="flex items-center gap-2 px-1 pb-2">
+          <h2 className="whitespace-nowrap text-[18px] font-semibold">
             SOP: first-off check
           </h2>
           <span className="flex-1" />
           <LodgeButton onClick={onLodge} />
         </div>
 
-        <ol className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1" data-testid="step-list">
-          {STEPS.map((s) => {
-            const r = state.steps[s.n - 1];
-            if (s.n === cur) {
-              return (
-                <li key={s.n} aria-current="step" className="my-0.5 flex flex-col gap-2 rounded-[var(--fl-radius-md)] border-2 border-blue bg-blue-soft px-3 py-2.5">
-                  <div className="flex items-start gap-3">
-                    <Ring n={s.n} active />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="text-[14px] font-semibold text-blue-ink" data-testid="step-of">
-                        Step {s.n} of 12 · {def.phase}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-3 text-[22px] font-semibold leading-tight">
-                        {s.name}
-                        {r.reconfirm && <Chip tone="amber">Re-confirm</Chip>}
-                      </span>
-                      <span className="text-[16px] text-ink-2">Correct: {sopStep(s.n).correct}</span>
-                    </div>
-                  </div>
+        <StepTimeline
+          state={state}
+          cur={cur}
+          // A done step reopens it (after a confirm); a step not reached yet shows its details.
+          onRow={(n) => (canBack(n) ? setBackTo(n) : onOpenStep(n))}
+          current={(() => {
+            const s = STEPS[cur - 1];
+            const r = run;
+            return (
+              <>
                   {s.points.length > 0 && (
                     <div className="flex flex-col gap-2">
                       <span className="text-[16px] text-muted">
@@ -120,6 +112,12 @@ export function MainView({
                         ordered={s.ordered}
                         look={(p) => (confirmed.has(p) ? "done" : "open")}
                         doneTappable={measured}
+                        timeline
+                        next={measured ? missing[0] : s.ordered ? s.points.find((p) => !confirmed.has(p)) : undefined}
+                        sub={(p) => {
+                          const v = values.get(p);
+                          return v && v.value !== null ? String(v.value) : undefined;
+                        }}
                         onTap={(p) => {
                           if (!measured) return onTap(s.n, p);
                           // A value confirms the point: a tap picks a recorded point to correct, or asks for the open one.
@@ -152,7 +150,7 @@ export function MainView({
                       )}
                     </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <Btn onClick={() => onOpenStep(s.n)}>Step details</Btn>
                     <span className="flex-1" />
                     {canBack(s.n - 1) && (
@@ -164,34 +162,10 @@ export function MainView({
                       {s.points.length ? (s.n === 12 ? "Finish the check" : "Next step") : s.n === 12 ? "Done, finish the check" : "Done, next step"}
                     </Btn>
                   </div>
-                </li>
-              );
-            }
-            const isDone = r.doneAt !== null;
-            return (
-              <li key={s.n}>
-                <button
-                  type="button"
-                  // A done step reopens it (after a confirm); a step not reached yet shows its details.
-                  onClick={() => (canBack(s.n) ? setBackTo(s.n) : onOpenStep(s.n))}
-                  data-step={s.n}
-                  // 44 px rows so all 12 steps fit at 1440 x 900 (agreed exception to the 56 px rule).
-                  className="flex min-h-[44px] w-full items-center gap-3 rounded-[10px] px-3 text-left hover:bg-surface"
-                >
-                  {isDone ? <Tick size={24} tone={r.outcome === "corrected" ? "amber" : "green"} /> : <Ring n={s.n} size={24} />}
-                  <span className={cx("text-[17px] leading-tight", isDone ? "text-muted" : "text-ink")}>{s.name}</span>
-                  {r.reconfirm && (
-                    <span className="ml-auto">
-                      <Chip small tone="amber">
-                        re-confirm
-                      </Chip>
-                    </span>
-                  )}
-                </button>
-              </li>
+              </>
             );
-          })}
-        </ol>
+          })()}
+        />
       </section>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">

@@ -26,6 +26,7 @@
   --fl-primary-ink: #047857; /* green TEXT on white (readable) */
   --fl-primary-soft: #ecfdf5; /* active nav item, success fills */
   --fl-primary-border: #a7f3d0; /* thin green border of the active nav item */
+  --fl-primary-faint: #d1fae5; /* border of a check point still to record (check screen timeline) */
 
   /* States: amber = skipped / warning */
   --fl-amber: #f59e0b;
