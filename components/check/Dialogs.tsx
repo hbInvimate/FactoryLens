@@ -33,13 +33,25 @@ export function ClipDialog({ title, onClose }: { title: string; onClose: () => v
   );
 }
 
-export function PausedOverlay({ onResume, reason }: { onResume: () => void; reason?: string }) {
+/** The latest pause was the 10-minute idle pause. */
+export function pausedForIdle(actions: Action[]): boolean {
+  const last = actions.filter((a) => a.type === "pause").sort((a, b) => b.seq - a.seq)[0];
+  return last?.type === "pause" && last.idle === true;
+}
+
+export function PausedOverlay({ onResume, reason, idle }: { onResume: () => void; reason?: string; idle?: boolean }) {
   return (
     <div role="dialog" aria-modal="true" aria-label="Paused" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-page/95 p-8">
       <h1 className="text-[56px] font-semibold">Paused</h1>
-      <p className="max-w-[640px] text-center text-[22px] text-ink-2">
-        The check is paused and kept{reason ? ` (${reason})` : ""}. The timer has stopped. Keep the part as it is.
-      </p>
+      {idle ? (
+        <p className="max-w-[640px] text-center text-[22px] text-ink-2" data-testid="idle-paused">
+          Paused: no activity for 10 min. The timer has stopped. Keep the part as it is.
+        </p>
+      ) : (
+        <p className="max-w-[640px] text-center text-[22px] text-ink-2">
+          The check is paused and kept{reason ? ` (${reason})` : ""}. The timer has stopped. Keep the part as it is.
+        </p>
+      )}
       <Btn variant="success" className="min-h-[72px] px-14 text-[26px]" onClick={onResume}>
         Resume
       </Btn>

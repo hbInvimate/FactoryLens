@@ -27,6 +27,8 @@ export interface SyncState {
 }
 
 const BATCH = 400;
+/** No action on a running check for this long pauses it (no step done, no value, no tap, no voice command). */
+export const IDLE_PAUSE_MS = 10 * 60_000;
 const BACKOFF = [1000, 2000, 4000, 8000, 15000];
 
 function merge(local: LocalSession, server: { meta: SessionMeta; actions: Action[] }): LocalSession {
@@ -192,11 +194,12 @@ export function useCheckSession(id: string) {
   }, []);
 
   const dispatch = useCallback(
-    (body: ActionBody) => {
+    /** at: only for the idle pause, dated when the 10 minutes ran out. */
+    (body: ActionBody, at: number = Date.now()) => {
       const cur = recRef.current;
       if (!cur) return;
       const seq = cur.actions.reduce((m, a) => Math.max(m, a.seq), 0) + 1;
-      const action = { ...body, id: uid(), seq, at: Date.now() } as Action;
+      const action = { ...body, id: uid(), seq, at } as Action;
       commit({ ...cur, actions: [...cur.actions, action], pending: [...cur.pending, action.id] });
       setActiveId(cur.meta.id);
       void flushRef.current();
@@ -236,6 +239,21 @@ export function useCheckSession(id: string) {
     const last = sortActions(rec.actions).filter((a) => a.type !== "undo").at(-1);
     if (last?.type === "pause" && last.auto) dispatch({ type: "resume" });
   }, [load, rec, dispatch]);
+
+  // Idle: a running check with no action for 10 minutes is paused, dated when the 10 minutes ran out, so the idle
+  // time is not counted. Checked on opening the check too: one left running before this existed is paused then.
+  useEffect(() => {
+    if (load !== "ready") return;
+    const check = () => {
+      const cur = recRef.current;
+      if (!cur) return;
+      const s = reduce(cur.actions, cur.meta.createdAt);
+      if (s.status === "running" && Date.now() - s.lastAt >= IDLE_PAUSE_MS) dispatch({ type: "pause", idle: true }, s.lastAt + IDLE_PAUSE_MS);
+    };
+    check();
+    const t = setInterval(check, 15_000);
+    return () => clearInterval(t);
+  }, [load, dispatch]);
 
   /** After signing in again from the check: send everything that waited. */
   const resumeAfterSignIn = useCallback(() => {

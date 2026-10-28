@@ -82,8 +82,11 @@ export type ActionBody =
   | { type: "fix_continue"; deviation: string }
   | { type: "call_trainer"; deviation: string }
   | { type: "undo"; target: string }
-  /** auto: the page was closed or reloaded while the check ran; reopening it resumes on its own. */
-  | { type: "pause"; auto?: boolean }
+  /**
+   * auto: the page was closed or reloaded while the check ran; reopening it resumes on its own.
+   * idle: no activity for 10 minutes; it waits for Resume. Its time is when the 10 minutes ran out.
+   */
+  | { type: "pause"; auto?: boolean; idle?: boolean }
   | { type: "resume" }
   /** end: she left this session for good to start a new one. Otherwise leaving pauses it. */
   | { type: "leave"; reason: string; end?: boolean }

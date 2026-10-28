@@ -16,7 +16,7 @@ import { REV_A_ID, stepOf, type SopRevisionText } from "@/lib/sop-revisions";
 import { Btn, PageCenter, Warn } from "../ui";
 import { CompleteView } from "./CompleteView";
 import { DeviationView } from "./DeviationView";
-import { LeaveDialog, PausedOverlay, UndoToast } from "./Dialogs";
+import { LeaveDialog, PausedOverlay, UndoToast, pausedForIdle } from "./Dialogs";
 import { LodgedView } from "./LodgedView";
 import { LodgeFlow } from "./LodgeFlow";
 import { MainView } from "./MainView";
@@ -323,7 +323,11 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
       <main className="flex min-h-0 flex-1 flex-col">{screen}</main>
       {undo && <UndoToast action={undo} now={now} onUndo={() => act({ type: "undo", target: undo.id })} />}
       {state.paused && !leaving && (
-        <PausedOverlay reason={state.leaves.at(-1)?.reason} onResume={() => act({ type: "resume" })} />
+        <PausedOverlay
+          reason={state.leaves.at(-1)?.reason}
+          idle={pausedForIdle(actions)}
+          onResume={() => act({ type: "resume" })}
+        />
       )}
       {leaving && (
         <LeaveDialog

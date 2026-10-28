@@ -93,6 +93,30 @@ test("closing the page pauses the check; reopening resumes it and the closed tim
   expect(elapsedMs(s, now)).toBeLessThan(now - meta.createdAt - 3_500);
 });
 
+test("no activity for 10 minutes pauses the check; the idle time is not counted", async ({ page }) => {
+  await page.clock.install();
+  const id = await startCheck(page);
+  await doSteps(page, 1, 1);
+  await waitSaved(page);
+  await page.clock.fastForward("11:00");
+  await expect(page.getByTestId("idle-paused")).toContainText("Paused: no activity for 10 min");
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+  await expect(page.getByTestId("idle-paused")).toHaveCount(0);
+  await waitSaved(page);
+  await expect
+    .poll(async () => ((await (await page.request.get(`/api/sessions/${id}`)).json()) as { actions: Action[] }).actions.some((a) => a.type === "resume"))
+    .toBe(true);
+  const { meta, actions } = (await (await page.request.get(`/api/sessions/${id}`)).json()) as { meta: { createdAt: number }; actions: Action[] };
+  const done = actions.find((a) => a.type === "next_step")!;
+  const pause = actions.find((a) => a.type === "pause" && a.idle)!;
+  const resume = actions.find((a) => a.type === "resume")!;
+  // Dated when the 10 minutes ran out; the minute after that, while paused, is not counted.
+  expect(pause.at - done.at).toBe(600_000);
+  const s = reduce(actions, meta.createdAt);
+  expect(s.paused).toBe(false);
+  expect(elapsedMs(s, resume.at)).toBe(pause.at - meta.createdAt);
+});
+
 test("check screen: metrics, the two videos side by side, step details and all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await startCheck(page);
