@@ -3,11 +3,11 @@ import { expect, test, type Page } from "@playwright/test";
 import { shiftOf } from "../lib/shifts";
 import { decideHold, doSteps, lodge, openDashboard, startAt, tap, unique, waitSaved } from "./helpers";
 
-/** Step 7: H9 to H12 skipped, then fixed. */
-async function skipHolesThenFix(page: Page) {
-  await tap(page, 7, ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H13", "H14"]);
+/** Step 11: V4 and V5 skipped, then looked over. (Steps 7 to 10 need a value per point, so they cannot be skipped.) */
+async function skipVisualThenFix(page: Page) {
+  await tap(page, 11, ["V1", "V2", "V3"]);
   await page.getByRole("button", { name: "Next step", exact: true }).click();
-  await tap(page, 7, ["H9", "H10", "H11", "H12"], "your view");
+  await tap(page, 11, ["V4", "V5"], "your view");
   await page.getByRole("button", { name: "Fixed, continue" }).click();
 }
 
@@ -36,9 +36,9 @@ test("Station list: seeded station, Add a station, empty station on the dashboar
 test("One deviation fixed scores 92% on the dashboard and in the report", async ({ page }) => {
   const station = unique("Laser cell 4 · FX-ONE");
   const id = await startAt(page, station);
-  await doSteps(page, 1, 6);
-  await skipHolesThenFix(page);
-  await doSteps(page, 8, 12);
+  await doSteps(page, 1, 10);
+  await skipVisualThenFix(page);
+  await doSteps(page, 12, 12);
   await waitSaved(page);
 
   await openDashboard(page, station);
@@ -54,10 +54,10 @@ test("One deviation fixed scores 92% on the dashboard and in the report", async 
   await expect(page.getByTestId("report-correct")).toHaveText("11 of 12");
   await expect(page.getByTestId("report-deviations")).toHaveText("1");
   await expect(page.getByTestId("report-outcome")).toContainText("Complete");
-  const step7 = page.locator('tr[data-step="7"]');
-  await expect(step7).toContainText("Check holes H1 to H14 with check pins");
-  await expect(step7).toContainText("Skipped");
-  await expect(step7).toContainText("Corrected after 1 correction");
+  const step11 = page.locator('tr[data-step="11"]');
+  await expect(step11).toContainText("Look over the whole part");
+  await expect(step11).toContainText("Skipped");
+  await expect(step11).toContainText("Corrected after 1 correction");
   await expect(page.locator('tr[data-step="6"]')).toContainText("Passed");
   await expect(page.getByTestId("steps-table")).not.toContainText("SOP step");
   await expect(page.getByRole("button", { name: "Send to quality system" })).toBeDisabled();
@@ -70,9 +70,9 @@ test("Two deviations fixed score 83%", async ({ page }) => {
   const id = await startAt(page, station);
   await doSteps(page, 1, 4);
   await wrongClampsThenFix(page);
-  await doSteps(page, 6, 6);
-  await skipHolesThenFix(page);
-  await doSteps(page, 8, 12);
+  await doSteps(page, 6, 10);
+  await skipVisualThenFix(page);
+  await doSteps(page, 12, 12);
   await waitSaved(page);
 
   await openDashboard(page, station);
@@ -87,9 +87,9 @@ test("Two deviations fixed score 83%", async ({ page }) => {
 test("Blocks: click a step to filter the sessions table, remove the chip, shift filter, sample chip counts", async ({ page }) => {
   const station = unique("Laser cell 2 · FX-BLOCKS");
   const skipped = await startAt(page, station);
-  await doSteps(page, 1, 6);
-  await skipHolesThenFix(page);
-  await doSteps(page, 8, 12);
+  await doSteps(page, 1, 10);
+  await skipVisualThenFix(page);
+  await doSteps(page, 12, 12);
   await waitSaved(page);
   const clean = await startAt(page, station);
   await doSteps(page, 1, 12);
@@ -100,17 +100,17 @@ test("Blocks: click a step to filter the sessions table, remove the chip, shift 
   await expect(page.getByTestId("conformance-overall")).toContainText("Overall 96% over 2 completed sessions");
 
   const block3 = page.getByTestId("block-deviations");
-  const step7 = block3.locator('[data-step="7"]');
-  await expect(step7.getByTestId("step-count")).toHaveText("1");
-  for (const h of ["H9", "H10", "H11", "H12"]) await expect(step7.locator(`[data-item="${h} not checked"]`)).toContainText("1");
+  const step11 = block3.locator('[data-step="11"]');
+  await expect(step11.getByTestId("step-count")).toHaveText("1");
+  for (const v of ["V4", "V5"]) await expect(step11.locator(`[data-item="${v} not checked"]`)).toContainText("1");
 
-  await step7.getByRole("link").click();
-  await expect(page).toHaveURL(/dev=7/);
-  await expect(page.getByTestId("dev-filter-chip")).toHaveText(/Filter: Step 7 deviations/);
+  await step11.getByRole("link").click();
+  await expect(page).toHaveURL(/dev=11/);
+  await expect(page.getByTestId("dev-filter-chip")).toHaveText(/Filter: Step 11 deviations/);
   await expect(page.locator(`tr[data-session="${skipped}"]`)).toBeVisible();
   await expect(page.locator(`tr[data-session="${clean}"]`)).toHaveCount(0);
   await page.getByTestId("dev-filter-chip").click();
-  await expect(page).not.toHaveURL(/dev=7/);
+  await expect(page).not.toHaveURL(/dev=11/);
   await expect(page.locator(`tr[data-session="${clean}"]`)).toBeVisible();
 
   // Shift filter: the shift these sessions started in, then another one.

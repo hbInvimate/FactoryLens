@@ -143,14 +143,15 @@ test.describe("missed points", () => {
 
   test("shown on the session page after a real check", async ({ page }) => {
     const id = await startCheck(page);
-    await doSteps(page, 1, 6);
-    await tap(page, 7, ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H13", "H14"]);
+    // Step 11: steps 7 to 10 need a value per point, so they cannot be skipped.
+    await doSteps(page, 1, 10);
+    await tap(page, 11, ["V1", "V2", "V3"]);
     await page.getByRole("button", { name: "Next step", exact: true }).click();
-    await tap(page, 7, ["H9", "H10", "H11", "H12"], "your view");
+    await tap(page, 11, ["V4", "V5"], "your view");
     await page.getByRole("button", { name: "Fixed, continue" }).click();
     await waitSaved(page);
     await page.goto(`/sessions/${id}`);
-    await expect(page.getByTestId("missed-points")).toHaveText("Missed points: H9, H10, H11, H12");
+    await expect(page.getByTestId("missed-points")).toHaveText("Missed points: V4, V5");
   });
 });
 

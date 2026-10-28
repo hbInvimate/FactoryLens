@@ -1,12 +1,12 @@
 // Scenario 7: things going wrong in the app itself.
 import { expect, test } from "@playwright/test";
 import { ADMIN_STATE } from "./auth-helpers";
-import { doSteps, grid, startCheck, tap, waitSaved } from "./helpers";
+import { doSteps, grid, recordValues, startCheck, tap, waitSaved } from "./helpers";
 
 test("Refresh mid-session resumes where she left off", async ({ page }) => {
   const id = await startCheck(page);
   await doSteps(page, 1, 6);
-  await tap(page, 7, ["H1", "H2", "H3"]);
+  await recordValues(page, 7, ["H1", "H2", "H3"]);
   await page.reload();
 
   await expect(page.locator("li[aria-current=step]")).toContainText("Check holes H1 to H14");
@@ -71,19 +71,20 @@ test("Save fails: error with Retry, nothing is lost", async ({ page, request }) 
 });
 
 test("Mistaken tap: Undo within 10 seconds", async ({ page }) => {
+  // Step 11: a tap confirms a point there (steps 7 to 10 take a value instead).
   await startCheck(page);
-  await doSteps(page, 1, 6);
-  await tap(page, 7, ["H1", "H2"]);
+  await doSteps(page, 1, 10);
+  await tap(page, 11, ["V1", "V2"]);
   await page.getByRole("button", { name: /^Undo/ }).click();
-  await expect(grid(page, 7).getByRole("button", { name: "H2", exact: true })).toHaveAttribute("aria-pressed", "false");
-  await expect(grid(page, 7).getByRole("button", { name: "H1", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(grid(page, 11).getByRole("button", { name: "V2", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(grid(page, 11).getByRole("button", { name: "V1", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   // Undo a step that was marked done by mistake.
-  await tap(page, 7, ["H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "H11", "H12", "H13", "H14"]);
+  await tap(page, 11, ["V2", "V3", "V4", "V5"]);
   await page.getByRole("button", { name: "Next step", exact: true }).click();
-  await expect(page.locator("li[aria-current=step]")).toContainText("Check slots and notches");
+  await expect(page.locator("li[aria-current=step]")).toContainText("Release clamps, C6 to C1");
   await page.getByRole("button", { name: /^Undo/ }).click();
-  await expect(page.locator("li[aria-current=step]")).toContainText("Check holes H1 to H14");
+  await expect(page.locator("li[aria-current=step]")).toContainText("Look over the whole part");
 });
 
 test("Pause and Resume; Leave asks for a reason and keeps the session", async ({ page }) => {
