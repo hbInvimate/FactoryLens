@@ -97,6 +97,7 @@ test("check screen: metrics, the two videos side by side, step details and all 1
   await page.setViewportSize({ width: 1440, height: 900 });
   await startCheck(page);
   await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
+  await expect(page.getByTestId("step-of")).toHaveText("Step 1 of 12 · Setup");
   // Tests add a TEST MODE banner on top that the live app does not have: give the page below it 900 px.
   const banner = (await page.getByTestId("test-mode-banner").boundingBox())?.height ?? 0;
   await page.setViewportSize({ width: 1440, height: 900 + Math.round(banner) });

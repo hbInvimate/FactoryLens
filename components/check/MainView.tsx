@@ -79,7 +79,7 @@ export function MainView({
       {/* About 35% wide (at least 420 px); the right column takes the rest. */}
       <section className="flex min-h-0 w-[35%] min-w-[420px] flex-none flex-col rounded-[14px] bg-surface px-3 py-3">
         <div className="flex items-center gap-3 px-2 pb-2">
-          <h2 className="text-[20px] font-semibold" title={`Step ${cur} of 12 · ${def.phase}`}>
+          <h2 className="text-[20px] font-semibold">
             SOP: first-off check
           </h2>
           <span className="flex-1" />
@@ -94,7 +94,10 @@ export function MainView({
                 <li key={s.n} aria-current="step" className="my-0.5 flex flex-col gap-2 rounded-[var(--fl-radius-md)] border-2 border-blue bg-blue-soft px-3 py-2.5">
                   <div className="flex items-start gap-3">
                     <Ring n={s.n} active />
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="text-[14px] font-semibold text-blue-ink" data-testid="step-of">
+                        Step {s.n} of 12 · {def.phase}
+                      </span>
                       <span className="flex flex-wrap items-center gap-3 text-[22px] font-semibold leading-tight">
                         {s.name}
                         {r.reconfirm && <Chip tone="amber">Re-confirm</Chip>}
