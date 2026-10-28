@@ -2,7 +2,7 @@
 // Holds one check session in the browser: rebuilds state from the log, writes every action
 // locally first, and sends queued actions to the server with automatic retry.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { reduce } from "@/lib/check/reducer";
+import { reduce, sortActions } from "@/lib/check/reducer";
 import { ENDED_STATUSES, type Action, type ActionBody, type CheckState, type SessionMeta } from "@/lib/check/types";
 import { getActiveId, readLocal, setActiveId, uid, writeLocal, type LocalSession } from "./local";
 
@@ -203,6 +203,39 @@ export function useCheckSession(id: string) {
     },
     [commit],
   );
+
+  // Closing or reloading the page pauses a running check, so time with the page closed is not counted in the
+  // check time. The pause is kept on this device at once and sent with keepalive; reopening the check resumes it.
+  // A pause she chose herself stays until she taps Resume.
+  useEffect(() => {
+    const onHide = () => {
+      const cur = recRef.current;
+      if (!cur || reduce(cur.actions, cur.meta.createdAt).status !== "running") return;
+      const seq = cur.actions.reduce((m, a) => Math.max(m, a.seq), 0) + 1;
+      const pause = { type: "pause", auto: true, id: uid(), seq, at: Date.now() } as Action;
+      const next = { ...cur, actions: [...cur.actions, pause], pending: [...cur.pending, pause.id] };
+      recRef.current = next;
+      writeLocal(next);
+      if (authBlocked.current) return;
+      const ids = new Set(next.pending.slice(0, BATCH));
+      const body = JSON.stringify({ meta: next.meta, actions: next.actions.filter((a) => ids.has(a.id)) });
+      // keepalive allows at most 64 KB; anything bigger is sent from this device next time.
+      if (body.length < 60_000) {
+        void fetch(`/api/sessions/${encodeURIComponent(next.meta.id)}/actions`, { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body }).catch(() => {});
+      }
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, []);
+
+  // Reopened after the page was closed: resume on its own, once.
+  const autoResumed = useRef(false);
+  useEffect(() => {
+    if (load !== "ready" || autoResumed.current || !rec) return;
+    autoResumed.current = true;
+    const last = sortActions(rec.actions).filter((a) => a.type !== "undo").at(-1);
+    if (last?.type === "pause" && last.auto) dispatch({ type: "resume" });
+  }, [load, rec, dispatch]);
 
   /** After signing in again from the check: send everything that waited. */
   const resumeAfterSignIn = useCallback(() => {

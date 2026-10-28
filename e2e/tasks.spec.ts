@@ -82,7 +82,7 @@ test("opening a task starts its check, with the step video and details; the stat
 
   // The task page: the SOP check, plus the step's video and details.
   await expect(page.getByText(part, { exact: true })).toBeVisible();
-  await expect(page.getByTestId("step-video")).toContainText("Video: not recorded yet");
+  await expect(page.getByTestId("step-video")).toHaveText("SOP video: Not recorded yet");
   await expect(page.getByTestId("step-details")).toContainText("What to do");
   await expect(page.getByTestId("step-details")).toContainText("What correct looks like");
   await expect(page.getByTestId("step-target")).toHaveText(/^(\d+:\d{2}|\[set by plant\])$/);

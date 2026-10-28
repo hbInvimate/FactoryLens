@@ -1,6 +1,6 @@
 // The check screen: the new step 1, the layout of the right-hand side, and going back to an earlier step.
 import { expect, test } from "@playwright/test";
-import { reduce, stepsDone } from "../lib/check/reducer";
+import { elapsedMs, reduce, stepsDone } from "../lib/check/reducer";
 import type { Action, ActionBody } from "../lib/check/types";
 import { STEPS } from "../lib/sop";
 import { doSteps, startCheck, waitSaved } from "./helpers";
@@ -52,24 +52,79 @@ test("go back: the step reopens, the later ones are re-confirmed in order, logge
   expect(t.steps.every((r) => r.outcome !== "corrected")).toBe(true);
 });
 
-test("check screen: metrics, camera and ideal step side by side, step details, all above the fold; Back works", async ({ page }) => {
+test("time elapsed leaves out paused time", () => {
+  const s = reduce(
+    log([
+      { type: "next_step", step: 1 }, // at 1 s
+      { type: "pause" }, // 2 s
+      { type: "resume" }, // 3 s
+      { type: "pause", auto: true }, // 4 s: the page was closed
+      { type: "resume" }, // 5 s: reopened
+    ]).map((a, i) => (i === 2 ? { ...a, at: 12_000 } : i === 3 ? { ...a, at: 13_000 } : i === 4 ? { ...a, at: 63_000 } : a)),
+    0,
+  );
+  // 64 s on the clock, 10 s paused by hand and 50 s with the page closed: 4 s of check time.
+  expect(elapsedMs(s, 64_000)).toBe(4_000);
+  expect(s.paused).toBe(false);
+});
+
+test("closing the page pauses the check; reopening resumes it and the closed time is not counted", async ({ page, context }) => {
+  const id = await startCheck(page);
+  await doSteps(page, 1, 2);
+  await waitSaved(page);
+  await page.close({ runBeforeUnload: true });
+  await new Promise((r) => setTimeout(r, 4_000));
+
+  const again = await context.newPage();
+  await again.goto(`/check/${id}`);
+  await expect(again.locator("li[aria-current=step]")).toContainText(STEPS[2].name);
+  await expect(again.getByRole("button", { name: "Resume", exact: true })).toHaveCount(0);
+  await waitSaved(again);
+  await expect
+    .poll(async () => ((await (await again.request.get(`/api/sessions/${id}`)).json()) as { actions: Action[] }).actions.filter((a) => a.type === "resume").length)
+    .toBe(1);
+  const { meta, actions } = (await (await again.request.get(`/api/sessions/${id}`)).json()) as { meta: { createdAt: number }; actions: Action[] };
+  const pause = actions.find((a) => a.type === "pause" && a.auto)!;
+  const resume = actions.find((a) => a.type === "resume")!;
+  expect(resume.at - pause.at).toBeGreaterThan(3_500);
+  const s = reduce(actions, meta.createdAt);
+  expect(s.paused).toBe(false);
+  const now = Date.now();
+  expect(elapsedMs(s, now)).toBeLessThan(now - meta.createdAt - 3_500);
+});
+
+test("check screen: metrics, the two videos side by side, step details and all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await startCheck(page);
   await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
+  // Tests add a TEST MODE banner on top that the live app does not have: give the page below it 900 px.
+  const banner = (await page.getByTestId("test-mode-banner").boundingBox())?.height ?? 0;
+  await page.setViewportSize({ width: 1440, height: 900 + Math.round(banner) });
 
   const metrics = page.getByTestId("metrics");
   const camera = page.getByTestId("camera-view");
   const ideal = page.getByTestId("ideal-step");
   const details = page.getByTestId("step-details");
   await expect(metrics.locator(":scope > div")).toHaveCount(6);
-  await expect(ideal.getByTestId("step-video")).toContainText("Video: not recorded yet");
+  await expect(camera).toContainText("Technician cam");
+  await expect(camera.getByTestId("cam-video")).toHaveText("Technician cam video: Not recorded yet");
+  await expect(ideal).toContainText("SOP video · Step 1");
+  await expect(ideal.getByTestId("step-video")).toHaveText("SOP video: Not recorded yet");
+  await expect(page.locator("[data-testid=media] svg, [data-testid=media] img")).toHaveCount(0);
   const [m, c, i, d] = await Promise.all([metrics, camera, ideal, details].map((l) => l.boundingBox()));
   expect(m!.y).toBeLessThan(c!.y); // metrics first
   expect(Math.abs(c!.y - i!.y)).toBeLessThan(2); // side by side
   expect(Math.abs(c!.height - i!.height)).toBeLessThan(2); // equal height
   expect(Math.abs(c!.width - i!.width)).toBeLessThan(4); // 50/50
   expect(d!.y).toBeGreaterThan(c!.y + c!.height);
-  expect(d!.y + d!.height).toBeLessThanOrEqual(900); // above the fold
+  expect(d!.y + d!.height).toBeLessThanOrEqual(900 + banner); // above the fold
+  const list = await page.getByTestId("step-list").boundingBox();
+  const last = await page.locator("li button[data-step='12']").boundingBox();
+  expect(last!.y + last!.height).toBeLessThanOrEqual(list!.y + list!.height + 1); // all 12 steps, no scrolling
+  // The SOP column is about 35% of the width.
+  const sop = await page.getByTestId("step-list").locator("xpath=ancestor::section[1]").boundingBox();
+  expect(sop!.width).toBeGreaterThanOrEqual(420);
+  expect(sop!.width).toBeLessThan(1440 * 0.4);
   await expect(page.getByText("Step video", { exact: true })).toHaveCount(0);
 
   // Go back from step 4 to step 2: by tapping step 2 in the list, then Back from step 3.

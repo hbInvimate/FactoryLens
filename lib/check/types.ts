@@ -82,7 +82,8 @@ export type ActionBody =
   | { type: "fix_continue"; deviation: string }
   | { type: "call_trainer"; deviation: string }
   | { type: "undo"; target: string }
-  | { type: "pause" }
+  /** auto: the page was closed or reloaded while the check ran; reopening it resumes on its own. */
+  | { type: "pause"; auto?: boolean }
   | { type: "resume" }
   /** end: she left this session for good to start a new one. Otherwise leaving pauses it. */
   | { type: "leave"; reason: string; end?: boolean }
