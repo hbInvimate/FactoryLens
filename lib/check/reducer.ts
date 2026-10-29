@@ -1,4 +1,5 @@
 // Rebuilds the check from its action log. Pure: same log, same state, on any machine.
+import { IDLE_PAUSE_MINUTES } from "@/lib/config";
 import { CONTINUE_TODO, findIssue, opensHoleProcedure, STOP_TODO } from "@/lib/issues";
 import { MAX_TRIALS, PROC_SECTIONS } from "@/lib/procedure";
 import { countsAsCheckPoint, describePoints, missingVerb, step as sopStep, STEP_COUNT, STEPS } from "@/lib/sop";
@@ -40,6 +41,7 @@ function initial(startedAt: number): CheckState {
     final: null,
     stepEvents: [],
     goBacks: [],
+    activity: [],
     status: "running",
     raisers: new Set(),
     lastAt: startedAt,
@@ -62,6 +64,8 @@ function ended(s: CheckState): boolean {
 function fold(actions: Action[], startedAt: number, undone: Set<string>): CheckState {
   const s = initial(startedAt);
   for (const a of actions) {
+    // Any press counts as activity, an undone one and the Undo too; the automatic pauses do not.
+    if (!(a.type === "pause" && (a.auto || a.idle))) s.activity.push(a.at);
     if (a.type === "undo" || undone.has(a.id)) continue;
     apply(s, a);
     s.lastAt = Math.max(s.lastAt, a.at);
@@ -480,15 +484,33 @@ function idleIntervals(s: CheckState, end: number): [number, number][] {
   ];
 }
 
+export const IDLE_GAP_MS = IDLE_PAUSE_MINUTES * 60_000;
+
+/** Gaps longer than IDLE_PAUSE_MINUTES with no activity, up to `end` (the trailing one too). Not counted. */
+function inactiveGaps(s: CheckState, end: number): [number, number][] {
+  const times = [s.startedAt, ...s.activity.filter((t) => t <= end)].sort((a, b) => a - b);
+  const gaps: [number, number][] = [];
+  for (let i = 1; i < times.length; i++) if (times[i] - times[i - 1] > IDLE_GAP_MS) gaps.push([times[i - 1], times[i]]);
+  const last = times[times.length - 1];
+  if (end - last > IDLE_GAP_MS) gaps.push([last, end]);
+  return gaps;
+}
+
 /**
- * Check time of a completed check: start to step 12 done, minus pauses and stop holds.
- * Holds after step 12 (waiting for the engineer) are not counted either. Null if step 12 is not done.
- * A "continue" hold is not subtracted: the check carries on during it.
+ * THE check time: active time between two moments. Pauses, stop holds (lodged until the decision was recorded) and
+ * any gap of more than IDLE_PAUSE_MINUTES with no activity are not counted. A "continue" hold is counted: the check
+ * carries on during it. Every check time (screen, reports, lists, averages) comes from here.
  */
+export function activeBetween(s: CheckState, from: number, to: number): number {
+  if (to <= from) return 0;
+  return Math.max(0, to - from - unionMs([...idleIntervals(s, to), ...inactiveGaps(s, to)], from, to));
+}
+
+/** Check time of a completed check: start to step 12 done (holds after it are not counted). Null if not done. */
 export function activeCheckMs(s: CheckState): number | null {
   const end = s.steps[STEP_COUNT - 1].doneAt;
   if (end === null) return null;
-  return Math.max(0, end - s.startedAt - unionMs(idleIntervals(s, end), s.startedAt, end));
+  return activeBetween(s, s.startedAt, end);
 }
 
 /**
@@ -501,15 +523,26 @@ export function stepActiveMs(s: CheckState, n: number): number | null {
   if (end === null) return null;
   const from = n === 1 ? s.startedAt : s.steps[n - 2].doneAt;
   if (from === null || from > end) return null;
-  return Math.max(0, end - from - unionMs(idleIntervals(s, end), from, end));
+  return activeBetween(s, from, end);
 }
 
-/** Active time from the start to a moment, without paused time ("Done at" in the report). */
+/** Active time from the start to a moment ("Done at" in the report). */
 export function activeAt(s: CheckState, at: number): number {
-  return Math.max(0, at - s.startedAt - pausedBetween(s, s.startedAt, at));
+  return activeBetween(s, s.startedAt, at);
 }
 
+/** "Time elapsed": active time so far, to the end once the check has ended. */
 export function elapsedMs(s: CheckState, now: number): number {
-  const end = s.endedAt ?? (s.status === "complete" ? s.lastAt : now);
-  return Math.max(0, end - s.startedAt - pausedMs(s, Math.min(now, end)));
+  const end = s.endedAt ?? (s.status === "complete" ? (s.steps[STEP_COUNT - 1].doneAt ?? s.lastAt) : now);
+  return activeBetween(s, s.startedAt, Math.min(now, end));
+}
+
+/**
+ * Duration for lists: the check time when complete, the active time to the moment she left (or the session ended),
+ * else the active time to her last action. Null when nothing was done yet.
+ */
+export function durationMs(s: CheckState): number | null {
+  if (s.status === "complete") return activeCheckMs(s);
+  const end = s.endedAt ?? s.activity.at(-1) ?? null;
+  return end === null ? null : activeBetween(s, s.startedAt, end);
 }

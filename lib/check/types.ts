@@ -84,7 +84,7 @@ export type ActionBody =
   | { type: "undo"; target: string }
   /**
    * auto: the page was closed or reloaded while the check ran; reopening it resumes on its own.
-   * idle: no activity for 10 minutes; it waits for Resume. Its time is when the 10 minutes ran out.
+   * idle: no activity for IDLE_PAUSE_MINUTES; it waits for Resume. Dated at her last action.
    */
   | { type: "pause"; auto?: boolean; idle?: boolean }
   | { type: "resume" }
@@ -240,6 +240,8 @@ export interface CheckState {
   /** Set when a hold decision ended the session (scrapped, rework, concession, abandoned). */
   final: { outcome: Exclude<HoldOutcome, "cleared">; at: number; did: string } | null;
   stepEvents: StepEvent[];
+  /** When she did something on the check (every action but the automatic pauses), oldest first. For active time. */
+  activity: number[];
   /** Every go-back, oldest first. Not deviations. */
   goBacks: { at: number; from: number; to: number; by: string }[];
   status: SessionStatus;

@@ -27,10 +27,13 @@ export function build(id: string, s: Spec): { createdAt: number; actions: Action
   const actions: Action[] = [];
   let t = createdAt;
   let seq = 0;
+  /** Actions given an exact time; the others are spread between them below. */
+  const fixed = new Set<string>();
   const push = (body: ActionBody, at?: number) => {
     t = at ?? t + 1000;
     seq += 1;
     actions.push({ ...body, id: `${id}-${seq}`, seq, at: t } as Action);
+    if (at !== undefined) fixed.add(actions[actions.length - 1].id);
     return actions[actions.length - 1];
   };
   for (const st of STEPS) {
@@ -72,6 +75,21 @@ export function build(id: string, s: Spec): { createdAt: number; actions: Action
       push({ type: "fix_continue", deviation: next.id }, last);
     }
     if (s.stopAfterStep === n) break;
+  }
+  // A real check is busy all the way through: spread the actions evenly between the exact times, so no gap is longer
+  // than IDLE_PAUSE_MINUTES (such a gap is not check time). Only when the check has a length in minutes.
+  if (s.minutes) {
+    let from = createdAt;
+    let run: Action[] = [];
+    for (const a of actions) {
+      if (!fixed.has(a.id)) {
+        run.push(a);
+        continue;
+      }
+      run.forEach((r, i) => (r.at = Math.round(from + ((a.at - from) * (i + 1)) / (run.length + 1))));
+      run = [];
+      from = a.at;
+    }
   }
   return { createdAt, actions };
 }

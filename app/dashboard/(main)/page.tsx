@@ -176,7 +176,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
               label="Average check time"
               sub={
                 s.timed
-                  ? `complete sessions, without pauses and holds (${s.timed})${s.untimed ? `; ${s.untimed} without a recorded time` : ""}`
+                  ? `median ${s.medianCheckSeconds === null ? "—" : fmtClock(s.medianCheckSeconds * 1000)} · complete sessions, without pauses and holds (${s.timed})${s.untimed ? `; ${s.untimed} without a recorded time` : ""}`
                   : "no complete sessions yet"
               }
             />

@@ -28,6 +28,8 @@ export const sessions = pgTable(
     discrepancies: integer("discrepancies").notNull().default(0),
     /** Check time: start to step 12 done, without paused time. Null unless complete. */
     activeSeconds: integer("active_seconds"),
+    /** Duration for lists: the check time when complete, else active time to leaving or the last action. Null before any. */
+    durationSeconds: integer("duration_seconds"),
     /** Fake sessions from `npm run db:seed-sample`. Removed by `npm run db:clear-sample`. */
     isSample: boolean("is_sample").default(false),
     /** The signed-in person who started it (users.id). Null for sessions from before sign-in and for sample data. */

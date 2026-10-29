@@ -7,6 +7,7 @@ import { Gate } from "@/components/auth/Gate";
 import { ButtonLink, Card, Input, Table, Td, Th, cx } from "@/components/ds";
 import { IconSearch } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
+import { durationText } from "@/lib/format";
 import { SupervisorPage } from "@/components/supervisor/SupervisorShell";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
 import { currentUser } from "@/lib/auth/server";
@@ -112,6 +113,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
             <Th>Quality Technician</Th>
             <Th>Created</Th>
             <Th>Status</Th>
+            <Th>Duration</Th>
             <Th>Action</Th>
           </tr>
         </thead>
@@ -136,6 +138,9 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
                   {TASK_STATUS_LABEL[t.status]}
                 </span>
               </Td>
+              <Td className="whitespace-nowrap tabular-nums" data-testid="duration">
+                {durationText(t.sessionId ? t.sessionStatus : null, t.durationSeconds)}
+              </Td>
               <Td>
                 {t.sessionId ? (
                   <ButtonLink href={`/supervisor/live/${t.sessionId}`} className="min-h-[56px] px-4 text-[15px] shadow-none" aria-label={`Watch ${t.title}`}>
@@ -149,7 +154,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/supervisor/tas
           ))}
           {shown.length === 0 && (
             <tr>
-              <Td colSpan={5} className="py-8 text-center text-[16px] text-muted">
+              <Td colSpan={6} className="py-8 text-center text-[16px] text-muted">
                 {rows.length === 0 ? "No checks yet." : "No checks match these filters."}
               </Td>
             </tr>

@@ -117,6 +117,8 @@ export interface TeamMember {
   deviations: number;
   /** Mean check time of completed checks, seconds. */
   avgSeconds: number | null;
+  /** Median check time of completed checks with a recorded time, seconds. */
+  medianSeconds: number | null;
   tag: TeamTag | null;
   /** One line from their checks: the most common deviation, else the slowest step against its target. */
   note: string;
@@ -125,7 +127,7 @@ export interface TeamMember {
 export interface Team {
   period: TeamPeriod;
   members: TeamMember[];
-  totals: { ftrPct: number | null; checks: number; avgSeconds: number | null; coach: number };
+  totals: { ftrPct: number | null; checks: number; avgSeconds: number | null; medianSeconds: number | null; coach: number };
 }
 
 export function teamFilter(sp: Record<string, string | string[] | undefined>): { period: TeamPeriod; sort: TeamSort } {
@@ -143,6 +145,12 @@ function periodStart(period: TeamPeriod, now: Date): Date {
 }
 
 const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+const median = (xs: number[]) => (xs.length ? Math.round(percentile(xs, 0.5) as number) : null);
+/** Check times of completed checks; checks with no recorded time are left out of averages. */
+const timesOf = (rows: Row[]) => rows.filter((r) => r.status === "complete").map((r) => r.activeSeconds).filter((x): x is number => x !== null);
+
+/** "112%", capped: a step's share of its target never shows above 999% ("999%+"). */
+export const pctOfTarget = (ratio: number) => (ratio * 100 > 999 ? "999%+" : `${Math.round(ratio * 100)}%`);
 
 /** Team: every Quality Technician who can sign in, with their checks in the period. Not sorted. */
 export async function team(period: TeamPeriod, now = new Date()): Promise<Team> {
@@ -181,7 +189,8 @@ export async function team(period: TeamPeriod, now = new Date()): Promise<Team> 
     const done = mine.filter((r) => r.status === "complete");
     const ftrPct = pct(done.filter(ftr).length, done.length);
     const deviations = mine.reduce((n, r) => n + r.deviations, 0);
-    const avgSeconds = mean(done.map((r) => r.activeSeconds).filter((x): x is number => x !== null));
+    const avgSeconds = mean(timesOf(done));
+    const medianSeconds = median(timesOf(done));
     let note = mine.length ? "No deviations" : `No checks ${TEAM_PERIODS[period].toLowerCase()}`;
     const top = devs.filter((d) => d.userId === p.id).sort((a, b) => Number(b.count) - Number(a.count) || a.step - b.step)[0];
     if (top && isDeviationKind(top.kind)) {
@@ -193,9 +202,9 @@ export async function team(period: TeamPeriod, now = new Date()): Promise<Team> 
         const target = rev.steps[i]?.targetCtSeconds ?? null;
         return { s, med, ratio: med !== null && target ? med / target : -1 };
       }).sort((a, b) => b.ratio - a.ratio)[0];
-      if (worst.med !== null && worst.ratio > 0) note = `Slowest vs target: step ${worst.s.n} (${Math.round(worst.ratio * 100)}% of target)`;
+      if (worst.med !== null && worst.ratio > 0) note = `Slowest vs target: step ${worst.s.n} (${pctOfTarget(worst.ratio)} of target)`;
     }
-    return { id: p.id, name: p.name, demo: isDemoEmail(p.email), checks: mine.length, completed: done.length, ftrPct, deviations, avgSeconds, tag: tagOf(ftrPct, deviations), note };
+    return { id: p.id, name: p.name, demo: isDemoEmail(p.email), checks: mine.length, completed: done.length, ftrPct, deviations, avgSeconds, medianSeconds, tag: tagOf(ftrPct, deviations), note };
   });
   const ids = new Set(people.map((p) => p.id));
   const theirs = rows.filter((r) => r.userId && ids.has(r.userId));
@@ -206,7 +215,8 @@ export async function team(period: TeamPeriod, now = new Date()): Promise<Team> 
     totals: {
       ftrPct: pct(done.filter(ftr).length, done.length),
       checks: theirs.length,
-      avgSeconds: mean(done.map((r) => r.activeSeconds).filter((x): x is number => x !== null)),
+      avgSeconds: mean(timesOf(done)),
+      medianSeconds: median(timesOf(done)),
       coach: members.filter((m) => m.tag === "coach").length,
     },
   };

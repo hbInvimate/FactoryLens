@@ -2,7 +2,7 @@
 // Holds one check session in the browser: rebuilds state from the log, writes every action
 // locally first, and sends queued actions to the server with automatic retry.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { reduce, sortActions } from "@/lib/check/reducer";
+import { IDLE_GAP_MS, reduce, sortActions } from "@/lib/check/reducer";
 import { ENDED_STATUSES, type Action, type ActionBody, type CheckState, type SessionMeta } from "@/lib/check/types";
 import { getActiveId, readLocal, setActiveId, uid, writeLocal, type LocalSession } from "./local";
 
@@ -27,8 +27,6 @@ export interface SyncState {
 }
 
 const BATCH = 400;
-/** No action on a running check for this long pauses it (no step done, no value, no tap, no voice command). */
-export const IDLE_PAUSE_MS = 10 * 60_000;
 const BACKOFF = [1000, 2000, 4000, 8000, 15000];
 
 function merge(local: LocalSession, server: { meta: SessionMeta; actions: Action[] }): LocalSession {
@@ -207,9 +205,9 @@ export function useCheckSession(id: string) {
     [commit],
   );
 
-  // Closing or reloading the page pauses a running check, so time with the page closed is not counted in the
-  // check time. The pause is kept on this device at once and sent with keepalive; reopening the check resumes it.
-  // A pause she chose herself stays until she taps Resume.
+  // Closing or reloading the page, or hiding the tab, pauses a running check, so that time is not counted in the
+  // check time. The pause is kept on this device at once and sent with keepalive; reopening the check (or showing
+  // the tab again) resumes it. A pause she chose herself stays until she taps Resume.
   useEffect(() => {
     const onHide = () => {
       const cur = recRef.current;
@@ -227,8 +225,18 @@ export function useCheckSession(id: string) {
         void fetch(`/api/sessions/${encodeURIComponent(next.meta.id)}/actions`, { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body }).catch(() => {});
       }
     };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") return onHide();
+      const cur = recRef.current;
+      const last = cur && sortActions(cur.actions).filter((a) => a.type !== "undo").at(-1);
+      if (last?.type === "pause" && last.auto) dispatchRef.current({ type: "resume" });
+    };
     window.addEventListener("pagehide", onHide);
-    return () => window.removeEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   // Reopened after the page was closed: resume on its own, once.
@@ -240,20 +248,26 @@ export function useCheckSession(id: string) {
     if (last?.type === "pause" && last.auto) dispatch({ type: "resume" });
   }, [load, rec, dispatch]);
 
-  // Idle: a running check with no action for 10 minutes is paused, dated when the 10 minutes ran out, so the idle
-  // time is not counted. Checked on opening the check too: one left running before this existed is paused then.
+  // Idle: a running check with no activity for IDLE_PAUSE_MINUTES (lib/config.ts) is paused, dated at her last action:
+  // the timer stops there, and the idle gap is not counted anyway. Checked on opening the check too.
   useEffect(() => {
     if (load !== "ready") return;
     const check = () => {
       const cur = recRef.current;
       if (!cur) return;
       const s = reduce(cur.actions, cur.meta.createdAt);
-      if (s.status === "running" && Date.now() - s.lastAt >= IDLE_PAUSE_MS) dispatch({ type: "pause", idle: true }, s.lastAt + IDLE_PAUSE_MS);
+      const last = s.activity.at(-1) ?? s.startedAt;
+      if (s.status === "running" && Date.now() - last >= IDLE_GAP_MS) dispatch({ type: "pause", idle: true }, Math.max(last, s.lastAt));
     };
     check();
     const t = setInterval(check, 15_000);
     return () => clearInterval(t);
   }, [load, dispatch]);
+
+  const dispatchRef = useRef(dispatch);
+  useEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
 
   /** After signing in again from the check: send everything that waited. */
   const resumeAfterSignIn = useCallback(() => {

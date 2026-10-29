@@ -71,7 +71,7 @@ function Stat({ label, value, testId }: { label: string; value: string | number;
 }
 
 /** Average check time against the 45:00 target: the mark is the target; amber within 5% of it, or over. */
-function TimeBar({ seconds }: { seconds: number | null }) {
+function TimeBar({ seconds, median }: { seconds: number | null; median: number | null }) {
   const scale = CHECK_TARGET_SECONDS * 1.25;
   const amber = nearTarget(seconds);
   return (
@@ -83,6 +83,10 @@ function TimeBar({ seconds }: { seconds: number | null }) {
             {minutes(seconds)}
           </b>
           <span className="text-muted"> / {minutes(CHECK_TARGET_SECONDS)}</span>
+          <span className="text-muted" data-testid="median-time">
+            {" "}
+            · median {minutes(median)}
+          </span>
         </span>
       </div>
       <span className="relative block h-3 rounded-full bg-surface-2" data-amber={amber || undefined} data-testid="time-bar">
@@ -120,7 +124,7 @@ function MemberCard({ m }: { m: TeamMember }) {
           <Stat label="First-time right" value={pctText(m.ftrPct)} testId="ftr" />
           <Stat label="Deviations" value={m.deviations} testId="deviations" />
         </div>
-        <TimeBar seconds={m.avgSeconds} />
+        <TimeBar seconds={m.avgSeconds} median={m.medianSeconds} />
         <p className="truncate text-[14px] text-ink-2" title={m.note} data-testid="note">
           {m.note}
         </p>
@@ -139,7 +143,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="team-totals">
         <StatTile icon={<IconTarget />} tone="green" valueTone="green" value={pctText(t.totals.ftrPct)} label="Team first-time right" testId="total-ftr" />
         <StatTile icon={<IconChecklist />} tone="blue" value={t.totals.checks} label={`Checks ${TEAM_PERIODS[period].toLowerCase()}`} testId="total-checks" />
-        <StatTile icon={<IconClock />} tone="violet" value={minutes(t.totals.avgSeconds)} label="Avg check time" sub={`Target ${minutes(CHECK_TARGET_SECONDS)}`} testId="total-time" />
+        <StatTile icon={<IconClock />} tone="violet" value={minutes(t.totals.avgSeconds)} label="Avg check time" sub={`Median ${minutes(t.totals.medianSeconds)} · Target ${minutes(CHECK_TARGET_SECONDS)}`} testId="total-time" />
         <StatTile icon={<IconAlert />} tone="amber" valueTone={t.totals.coach ? "amber" : undefined} value={t.totals.coach} label="Need coaching" testId="total-coach" />
       </div>
       {t.members.length === 0 ? (

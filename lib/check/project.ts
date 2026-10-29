@@ -1,5 +1,5 @@
 // Turns a session log into the rows stored in the summary tables.
-import { activeCheckMs, conformance, correctFirstTime, checkPointsDone, reduce, stepsDone } from "./reducer";
+import { activeCheckMs, conformance, correctFirstTime, checkPointsDone, durationMs, reduce, stepsDone } from "./reducer";
 import type { Action, CheckState, SessionMeta, SessionStatus, StepEventKind } from "./types";
 
 export interface SessionRow {
@@ -24,6 +24,8 @@ export interface SessionRow {
   deviations: number;
   discrepancies: number;
   activeSeconds: number | null;
+  /** Active time for lists (see durationMs). */
+  durationSeconds: number | null;
   updatedAt: Date;
   /** Set on rows read back from the database: a fake session from db:seed-sample. */
   isSample?: boolean | null;
@@ -166,6 +168,10 @@ export function project(meta: SessionMeta, actions: Action[], now: number): Proj
       deviations: s.deviations.length,
       discrepancies: s.discrepancies.length,
       activeSeconds: activeSecondsOf(s),
+      durationSeconds: (() => {
+        const ms = durationMs(s);
+        return ms === null ? null : Math.round(ms / 1000);
+      })(),
       updatedAt: new Date(now),
     },
     stepEvents: s.stepEvents.map((e) => ({

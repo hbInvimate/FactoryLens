@@ -1,3 +1,4 @@
+import { durationText } from "@/lib/format";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -64,6 +65,7 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
             <th className="px-3 py-3 font-medium">Cell and fixture</th>
             <th className="px-3 py-3 font-medium">Quality Technician</th>
             <th className="px-3 py-3 font-medium">Status</th>
+            <th className="px-3 py-3 font-medium">Duration</th>
             <th className="px-3 py-3 font-medium">Steps</th>
             <th className="px-3 py-3 font-medium">Check points</th>
             <th className="px-3 py-3 font-medium">Deviations</th>
@@ -92,6 +94,7 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
               <td className="px-3">{r.fixture}</td>
               <td className="px-3">{r.operatorLabel}</td>
               <td className="px-3"><StatusChip status={r.status} /></td>
+              <td className="px-3 whitespace-nowrap tabular-nums" data-testid="duration">{durationText(r.status, r.durationSeconds)}</td>
               <td className="px-3">{r.stepsDone} / 12</td>
               <td className="px-3">{r.checkPoints} / 50</td>
               <td className="px-3">{r.deviations}</td>

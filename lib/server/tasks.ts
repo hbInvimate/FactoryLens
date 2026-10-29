@@ -38,6 +38,8 @@ export interface Task {
   status: TaskStatus;
   /** The check's status, when it has reached the server. */
   sessionStatus: SessionStatus | null;
+  /** Active time of the check (see durationMs). Null before it started. */
+  durationSeconds: number | null;
 }
 
 /** Running, paused or on hold: in progress. Finished: completed. Ended without a completed check: closed. */
@@ -53,13 +55,13 @@ type Viewer = { id: string; role: Role };
 export async function listTasks(user: Viewer): Promise<Task[]> {
   const { db } = await getRepo().conn();
   const rows = await db
-    .select({ task: t.tasks, status: t.sessions.status })
+    .select({ task: t.tasks, status: t.sessions.status, duration: t.sessions.durationSeconds })
     .from(t.tasks)
     .leftJoin(t.sessions, eq(t.sessions.id, t.tasks.sessionId))
     .where(readsAllSessions(user.role) ? undefined : eq(t.tasks.assignedTo, user.id))
     .orderBy(desc(t.tasks.createdAt))
     .limit(500);
-  return rows.map(({ task: r, status }) => ({
+  return rows.map(({ task: r, status, duration }) => ({
     kind: "task" as const,
     id: r.id,
     title: r.title,
@@ -72,6 +74,7 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
     sessionId: r.sessionId,
     status: taskStatus(r.sessionId, (status as SessionStatus | null) ?? null),
     sessionStatus: (status as SessionStatus | null) ?? null,
+    durationSeconds: duration ?? null,
   }));
 }
 
@@ -103,6 +106,7 @@ export async function listOwnChecks(user: Viewer): Promise<Task[]> {
       sessionId: s.id,
       status: taskStatus(s.id, status),
       sessionStatus: status,
+      durationSeconds: s.durationSeconds ?? null,
     };
   });
 }

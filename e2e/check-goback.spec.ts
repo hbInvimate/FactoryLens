@@ -1,6 +1,6 @@
 // The check screen: the new step 1, the layout of the right-hand side, and going back to an earlier step.
 import { expect, test } from "@playwright/test";
-import { elapsedMs, reduce, stepsDone } from "../lib/check/reducer";
+import { elapsedMs, reduce, stepActiveMs, stepsDone } from "../lib/check/reducer";
 import type { Action, ActionBody } from "../lib/check/types";
 import { STEPS } from "../lib/sop";
 import { doSteps, startCheck, waitSaved } from "./helpers";
@@ -93,28 +93,36 @@ test("closing the page pauses the check; reopening resumes it and the closed tim
   expect(elapsedMs(s, now)).toBeLessThan(now - meta.createdAt - 3_500);
 });
 
-test("no activity for 10 minutes pauses the check; the idle time is not counted", async ({ page }) => {
+test("a gap of more than 10 minutes without activity is not counted, even without a pause", () => {
+  const s = reduce(
+    log([{ type: "next_step", step: 1 }, { type: "next_step", step: 2 }]).map((a, i) => (i === 1 ? { ...a, at: 1_000 + 20 * 60_000 } : a)),
+    0,
+  );
+  // 1 s to step 1, then 20 minutes with nothing done: only the first second counts.
+  expect(elapsedMs(s, 1_000 + 20 * 60_000)).toBe(1_000);
+  expect(stepActiveMs(s, 2)).toBe(0);
+  // A gap under 10 minutes counts.
+  const t = reduce(log([{ type: "next_step", step: 1 }, { type: "next_step", step: 2 }]).map((a, i) => (i === 1 ? { ...a, at: 1_000 + 9 * 60_000 } : a)), 0);
+  expect(elapsedMs(t, 1_000 + 9 * 60_000)).toBe(1_000 + 9 * 60_000);
+});
+
+test("15 minutes without activity: the check pauses itself and its duration stays under a minute", async ({ page }) => {
   await page.clock.install();
   const id = await startCheck(page);
   await doSteps(page, 1, 1);
   await waitSaved(page);
-  await page.clock.fastForward("11:00");
+  await page.clock.fastForward("15:00");
   await expect(page.getByTestId("idle-paused")).toContainText("Paused: no activity for 10 min");
-  await page.getByRole("button", { name: "Resume", exact: true }).click();
-  await expect(page.getByTestId("idle-paused")).toHaveCount(0);
-  await waitSaved(page);
-  await expect
-    .poll(async () => ((await (await page.request.get(`/api/sessions/${id}`)).json()) as { actions: Action[] }).actions.some((a) => a.type === "resume"))
-    .toBe(true);
-  const { meta, actions } = (await (await page.request.get(`/api/sessions/${id}`)).json()) as { meta: { createdAt: number }; actions: Action[] };
-  const done = actions.find((a) => a.type === "next_step")!;
-  const pause = actions.find((a) => a.type === "pause" && a.idle)!;
-  const resume = actions.find((a) => a.type === "resume")!;
-  // Dated when the 10 minutes ran out; the minute after that, while paused, is not counted.
-  expect(pause.at - done.at).toBe(600_000);
+  await expect(page.getByRole("button", { name: "Resume", exact: true })).toBeVisible();
+  const read = async () => (await (await page.request.get(`/api/sessions/${id}`)).json()) as { meta: { createdAt: number }; actions: Action[] };
+  await expect.poll(async () => (await read()).actions.some((a) => a.type === "pause" && a.idle)).toBe(true);
+  const { meta, actions } = await read();
   const s = reduce(actions, meta.createdAt);
-  expect(s.paused).toBe(false);
-  expect(elapsedMs(s, resume.at)).toBe(pause.at - meta.createdAt);
+  expect(s.status).toBe("paused");
+  expect(elapsedMs(s, meta.createdAt + 16 * 60_000)).toBeLessThan(60_000);
+  // The same duration in Past sessions.
+  await page.goto("/sessions");
+  await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("duration")).toHaveText(/^00:[0-5]\d$/);
 });
 
 test("check screen: metrics, the two videos side by side, step details and all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {
@@ -145,7 +153,7 @@ test("check screen: metrics, the two videos side by side, step details and all 1
   expect(d!.y + d!.height).toBeLessThanOrEqual(900 + banner); // above the fold
   const list = await page.getByTestId("step-list").boundingBox();
   const last = await page.locator("li button[data-step='12']").boundingBox();
-  expect(last!.y + last!.height).toBeLessThanOrEqual(list!.y + list!.height + 1); // all 12 steps, no scrolling
+  expect(last!.y + last!.height).toBeLessThanOrEqual(list!.y + list!.height + 2); // all 12 steps, no scrolling (2 px for sub-pixel rounding)
   // The SOP column is about 35% of the width.
   const sop = await page.getByTestId("step-list").locator("xpath=ancestor::section[1]").boundingBox();
   expect(sop!.width).toBeGreaterThanOrEqual(420);

@@ -39,6 +39,8 @@ export interface Summary {
   noDeviation: number;
   /** Average check time of complete sessions with a recorded time, seconds. */
   avgCheckSeconds: number | null;
+  /** Median of the same check times. */
+  medianCheckSeconds: number | null;
   timed: number;
   /** Complete sessions without a recorded check time (left out of the average). */
   untimed: number;
@@ -61,6 +63,7 @@ export async function summary(conn: Conn, f: DashFilter): Promise<Summary> {
       avg(${S.conformance}) filter (where ${COMPLETE})::float8 as conf,
       count(*) filter (where ${COMPLETE} and ${S.conformance} is not null and ${S.deviations} = 0)::int as no_dev,
       avg(${S.activeSeconds}) filter (where ${COMPLETE})::float8 as avg_time,
+      percentile_cont(0.5) within group (order by ${S.activeSeconds}) filter (where ${COMPLETE})::float8 as median_time,
       count(*) filter (where ${COMPLETE} and ${S.activeSeconds} is not null)::int as timed,
       count(*) filter (where ${COMPLETE} and ${S.activeSeconds} is null)::int as untimed,
       count(*) filter (where coalesce(${S.isSample}, false))::int as sample,
@@ -73,6 +76,7 @@ export async function summary(conn: Conn, f: DashFilter): Promise<Summary> {
     where ${sessionWhere(f)} and ${t.discrepancies.status} in ('open', 'escalated')`);
   const conf = num(a?.conf);
   const avgTime = num(a?.avg_time);
+  const medianTime = num(a?.median_time);
   return {
     total: int(a?.total),
     complete: int(a?.complete),
@@ -84,6 +88,7 @@ export async function summary(conn: Conn, f: DashFilter): Promise<Summary> {
     scored: int(a?.scored),
     noDeviation: int(a?.no_dev),
     avgCheckSeconds: avgTime === null ? null : Math.round(avgTime),
+    medianCheckSeconds: medianTime === null ? null : Math.round(medianTime),
     timed: int(a?.timed),
     untimed: int(a?.untimed),
     openDiscrepancies: int(b?.open_n),

@@ -4,6 +4,12 @@
 export const HOLD_WARN_MINUTES = 30;
 
 /**
+ * Check time is active time only. A gap longer than this with no activity on the check (no step change, recorded
+ * value, button press or voice command) is not counted, and the check screen pauses itself after it.
+ */
+export const IDLE_PAUSE_MINUTES = 10;
+
+/**
  * The plant's time zone (IANA name). Shifts and days are always worked out in this zone, never in UTC.
  * Assumed: set to the plant's real zone, for example "Europe/Berlin" or "America/Detroit".
  */

@@ -2,6 +2,7 @@
 import { useState, type ReactNode } from "react";
 import { UNDO_WINDOW_MS } from "@/lib/check/reducer";
 import type { Action } from "@/lib/check/types";
+import { IDLE_PAUSE_MINUTES } from "@/lib/config";
 import { Btn, cx } from "../ui";
 
 export function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose?: () => void; wide?: boolean }) {
@@ -45,7 +46,7 @@ export function PausedOverlay({ onResume, reason, idle }: { onResume: () => void
       <h1 className="text-[56px] font-semibold">Paused</h1>
       {idle ? (
         <p className="max-w-[640px] text-center text-[22px] text-ink-2" data-testid="idle-paused">
-          Paused: no activity for 10 min. The timer has stopped. Keep the part as it is.
+          Paused: no activity for {IDLE_PAUSE_MINUTES} min. The timer has stopped. Keep the part as it is.
         </p>
       ) : (
         <p className="max-w-[640px] text-center text-[22px] text-ink-2">
