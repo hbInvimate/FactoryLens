@@ -15,6 +15,7 @@
     "db:clear-sample": "node --env-file-if-exists=.env.local --import tsx scripts/clear-sample.mts",
     "demo:seed": "node --env-file-if-exists=.env.local --import tsx scripts/demo.mts seed",
     "demo:clear": "node --env-file-if-exists=.env.local --import tsx scripts/demo.mts clear",
+    "db:cleanup-long": "node --env-file-if-exists=.env.local --import tsx scripts/cleanup-long-checks.mts",
     "db:backfill": "node --env-file-if-exists=.env.local --import tsx scripts/backfill.mts",
     "user:create": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts create",
     "user:reset-password": "node --env-file-if-exists=.env.local --import tsx scripts/user.mts reset-password",
