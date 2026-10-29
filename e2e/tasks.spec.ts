@@ -37,10 +37,13 @@ const row = (page: Page, title: string) => page.getByTestId("tasks-table").locat
 test("a Quality Technician lands on Tasks, adds a task, filters and searches", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
   await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
-  await expect(page.getByText("View and manage all sessions")).toBeVisible();
+  await expect(page.getByText("Checks assigned to you", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("stat-mine")).toHaveCount(0);
+  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Type");
+  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Submission");
+  await expect(page.getByTestId("start-unassigned")).toHaveAttribute("href", "/");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");
   const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
-  const mine = Number(await page.getByTestId("stat-mine").innerText());
 
   // No New Session for a Quality Technician, and the API refuses one.
   await expect(page.getByRole("button", { name: "+ New Session" })).toHaveCount(0);
@@ -54,11 +57,9 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(r).toContainText("BRK-220");
   await expect(r).toContainText("High");
   await expect(r).toContainText("Test Quality Technician");
-  await expect(r).toContainText("First-off check");
   await expect(r.getByTestId("task-status")).toHaveText("Not started");
   // Other tests add sessions for this technician at the same time: at least one more.
   await expect.poll(async () => Number(await page.getByTestId("stat-not-started").innerText())).toBeGreaterThanOrEqual(notStarted + 1);
-  await expect.poll(async () => Number(await page.getByTestId("stat-mine").innerText())).toBeGreaterThanOrEqual(mine + 1);
   await expect(page.getByTestId("stat-completed")).toHaveCount(0);
   // Only work still to do can be picked.
   await expect(page.getByLabel("Status").locator("option")).toHaveText(["All active", "Not started", "In progress", "Paused"]);
@@ -127,7 +128,7 @@ test("opening a task starts its check, with the step video and details; the stat
   // In progress, and Open goes back to the same check.
   await page.goto("/tasks");
   await expect(row(page, title).getByTestId("task-status")).toHaveText("In progress");
-  await row(page, title).getByRole("link", { name: `Open ${title}` }).click();
+  await row(page, title).getByRole("link", { name: `Resume ${title}` }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
 
   // Finished: out of Sessions, even asked for by URL; it is in Past sessions.
@@ -153,7 +154,7 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
   const b = await signedIn(browser, "technician2");
   await b.page.getByLabel("Search session").fill(title);
   await b.page.getByLabel("Search session").press("Enter");
-  await expect(b.page.getByText(/No sessions (yet|match)/)).toBeVisible();
+  await expect(b.page.getByText(/No sessions match these filters|No checks assigned to you/)).toBeVisible();
   const res = await b.ctx.request.post(`/api/tasks/${taskId}/start`, { data: { sessionId: crypto.randomUUID() } });
   expect(res.status()).toBe(403);
   const list = await (await b.ctx.request.get("/api/tasks")).json();
@@ -199,10 +200,15 @@ test("a check started on Start a check is listed too: Resume while in progress, 
 
 test("the sidebar is on every Quality Technician page; in a check it opens from the menu and leaves through Leave", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician2");
-  for (const [path, label] of [["/tasks", "Sessions"], ["/", "Start a check"], ["/sessions", "Past sessions"]] as const) {
+  for (const [path, label] of [["/tasks", "Sessions"], ["/sessions", "Past sessions"]] as const) {
     await page.goto(path);
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
   }
+  // The sidebar is Sessions and Past sessions only; the start page opens from the link under the list.
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveCount(2);
+  await page.goto("/tasks");
+  await page.getByTestId("start-unassigned").click();
+  await expect(page.getByRole("button", { name: "Start the check" })).toBeVisible();
 
   const id = await startCheck(page);
   const menu = page.getByRole("dialog", { name: "Menu" });

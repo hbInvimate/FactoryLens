@@ -41,8 +41,8 @@ export function OpenTask({
 
   if (task.sessionId) {
     return (
-      <ButtonLink href={`/check/${task.sessionId}`} className={SMALL} aria-label={`Open ${task.title}`}>
-        Open
+      <ButtonLink href={`/check/${task.sessionId}`} className={SMALL} aria-label={`Resume ${task.title}`}>
+        Resume
       </ButtonLink>
     );
   }

@@ -29,7 +29,7 @@ async function Start() {
 export default function Home() {
   return (
     <Gate area="check" next="/">
-      <TechShell current="start">
+      <TechShell>
         <main className="flex flex-1 flex-col px-8 py-8">
           <Start />
         </main>

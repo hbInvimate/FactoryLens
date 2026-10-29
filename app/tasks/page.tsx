@@ -6,7 +6,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { ButtonLink, Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTone } from "@/components/ds";
-import { IconChecklist, IconClock, IconPlay, IconSearch } from "@/components/ds/icons";
+import { IconClock, IconPlay, IconSearch } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
 import { NewTask } from "@/components/tasks/NewTask";
@@ -67,23 +67,22 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
   const shown = tasks.filter((t) => matches(t, status, priority, q));
   const notStarted = tasks.filter((t) => t.status === "not_started").length;
   const inProgress = tasks.filter((t) => t.status === "in_progress" && !isPaused(t)).length;
-  const mine = tasks.filter((t) => t.kind === "task" && t.assignedTo === user.id && isActive(t)).length;
+  const active = tasks.filter(isActive).length;
 
   return (
     <>
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-1 flex-col">
           <h1 className="text-[30px] font-bold">Sessions</h1>
-          <p className="text-[16px] text-muted">View and manage all sessions</p>
+          <p className="text-[16px] text-muted">Checks assigned to you</p>
         </div>
-        {/* Technicians start work with Start a check or an assigned task; only an admin creates one here. */}
+        {/* Technicians start an assigned task here, or an unassigned check from the link under the list; only an admin creates one. */}
         {assignees && <NewTask assignees={assignees} />}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatTile icon={<IconClock />} tone="amber" value={notStarted} label="Not started" testId="stat-not-started" />
         <StatTile icon={<IconPlay />} tone="blue" value={inProgress} label="In progress" testId="stat-in-progress" />
-        <StatTile icon={<IconChecklist />} tone="green" value={mine} label="Assigned to me" testId="stat-mine" />
       </div>
 
       {/* One row: search 320 px, the two dropdowns 200 px, all 44 px tall, 12 px apart; wraps on narrow screens. */}
@@ -122,9 +121,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
             <Th>Priority</Th>
             <Th>Assigned</Th>
             <Th>Created Date</Th>
-            <Th>Type</Th>
             <Th>Status</Th>
-            <Th>Submission</Th>
             <Th>Action</Th>
           </tr>
         </thead>
@@ -152,21 +149,11 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
               <Td>
                 <LocalTime iso={t.createdAt} />
               </Td>
-              <Td>First-off check</Td>
               <Td>
                 <span className="inline-flex items-center gap-2 whitespace-nowrap" data-testid="task-status">
                   <span aria-hidden className={cx("size-2.5 rounded-full", DOT[t.status])} />
                   {TASK_STATUS_LABEL[t.status]}
                 </span>
-              </Td>
-              <Td>
-                {t.sessionId && (t.status === "completed" || t.status === "closed") ? (
-                  <Link href={`/sessions/${t.sessionId}`} className="font-semibold text-primary-ink hover:underline">
-                    Review
-                  </Link>
-                ) : (
-                  <span className="text-muted">None yet</span>
-                )}
               </Td>
               <Td>
                 {t.kind === "task" ? (
@@ -183,15 +170,26 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
               </Td>
             </tr>
           ))}
-          {shown.length === 0 && (
+          {shown.length === 0 && active > 0 && (
             <tr>
-              <Td colSpan={8} className="py-8 text-center text-[16px] text-muted">
-                {tasks.length === 0 ? "No sessions yet. Tap + New Session to add one." : "No sessions match these filters."}
+              <Td colSpan={6} className="py-8 text-center text-[16px] text-muted">
+                No sessions match these filters.
               </Td>
             </tr>
           )}
         </tbody>
       </Table>
+
+      <div className="flex flex-col items-start gap-1">
+        {active === 0 && (
+          <p className="text-[17px] text-ink-2" data-testid="none-assigned">
+            No checks assigned to you
+          </p>
+        )}
+        <Link href="/" className="inline-flex min-h-[44px] items-center text-[15px] text-muted underline-offset-4 hover:underline" data-testid="start-unassigned">
+          Start an unassigned check
+        </Link>
+      </div>
     </>
   );
 }
