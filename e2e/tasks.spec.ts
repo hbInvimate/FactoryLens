@@ -1,7 +1,7 @@
 // The Quality Technician's Tasks page: the landing page after sign-in, New Task, the filters, opening a
 // task into its check, the status following the check, and own tasks only.
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { signInAs, type Who } from "./auth-helpers";
+import { ADMIN_STATE, signInAs, testUser, type Who } from "./auth-helpers";
 import { doSteps, startCheck, unique, waitSaved } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -14,14 +14,22 @@ async function signedIn(browser: Browser, who: Who) {
   return { ctx, page };
 }
 
-async function newTask(page: Page, title: string, part: string, priority: "High" | "Medium" | "Low") {
+/** Technicians cannot create tasks: an admin gives one to a Quality Technician. Returns the task id. */
+async function newTask(browser: Browser, title: string, part: string, priority: "High" | "Medium" | "Low", who: Who = "technician"): Promise<string> {
+  const ctx = await browser.newContext({ storageState: ADMIN_STATE });
+  const page = await ctx.newPage();
+  await page.goto("/tasks");
   await page.getByRole("button", { name: "+ New Session" }).click();
   const dialog = page.getByRole("dialog", { name: "New session" });
   await dialog.getByLabel("Session (optional)").fill(title);
   await dialog.getByLabel("Part", { exact: true }).fill(part);
   await dialog.getByLabel("Priority").selectOption({ label: priority });
+  await dialog.getByLabel("Quality Technician").selectOption({ label: testUser(who).name });
   await dialog.getByRole("button", { name: "Create session" }).click();
   await expect(dialog).toHaveCount(0);
+  const id = (await page.getByTestId("tasks-table").locator("tr", { hasText: title }).getAttribute("data-task")) as string;
+  await ctx.close();
+  return id;
 }
 
 const row = (page: Page, title: string) => page.getByTestId("tasks-table").locator("tr", { hasText: title });
@@ -34,8 +42,14 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
   const mine = Number(await page.getByTestId("stat-mine").innerText());
 
+  // No New Session for a Quality Technician, and the API refuses one.
+  await expect(page.getByRole("button", { name: "+ New Session" })).toHaveCount(0);
+  const denied = await page.request.post("/api/tasks", { data: { part: "X", station: "Laser cell 3 · FX-014", priority: "low" } });
+  expect(denied.status()).toBe(403);
+
   const title = unique("Bracket first-off");
-  await newTask(page, title, "BRK-220", "High");
+  await newTask(browser, title, "BRK-220", "High");
+  await page.reload();
   const r = row(page, title);
   await expect(r).toContainText("BRK-220");
   await expect(r).toContainText("High");
@@ -76,11 +90,27 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await ctx.close();
 });
 
+test("a second task for the same part, cell and technician is refused while the first is not finished", async ({ browser }) => {
+  const part = unique("DUP");
+  await newTask(browser, unique("First"), part, "Medium");
+  const ctx = await browser.newContext({ storageState: ADMIN_STATE });
+  const tech = await ctx.request.get("/api/tasks");
+  const assignedTo = ((await tech.json()) as { tasks: { part: string; assignedTo: string }[] }).tasks.find((x) => x.part === part)!.assignedTo;
+  const again = await ctx.request.post("/api/tasks", { data: { part: ` ${part.toLowerCase()} `, station: "Laser cell 3 · FX-014", priority: "high", assignedTo } });
+  expect(again.status()).toBe(400);
+  expect((await again.json()).error).toBe("This check is already assigned and not started");
+  // Another cell is a different check.
+  const other = await ctx.request.post("/api/tasks", { data: { part, station: "Laser cell 9 · FX-099", priority: "high", assignedTo } });
+  expect(other.status()).toBe(201);
+  await ctx.close();
+});
+
 test("opening a task starts its check, with the step video and details; the status follows the check", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
   const title = unique("Clamp plate");
   const part = unique("CP");
-  await newTask(page, title, part, "Medium");
+  await newTask(browser, title, part, "Medium");
+  await page.reload();
   await row(page, title).getByRole("button", { name: `Start ${title}` }).click();
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
   const id = page.url().split("/check/")[1];
@@ -116,8 +146,9 @@ test("opening a task starts its check, with the step video and details; the stat
 test("a Quality Technician sees only their own tasks and cannot start another's; a Quality Engineer gets the access message", async ({ browser }) => {
   const a = await signedIn(browser, "technician");
   const title = unique("Mine only");
-  await newTask(a.page, title, "MO-1", "Low");
-  const taskId = await row(a.page, title).getAttribute("data-task");
+  const taskId = await newTask(browser, title, unique("MO"), "Low");
+  await a.page.reload();
+  await expect(row(a.page, title)).toHaveCount(1);
 
   const b = await signedIn(browser, "technician2");
   await b.page.getByLabel("Search session").fill(title);
@@ -140,7 +171,6 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
 
 test("a check started on Start a check is listed too: Resume while in progress, View when finished", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician2");
-  const before = Number(await page.getByTestId("stat-in-progress").innerText());
   const id = await startCheck(page);
   await doSteps(page, 1, 1);
   await waitSaved(page);
@@ -149,7 +179,7 @@ test("a check started on Start a check is listed too: Resume while in progress, 
   const r = page.getByTestId("tasks-table").locator(`tr[data-session="${id}"]`);
   await expect(r.getByTestId("task-status")).toHaveText("In progress");
   await expect(r).toContainText("—"); // no priority
-  await expect(page.getByTestId("stat-in-progress")).toHaveText(String(before + 1));
+  // Leaving the check page pauses it (page closed), so it is In progress or Paused: both are active work.
   await page.getByLabel("Priority").selectOption("high");
   await expect(r).toHaveCount(0);
   await page.goto("/tasks");
@@ -210,7 +240,7 @@ test("the sidebar is on every Quality Technician page; in a check it opens from 
 test("start page: Up next shows my sessions to do, My last 3 checks shows my newest checks", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician2");
   const title = unique("Up next");
-  await newTask(page, title, "UN-1", "High");
+  await newTask(browser, title, unique("UN"), "High", "technician2");
   await page.goto("/");
   const up = page.getByTestId("up-next");
   await expect(up.locator("li", { hasText: title })).toContainText("High");

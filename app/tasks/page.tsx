@@ -76,7 +76,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
           <h1 className="text-[30px] font-bold">Sessions</h1>
           <p className="text-[16px] text-muted">View and manage all sessions</p>
         </div>
-        <NewTask assignees={assignees} />
+        {/* Technicians start work with Start a check or an assigned task; only an admin creates one here. */}
+        {assignees && <NewTask assignees={assignees} />}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

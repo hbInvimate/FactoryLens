@@ -15,10 +15,10 @@ export async function GET(req: Request) {
   }
 }
 
-/** New Task: { title?, part, station, priority, assignedTo? (admin only) }. */
+/** New Task: { title?, part, station, priority, assignedTo }. Supervisors and admins only, not Quality Technicians. */
 export async function POST(req: Request) {
   await connection();
-  const user = await requireApiUser(req, "check");
+  const user = await requireApiUser(req, "supervisor");
   if (user instanceof Response) return user;
   try {
     const id = await createTask(user, await req.json().catch(() => null));

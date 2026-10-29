@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import { neonConnection } from "../db/client";
 import * as t from "../db/schema";
 import { findUser, normalizeEmail } from "../lib/auth/users";
+import { DUPLICATE_TASK, hasActiveDuplicate } from "../lib/server/tasks";
 
 const PRIORITIES = ["high", "medium", "low"];
 
@@ -39,6 +40,7 @@ async function create() {
   if (!PRIORITIES.includes(priority)) throw new Error("The priority must be high, medium or low.");
   const title = (await ask("Session title (leave empty for First-off check: <part>): ")) || `First-off check: ${part}`;
   if (title.length > 120) throw new Error("The title must be at most 120 characters.");
+  if (await hasActiveDuplicate(db as never, u.id, part, station)) throw new Error(DUPLICATE_TASK);
   const id = crypto.randomUUID();
   await db.insert(t.tasks).values({ id, title, part, station, priority, assignedTo: u.id, assignedName: u.name, createdBy: "task:create" });
   console.log(`\nCreated "${title}" for ${u.name}, ${priority} priority. It shows on their Sessions page as Not started.`);

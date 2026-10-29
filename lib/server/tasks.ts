@@ -1,6 +1,7 @@
 // Tasks: first-off checks to do, on the Quality Technician's /tasks page. A task's status is never stored:
 // it follows the check started from it, so the check logic stays the only source of truth.
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import type { AnyDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { readsAllSessions, seesAllSessions, type Role } from "@/lib/auth/roles";
 import type { SessionStatus } from "@/lib/check/types";
@@ -127,9 +128,33 @@ function text(v: unknown, name: string, min: number, max: number): string {
   return s;
 }
 
+export const DUPLICATE_TASK = "This check is already assigned and not started";
+
 /**
- * New Task. A Quality Technician's task is their own; an admin may give it to any Quality Technician.
- * Title left empty: "First-off check: <part>".
+ * Whether the Quality Technician already has a Not started or In progress task for the same part and cell/fixture
+ * (compared without case or extra spaces). Used by New Session and npm run task:create.
+ */
+export async function hasActiveDuplicate(db: AnyDb, assignedTo: string, part: string, station: string): Promise<boolean> {
+  const rows = await db
+    .select({ sessionId: t.tasks.sessionId, status: t.sessions.status })
+    .from(t.tasks)
+    .leftJoin(t.sessions, eq(t.sessions.id, t.tasks.sessionId))
+    .where(
+      and(
+        eq(t.tasks.assignedTo, assignedTo),
+        sql`lower(btrim(${t.tasks.part})) = lower(btrim(${part}))`,
+        sql`lower(btrim(${t.tasks.station})) = lower(btrim(${station}))`,
+      ),
+    );
+  return rows.some((r) => {
+    const s = taskStatus(r.sessionId, (r.status as SessionStatus | null) ?? null);
+    return s === "not_started" || s === "in_progress";
+  });
+}
+
+/**
+ * New Task, by a Supervisor or an admin (the API allows no one else), given to a Quality Technician.
+ * Title left empty: "First-off check: <part>". Refused when that technician already has it Not started or In progress.
  */
 export async function createTask(user: Viewer & { name: string }, body: unknown): Promise<string> {
   const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
@@ -138,13 +163,14 @@ export async function createTask(user: Viewer & { name: string }, body: unknown)
   const title = typeof b.title === "string" && b.title.trim() ? text(b.title, "Title", 1, 120) : `First-off check: ${part}`;
   if (!(PRIORITIES as readonly unknown[]).includes(b.priority)) throw new BadRequest("Priority must be high, medium or low");
   let assignee = { id: user.id, name: user.name };
-  if (seesAllSessions(user.role)) {
+  if (user.role !== "technician") {
     if (typeof b.assignedTo !== "string" || !b.assignedTo) throw new BadRequest("Pick the Quality Technician");
     const found = (await technicians()).find((p) => p.id === b.assignedTo);
     if (!found) throw new BadRequest("That Quality Technician was not found");
     assignee = found;
   }
   const { db } = await getRepo().conn();
+  if (await hasActiveDuplicate(db, assignee.id, part, station)) throw new BadRequest(DUPLICATE_TASK);
   const id = crypto.randomUUID();
   await db.insert(t.tasks).values({
     id, title, part, station, priority: b.priority as Priority, assignedTo: assignee.id, assignedName: assignee.name, createdBy: user.id,
