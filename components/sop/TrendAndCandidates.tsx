@@ -1,7 +1,7 @@
 // /dashboard/sop, c1: "Check CT trend" and "Ways of working worth a look" (one-click-flow.md part 1).
 import { Card, Chip, Table, Td, Th } from "@/components/ds";
 import { ReviewButton } from "./ReviewButton";
-import { CANDIDATE_MIN_CHECKS, CANDIDATE_MIN_IMPROVEMENT_PERCENT } from "@/lib/config";
+import { CANDIDATE_MIN_CHECKS, CANDIDATE_MIN_IMPROVEMENT_PERCENT, PLANT_TIME_ZONE } from "@/lib/config";
 import type { Candidate, CheckRow } from "@/lib/sop-candidates";
 import { mmss } from "@/lib/sop-stats";
 
@@ -65,7 +65,7 @@ export function TrendCard({ rows, medianSeconds, targetSeconds, highlight, sampl
           <polyline points={line(shown.map((r, i) => [x(i), y(r.checkSeconds as number)]))} fill="none" stroke="var(--fl-border-strong)" strokeWidth="2" />
           {shown.map((r, i) => (
             <circle key={r.id} cx={x(i)} cy={y(r.checkSeconds as number)} r={mine.has(r.id) ? 3.5 : 2} fill={r.isSample ? "var(--fl-amber)" : mine.has(r.id) ? "var(--fl-primary)" : "var(--fl-text-subtle)"}>
-              <title>{`${new Date(r.startedAt).toLocaleString()}: ${mmss(r.checkSeconds)}${r.isSample ? " (SAMPLE)" : ""}`}</title>
+              <title>{`${new Date(r.startedAt).toLocaleString("en-US", { timeZone: PLANT_TIME_ZONE })}: ${mmss(r.checkSeconds)}${r.isSample ? " (SAMPLE)" : ""}`}</title>
             </circle>
           ))}
           {highlight && theirs.length > 1 && (

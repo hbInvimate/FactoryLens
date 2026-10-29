@@ -1,6 +1,7 @@
 "use client";
 // Wizard stage 2: the evidence table and "Decide the new CT". Nothing is ticked or filled in for the
 // Quality Engineer: they pick the evidence, type the CT and the reason, and confirm it is their decision.
+import { PLANT_TIME_ZONE } from "@/lib/config";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
@@ -126,7 +127,7 @@ export function CtDecision({
                     <input
                       type="checkbox"
                       className="size-6 accent-primary disabled:cursor-not-allowed"
-                      aria-label={`Use the session of ${new Date(e.startedAt).toLocaleString()} as evidence`}
+                      aria-label={`Use the session of ${new Date(e.startedAt).toLocaleString("en-US", { timeZone: PLANT_TIME_ZONE })} as evidence`}
                       checked={ticked.has(e.id)}
                       disabled={e.isSample}
                       title={e.isSample ? "Sample sessions cannot be used as evidence" : undefined}

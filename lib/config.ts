@@ -13,7 +13,7 @@ export const IDLE_PAUSE_MINUTES = 10;
  * The plant's time zone (IANA name). Shifts and days are always worked out in this zone, never in UTC.
  * Assumed: set to the plant's real zone, for example "Europe/Berlin" or "America/Detroit".
  */
-export const PLANT_TIME_ZONE = "America/Los_Angeles";
+export const PLANT_TIME_ZONE = "Asia/Kolkata";
 
 export type ShiftId = "A" | "B" | "C";
 

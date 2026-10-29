@@ -1,5 +1,6 @@
 "use client";
 // Small interactive pieces of the session report: the clip toggle, the print button and the print stamp.
+import { PLANT_TIME_ZONE } from "@/lib/config";
 import { useState } from "react";
 import { useNow } from "@/lib/client/hooks";
 import type { Clip } from "@/lib/dashboard/report";
@@ -97,7 +98,7 @@ export function PrintedOn() {
   const now = useNow(30_000);
   return (
     <span data-testid="printed-on">
-      Printed on {now ? new Date(now).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "…"}
+      Printed on {now ? new Date(now).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: PLANT_TIME_ZONE }) : "…"}
     </span>
   );
 }
