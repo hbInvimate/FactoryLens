@@ -1,11 +1,12 @@
 // /tasks: the Quality Technician's home after sign-in. One task is one first-off check to do; its status
-// follows the check started from it. Default view: active tasks (Not started and In progress).
+// follows the check started from it. Only work still to do: Not started, In progress and Paused. Finished checks
+// (Completed, Closed, Left) are in Past sessions.
 import Form from "next/form";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { ButtonLink, Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTone } from "@/components/ds";
-import { IconChecklist, IconClock, IconSearch, IconTarget } from "@/components/ds/icons";
+import { IconChecklist, IconClock, IconPlay, IconSearch } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
 import { NewTask } from "@/components/tasks/NewTask";
@@ -15,7 +16,7 @@ import { seesAllSessions } from "@/lib/auth/roles";
 import { currentUser } from "@/lib/auth/server";
 import { NotConfigured } from "@/lib/server/repo";
 import { activeRevision } from "@/lib/server/sop";
-import { PRIORITIES, PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, listOwnChecks, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
+import { PRIORITIES, PRIORITY_LABEL, TASK_STATUS_LABEL, listOwnChecks, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
 import Link from "next/link";
 
 export const metadata = { title: "FactoryLens AI: Sessions" };
@@ -23,11 +24,19 @@ export const metadata = { title: "FactoryLens AI: Sessions" };
 const PRIORITY_TONE: Record<Priority, ChipTone> = { high: "red", medium: "amber", low: "gray" };
 const DOT: Record<TaskStatus, string> = { not_started: "bg-line-strong", in_progress: "bg-amber", completed: "bg-primary", closed: "bg-red" };
 
-type StatusFilter = "active" | "all" | TaskStatus;
+/** All active, or one of the three states of work still to do. A paused check is its own filter. */
+const STATUS_FILTERS = { active: "All active", not_started: "Not started", in_progress: "In progress", paused: "Paused" } as const;
+type StatusFilter = keyof typeof STATUS_FILTERS;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
+const isActive = (t: Task) => t.status === "not_started" || t.status === "in_progress";
+const isPaused = (t: Task) => t.status === "in_progress" && t.sessionStatus === "paused";
+
 function matches(task: Task, status: StatusFilter, priority: string, q: string) {
-  if (status === "active" ? !(task.status === "not_started" || task.status === "in_progress") : status !== "all" && task.status !== status) return false;
+  if (!isActive(task)) return false;
+  if (status === "not_started" && task.status !== "not_started") return false;
+  if (status === "in_progress" && (task.status !== "in_progress" || isPaused(task))) return false;
+  if (status === "paused" && !isPaused(task)) return false;
   if (priority !== "all" && task.priority !== priority) return false;
   const s = q.toLowerCase();
   return !s || [task.title, task.part, task.station, task.assignedName].some((x) => x.toLowerCase().includes(s));
@@ -39,7 +48,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
   const user = await currentUser();
   if (!user) return null;
   const statusParam = one(sp.status);
-  const status: StatusFilter = statusParam === "all" || (TASK_STATUSES as readonly string[]).includes(statusParam) ? (statusParam as StatusFilter) : "active";
+  const status: StatusFilter = statusParam in STATUS_FILTERS ? (statusParam as StatusFilter) : "active";
   const priority = (PRIORITIES as readonly string[]).includes(one(sp.priority)) ? one(sp.priority) : "all";
   const q = one(sp.q).trim().slice(0, 120);
 
@@ -56,7 +65,9 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
   // Assigned tasks and the checks started on Start a check, in one list, newest first.
   tasks = [...tasks, ...checks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const shown = tasks.filter((t) => matches(t, status, priority, q));
-  const count = (s: TaskStatus) => tasks.filter((t) => t.status === s).length;
+  const notStarted = tasks.filter((t) => t.status === "not_started").length;
+  const inProgress = tasks.filter((t) => t.status === "in_progress" && !isPaused(t)).length;
+  const mine = tasks.filter((t) => t.kind === "task" && t.assignedTo === user.id && isActive(t)).length;
 
   return (
     <>
@@ -69,25 +80,27 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile icon={<IconChecklist />} tone="blue" value={tasks.length} label="Total Session" testId="stat-total" />
-        <StatTile icon={<IconClock />} tone="amber" value={count("not_started")} label="Not Started" testId="stat-not-started" />
-        <StatTile icon={<IconTarget />} tone="green" value={count("completed")} label="Completed Sessions" testId="stat-completed" />
+        <StatTile icon={<IconClock />} tone="amber" value={notStarted} label="Not started" testId="stat-not-started" />
+        <StatTile icon={<IconPlay />} tone="blue" value={inProgress} label="In progress" testId="stat-in-progress" />
+        <StatTile icon={<IconChecklist />} tone="green" value={mine} label="Assigned to me" testId="stat-mine" />
       </div>
 
-      <Form action="/tasks" className="flex flex-wrap items-center gap-3" role="search">
-        <span className="relative w-full max-w-[460px] flex-1">
+      {/* One row: search 320 px, the two dropdowns 200 px, all 44 px tall, 12 px apart; wraps on narrow screens. */}
+      <Form
+        action="/tasks"
+        className="flex flex-wrap items-center gap-3 [&_select]:h-[44px] [&_select]:min-h-[44px]! [&_select]:w-[200px] [&_select]:min-w-0! [&_select]:text-[16px]"
+        role="search"
+      >
+        <span className="relative w-[320px] max-w-full">
           <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
             <IconSearch />
           </span>
-          <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search session" aria-label="Search session" className="pl-11" />
+          <Input name="q" type="search" defaultValue={q} key={q} placeholder="Search session" aria-label="Search session" className="h-[44px] min-h-[44px]! pl-11 text-[16px]" />
         </span>
-        <span className="flex-1" />
         <AutoSubmitSelect name="status" value={status} label="Status">
-          <option value="active">Active (Not started, In progress)</option>
-          <option value="all">All Status</option>
-          {TASK_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {TASK_STATUS_LABEL[s]}
+          {Object.entries(STATUS_FILTERS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
             </option>
           ))}
         </AutoSubmitSelect>

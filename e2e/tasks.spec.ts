@@ -31,8 +31,8 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
   await expect(page.getByText("View and manage all sessions")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");
-  const total = Number(await page.getByTestId("stat-total").innerText());
   const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
+  const mine = Number(await page.getByTestId("stat-mine").innerText());
 
   const title = unique("Bracket first-off");
   await newTask(page, title, "BRK-220", "High");
@@ -43,8 +43,11 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(r).toContainText("First-off check");
   await expect(r.getByTestId("task-status")).toHaveText("Not started");
   // Other tests add sessions for this technician at the same time: at least one more.
-  await expect.poll(async () => Number(await page.getByTestId("stat-total").innerText())).toBeGreaterThanOrEqual(total + 1);
   await expect.poll(async () => Number(await page.getByTestId("stat-not-started").innerText())).toBeGreaterThanOrEqual(notStarted + 1);
+  await expect.poll(async () => Number(await page.getByTestId("stat-mine").innerText())).toBeGreaterThanOrEqual(mine + 1);
+  await expect(page.getByTestId("stat-completed")).toHaveCount(0);
+  // Only work still to do can be picked.
+  await expect(page.getByLabel("Status").locator("option")).toHaveText(["All active", "Not started", "In progress", "Paused"]);
 
   // Priority filter.
   await page.getByLabel("Priority").selectOption("low");
@@ -53,10 +56,12 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await page.getByLabel("Priority").selectOption("high");
   await expect(row(page, title)).toHaveCount(1);
 
-  // Status filter: Completed hides it; the default (active) shows it.
-  await page.getByLabel("Status").selectOption("completed");
-  await expect(page).toHaveURL(/status=completed/);
+  // Status filter: In progress hides it; Not started and the default (All active) show it.
+  await page.getByLabel("Status").selectOption("in_progress");
+  await expect(page).toHaveURL(/status=in_progress/);
   await expect(row(page, title)).toHaveCount(0);
+  await page.getByLabel("Status").selectOption("not_started");
+  await expect(row(page, title)).toHaveCount(1);
   await page.getByLabel("Status").selectOption("active");
   await expect(row(page, title)).toHaveCount(1);
 
@@ -95,15 +100,16 @@ test("opening a task starts its check, with the step video and details; the stat
   await row(page, title).getByRole("link", { name: `Open ${title}` }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
 
-  // Finished: Completed, out of the active list, with a Review link.
+  // Finished: out of Sessions, even asked for by URL; it is in Past sessions.
   await doSteps(page, 2, 12);
   await expect(page.getByRole("heading", { name: "Check complete" })).toBeVisible();
   await waitSaved(page);
   await page.goto("/tasks");
   await expect(row(page, title)).toHaveCount(0);
-  await page.getByLabel("Status").selectOption("completed");
-  await expect(row(page, title).getByTestId("task-status")).toHaveText("Completed");
-  await expect(row(page, title).getByRole("link", { name: "Review" })).toHaveAttribute("href", `/sessions/${id}`);
+  await page.goto("/tasks?status=completed");
+  await expect(row(page, title)).toHaveCount(0);
+  await page.goto("/sessions");
+  await expect(page.locator(`tr[data-session="${id}"]`)).toBeVisible();
   await ctx.close();
 });
 
@@ -134,7 +140,7 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
 
 test("a check started on Start a check is listed too: Resume while in progress, View when finished", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician2");
-  const before = Number(await page.getByTestId("stat-total").innerText());
+  const before = Number(await page.getByTestId("stat-in-progress").innerText());
   const id = await startCheck(page);
   await doSteps(page, 1, 1);
   await waitSaved(page);
@@ -143,7 +149,7 @@ test("a check started on Start a check is listed too: Resume while in progress, 
   const r = page.getByTestId("tasks-table").locator(`tr[data-session="${id}"]`);
   await expect(r.getByTestId("task-status")).toHaveText("In progress");
   await expect(r).toContainText("—"); // no priority
-  await expect(page.getByTestId("stat-total")).toHaveText(String(before + 1));
+  await expect(page.getByTestId("stat-in-progress")).toHaveText(String(before + 1));
   await page.getByLabel("Priority").selectOption("high");
   await expect(r).toHaveCount(0);
   await page.goto("/tasks");
@@ -153,9 +159,11 @@ test("a check started on Start a check is listed too: Resume while in progress, 
   await doSteps(page, 2, 12);
   await expect(page.getByRole("heading", { name: "Check complete" })).toBeVisible();
   await waitSaved(page);
-  await page.goto("/tasks?status=completed");
-  await expect(r.getByTestId("task-status")).toHaveText("Completed");
-  await expect(r.getByRole("link", { name: /^View / })).toHaveAttribute("href", `/sessions/${id}`);
+  // Finished: not in Sessions any more; in Past sessions.
+  await page.goto("/tasks");
+  await expect(r).toHaveCount(0);
+  await page.goto("/sessions");
+  await expect(page.locator(`tr[data-session="${id}"]`)).toBeVisible();
   await ctx.close();
 });
 
