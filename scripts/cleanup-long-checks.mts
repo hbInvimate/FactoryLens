@@ -1,4 +1,4 @@
-// npm run db:cleanup-long                 DRY RUN: lists every check whose stored total time is over 2 hours (sample data too).
+// npm run db:cleanup-long                 DRY RUN: lists every check whose stored total time is over 15 minutes (sample data too).
 // npm run db:cleanup-long -- --confirm    Saves those checks and all their rows to backups/long-checks-<date>.json, then
 //                                         deletes them in one transaction. Works on the database in DATABASE_URL.
 // Stored total time: the stored check time (complete checks), else the stored duration, else start to end (or to the
@@ -11,7 +11,7 @@ import type { Action } from "../lib/check/types";
 import { fmtDuration } from "../lib/format";
 import { getRepo } from "../lib/server/repo";
 
-const LIMIT_SECONDS = 2 * 3600;
+const LIMIT_SECONDS = 15 * 60;
 const confirm = process.argv.includes("--confirm");
 
 const { db, batch } = await getRepo().conn();
@@ -75,7 +75,7 @@ const table = long.map(({ r, s }) => ({
   "active time": active(r.id, r.startedAt),
 }));
 
-console.log(`Checks with a stored total time over 2:00:00 (target 45:00), sample data included:`);
+console.log(`Checks with a stored total time over 00:15:00 (target 45:00), sample data included:`);
 if (table.length) console.table(table);
 console.log(`${table.length} of ${rows.length} checks.`);
 
@@ -105,7 +105,7 @@ mkdirSync("backups", { recursive: true });
 const file = `backups/long-checks-${new Date().toISOString().slice(0, 10)}.json`;
 writeFileSync(
   file,
-  JSON.stringify({ savedAt: new Date().toISOString(), reason: "stored total time over 2 hours", sessions, actions, stepEvents, points, discrepancies, handoffs, measurements, tasks, clipRefs }, null, 2),
+  JSON.stringify({ savedAt: new Date().toISOString(), reason: "stored total time over 15 minutes", sessions, actions, stepEvents, points, discrepancies, handoffs, measurements, tasks, clipRefs }, null, 2),
 );
 console.log(`Backup saved: ${file} (${sessions.length} checks, ${actions.length} actions).`);
 
