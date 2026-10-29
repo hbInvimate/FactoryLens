@@ -122,7 +122,7 @@ test("15 minutes without activity: the check pauses itself and its duration stay
   expect(elapsedMs(s, meta.createdAt + 16 * 60_000)).toBeLessThan(60_000);
   // The same duration in Past sessions.
   await page.goto("/sessions");
-  await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("duration")).toHaveText(/^00:[0-5]\d$/);
+  await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("duration")).toHaveText(/^00:00:[0-5]\d$/);
 });
 
 test("check screen: metrics, the two videos side by side, step details and all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {

@@ -7,16 +7,16 @@ export function fmtClock(ms: number): string {
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}` : `${m}:${String(r).padStart(2, "0")}`;
 }
 
-/** The Duration column: "04:07", or "1:02:03" over an hour. */
+/** The Duration column, always hh:mm:ss: "00:04:07", "01:02:03". */
 export function fmtDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
-  const h = Math.floor(s / 3600);
+  const hh = String(Math.floor(s / 3600)).padStart(2, "0");
   const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
   const ss = String(s % 60).padStart(2, "0");
-  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+  return `${hh}:${mm}:${ss}`;
 }
 
-/** Duration column text: "–" when the check never started (or has no recorded time), "Left at 04:07" when left. */
+/** Duration column text: "–" when the check never started (or has no recorded time), "Left at 00:04:07" when left. */
 export function durationText(status: string | null, seconds: number | null | undefined): string {
   if (status === null || seconds === null || seconds === undefined) return "–";
   return status === "left" ? `Left at ${fmtDuration(seconds)}` : fmtDuration(seconds);
