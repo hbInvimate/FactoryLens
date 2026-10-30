@@ -21,7 +21,7 @@ async function newTask(browser: Browser, origin: string, title: string, part: st
   return res.id as string;
 }
 
-const row = (page: Page, title: string) => page.getByTestId("tasks-table").locator("tr", { hasText: title });
+const row = (page: Page, title: string) => page.getByTestId("tasks-table").locator("[data-row]", { hasText: title });
 
 test("a Quality Technician lands on Tasks, adds a task, filters and searches", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
@@ -38,40 +38,13 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await newTask(browser, new URL(page.url()).origin, title, "BRK-220", "High");
   await page.reload();
   const r = row(page, title);
-  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Type");
-  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Submission");
-  await expect(r).toContainText("BRK-220");
+  // One big row per check: no table, no search or filters.
+  await expect(page.getByTestId("tasks-table").locator("table")).toHaveCount(0);
+  await expect(page.getByLabel("Search session")).toHaveCount(0);
+  await expect(r).toContainText("Laser cell 3 · FX-014 · not started · assigned");
   await expect(r).toContainText("High");
-  await expect(r).toContainText("Test Quality Technician");
   await expect(r.getByTestId("task-status")).toHaveText("Not started");
-  // Other tests add sessions for this technician at the same time: at least one more.
-  // Only work still to do can be picked.
-  await expect(page.getByLabel("Status").locator("option")).toHaveText(["All active", "Not started", "In progress", "Paused"]);
-
-  // Priority filter.
-  await page.getByLabel("Priority").selectOption("low");
-  await expect(page).toHaveURL(/priority=low/);
-  await expect(row(page, title)).toHaveCount(0);
-  await page.getByLabel("Priority").selectOption("high");
-  await expect(row(page, title)).toHaveCount(1);
-
-  // Status filter: In progress hides it; Not started and the default (All active) show it.
-  await page.getByLabel("Status").selectOption("in_progress");
-  await expect(page).toHaveURL(/status=in_progress/);
-  await expect(row(page, title)).toHaveCount(0);
-  await page.getByLabel("Status").selectOption("not_started");
-  await expect(row(page, title)).toHaveCount(1);
-  await page.getByLabel("Status").selectOption("active");
-  await expect(row(page, title)).toHaveCount(1);
-
-  // Search.
-  await page.getByLabel("Search session").fill("no such task anywhere");
-  await page.getByLabel("Search session").press("Enter");
-  await expect(page).toHaveURL(/q=no\+such/);
-  await expect(page.getByText("No sessions match these filters.")).toBeVisible();
-  await page.getByLabel("Search session").fill(title);
-  await page.getByLabel("Search session").press("Enter");
-  await expect(page.getByTestId("tasks-table").locator("tbody tr")).toHaveCount(1);
+  await expect(r.getByRole("button", { name: `Start ${title}` })).toHaveText("▶ Start");
   await ctx.close();
 });
 
@@ -90,23 +63,36 @@ test("a second task for the same part, cell and technician is refused while the 
   await ctx.close();
 });
 
-test("Start a check from Sessions; a task with the same part and cell, not started yet, is started instead of a new check", async ({ browser }) => {
+test("Start a check always starts a new check: the one open on this device is paused and stays listed as Paused", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician2");
+  // A task for the same part and cell does not stop it: the duplicate rule is only for task creation.
   const part = unique("SAME");
   const title = unique("Same part");
   const taskId = await newTask(browser, new URL(page.url()).origin, title, part, "Medium", "technician2");
   await page.reload();
-  // The start card, with this part picked: Start a check starts that task instead of a new check.
   await page.getByTestId("hero-start").getByLabel("Part").selectOption(part);
   await page.getByTestId("hero-start").getByLabel("Cell and fixture").selectOption("Laser cell 3 · FX-014");
   await page.getByTestId("start-a-check").click();
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
-  const id = page.url().split("/check/")[1];
+  const first = page.url().split("/check/")[1];
+  await doSteps(page, 1, 2);
   await waitSaved(page);
-  // The assigned task now has this check: no second row for the same part and cell.
-  await page.goto(`/tasks?q=${encodeURIComponent(part)}`);
-  await expect(page.getByTestId("tasks-table").locator("tbody tr[data-status]")).toHaveCount(1);
-  await expect(page.locator(`tr[data-task="${taskId}"]`)).toHaveAttribute("data-session", id);
+
+  // Start a check again from Sessions: no "in progress on this device" message, a new check.
+  await page.goto("/tasks");
+  await page.getByTestId("start-a-check").click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  const second = page.url().split("/check/")[1];
+  expect(second).not.toBe(first);
+  await waitSaved(page);
+  await page.goto("/tasks");
+  await expect(page.getByText("A check is in progress on this device")).toHaveCount(0);
+  const paused = page.locator(`[data-row][data-session="${first}"]`);
+  await expect(paused.getByTestId("task-status")).toHaveText("Paused");
+  await expect(paused).toContainText("step 3: Lower the part onto pads P1 to P3 · paused");
+  await expect(paused.getByRole("link", { name: /^Resume / })).toHaveText("▶ Resume");
+  // The task is still Not started.
+  await expect(page.locator(`[data-row][data-task="${taskId}"]`).getByTestId("task-status")).toHaveText("Not started");
   await ctx.close();
 });
 
@@ -156,9 +142,7 @@ test("a Quality Technician sees only their own tasks and cannot start another's;
   await expect(row(a.page, title)).toHaveCount(1);
 
   const b = await signedIn(browser, "technician2");
-  await b.page.getByLabel("Search session").fill(title);
-  await b.page.getByLabel("Search session").press("Enter");
-  await expect(b.page.getByText(/No sessions match these filters|No checks assigned to you/)).toBeVisible();
+  await expect(row(b.page, title)).toHaveCount(0);
   const res = await b.ctx.request.post(`/api/tasks/${taskId}/start`, { data: { sessionId: crypto.randomUUID() } });
   expect(res.status()).toBe(403);
   const list = await (await b.ctx.request.get("/api/tasks")).json();
@@ -181,12 +165,9 @@ test("a started check stays listed with Resume while in progress, and moves to P
   await waitSaved(page);
 
   await page.goto("/tasks");
-  const r = page.getByTestId("tasks-table").locator(`tr[data-session="${id}"]`);
-  await expect(r.getByTestId("task-status")).toHaveText("In progress");
+  const r = page.getByTestId("tasks-table").locator(`[data-row][data-session="${id}"]`);
   // Leaving the check page pauses it (page closed), so it is In progress or Paused: both are active work.
-  await page.getByLabel("Priority").selectOption("high");
-  await expect(r).toHaveCount(0);
-  await page.goto("/tasks");
+  await expect(r.getByTestId("task-status")).toHaveText(/^(In progress|Paused)$/);
   await r.getByRole("link", { name: /^Resume / }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
 

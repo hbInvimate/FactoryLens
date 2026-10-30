@@ -17,7 +17,7 @@ test("Refresh mid-session resumes where she left off", async ({ page }) => {
   // Sessions offers to resume it too.
   await waitSaved(page);
   await page.goto("/tasks");
-  await page.locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
+  await page.locator(`[data-row][data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
   await expect(page.locator("li[aria-current=step]")).toContainText("Check holes H1 to H14");
 });
@@ -101,7 +101,7 @@ test("Pause and Resume; Leave asks for a reason and keeps the session", async ({
   await page.getByRole("button", { name: "End of shift" }).click();
   await leave.click();
   await page.waitForURL(/\/tasks$/);
-  await page.locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
+  await page.locator(`[data-row][data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
   await expect(page.getByRole("dialog", { name: "Paused" })).toContainText("End of shift");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator("li[aria-current=step]")).toContainText("Lower the part onto pads P1 to P3");
@@ -147,7 +147,7 @@ test("A check still running on this device: Start on another task says so and of
   await waitSaved(page);
 
   const title = await assignTask(page);
-  await page.goto(`/tasks?q=${encodeURIComponent(title)}`);
+  await page.goto("/tasks");
   await page.getByRole("button", { name: `Start ${title}` }).click();
   await expect(page.getByText("A check is in progress on this device. Finish or leave it first.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Resume it" })).toHaveAttribute("href", `/check/${old}`);

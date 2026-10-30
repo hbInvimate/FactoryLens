@@ -1,17 +1,14 @@
 "use client";
 // The Sessions page's start card: Part, Cell and fixture and SOP, pre-filled with the last-used values, and a big
-// Start a check that starts it at once. The duplicate rule: the same part and cell already In progress opens that
-// check; a task for it still Not started is started instead of a new check. A check in progress on this device is
-// finished or left first (Resume it).
+// Start a check that always starts a new check at once. A check running on this device is paused first: it stays in
+// "Assigned to you" as Paused. (The duplicate rule is only for supervisor task creation.)
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { reduce } from "@/lib/check/reducer";
 import { ENDED_STATUSES } from "@/lib/check/types";
-import { getActiveId, readLocal, setActiveId } from "@/lib/client/local";
-import { createLocalSession } from "@/lib/client/useCheckSession";
+import { getActiveId, readLocal } from "@/lib/client/local";
+import { createLocalSession, pauseOnDevice } from "@/lib/client/useCheckSession";
 import { sopName } from "@/lib/sop-revisions";
-
-type Match = { kind: "check"; sessionId: string } | { kind: "task"; taskId: string } | null;
 
 const SELECT = "min-h-[56px] w-full rounded-[14px] border border-primary-line bg-surface px-3 pt-5 pb-1.5 text-[17px] font-semibold text-ink";
 
@@ -37,35 +34,19 @@ export function HeroStart({
   const [part, setPart] = useState(last.part);
   const [station, setStation] = useState(last.station);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ text: string; resume?: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const start = async () => {
     setError(null);
-    const active = deviceCheck();
-    if (active) return setError({ text: "A check is in progress on this device. Finish or leave it first.", resume: active });
     setBusy(true);
-    const match = await fetch(`/api/tasks/match?${new URLSearchParams({ part, station })}`, { cache: "no-store" })
-      .then(async (res) => (res.ok ? ((await res.json()) as { match: Match }).match : null))
-      .catch((): Match => null);
-    if (match?.kind === "check") return router.push(`/check/${match.sessionId}`);
+    const open = deviceCheck();
+    if (open) await pauseOnDevice(open);
     let id: string;
     try {
       id = createLocalSession({ part, sop: sopName(sop.label), fixture: station, station, operator: operatorName, ...(sop.id ? { sopRevisionId: sop.id } : {}) });
     } catch {
       setBusy(false);
-      return setError({ text: "This device could not store the new check. Tap Start again." });
-    }
-    if (match?.kind === "task") {
-      const res = await fetch(`/api/tasks/${encodeURIComponent(match.taskId)}/start`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: id }),
-      }).catch(() => null);
-      const body = res ? ((await res.json().catch(() => ({}))) as { sessionId?: string }) : {};
-      if (res?.status === 409 && body.sessionId) {
-        setActiveId(null);
-        return router.push(`/check/${body.sessionId}`);
-      }
+      return setError("This device could not store the new check. Tap Start again.");
     }
     router.push(`/check/${id}`);
   };
@@ -119,12 +100,7 @@ export function HeroStart({
         </button>
         {error && (
           <span role="alert" className="max-w-[320px] text-right text-[14px] text-red-ink">
-            {error.text}{" "}
-            {error.resume && (
-              <a href={`/check/${error.resume}`} className="font-semibold underline">
-                Resume it
-              </a>
-            )}
+            {error}
           </span>
         )}
       </div>

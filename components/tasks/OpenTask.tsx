@@ -11,6 +11,7 @@ import { createLocalSession } from "@/lib/client/useCheckSession";
 import { sopName } from "@/lib/sop-revisions";
 
 const SMALL = "min-h-[56px] px-4 text-[15px] shadow-none";
+const BIG = "min-h-[56px] px-6 text-[18px] font-bold whitespace-nowrap";
 
 /** The check in progress on this device, if any. */
 function activeCheck(): string | null {
@@ -21,8 +22,10 @@ function activeCheck(): string | null {
 }
 
 export function OpenTask({
-  task, operatorName, sop,
+  task, operatorName, sop, big = false,
 }: {
+  /** The Sessions rows: a 56 px green button with ▶. */
+  big?: boolean;
   task: { id: string; title: string; part: string; station: string; sessionId: string | null };
   operatorName: string;
   sop: { id: string | null; label: string };
@@ -41,8 +44,8 @@ export function OpenTask({
 
   if (task.sessionId) {
     return (
-      <ButtonLink href={`/check/${task.sessionId}`} className={SMALL} aria-label={`Resume ${task.title}`}>
-        Resume
+      <ButtonLink variant={big ? "primary" : undefined} href={`/check/${task.sessionId}`} className={big ? BIG : SMALL} aria-label={`Resume ${task.title}`}>
+        {big ? "▶ Resume" : "Resume"}
       </ButtonLink>
     );
   }
@@ -91,8 +94,8 @@ export function OpenTask({
 
   return (
     <span className="flex flex-col items-start gap-1.5">
-      <Button variant="primary" onClick={start} disabled={busy} className={SMALL} aria-label={`Start ${task.title}`}>
-        {busy ? "Starting…" : "Start"}
+      <Button variant="primary" onClick={start} disabled={busy} className={big ? BIG : SMALL} aria-label={`Start ${task.title}`}>
+        {busy ? "Starting…" : big ? "▶ Start" : "Start"}
       </Button>
       {error && (
         <span role="alert" className="max-w-[260px] text-[14px] text-red-ink">

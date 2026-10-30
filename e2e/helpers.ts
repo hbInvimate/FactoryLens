@@ -14,7 +14,7 @@ const technicianIds = new Map<string, string>();
  */
 export async function startAt(page: Page, station: string): Promise<string> {
   const title = await assignTask(page, station);
-  await page.goto(`/tasks?q=${encodeURIComponent(title)}`);
+  await page.goto("/tasks");
   await page.getByRole("button", { name: `Start ${title}` }).click();
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
   await expect(page.locator("li[aria-current=step]")).toBeVisible();

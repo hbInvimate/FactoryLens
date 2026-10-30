@@ -42,6 +42,8 @@ export interface Task {
   sessionStatus: SessionStatus | null;
   /** Active time of the check (see durationMs). Null before it started. */
   durationSeconds: number | null;
+  /** The check, once started: its current step, steps done, start and last change (when it was paused). */
+  check: { currentStep: number; stepsDone: number; startedAt: string; updatedAt: string } | null;
 }
 
 /** Running, paused or on hold: in progress. Finished: completed. Ended without a completed check: closed. */
@@ -57,13 +59,13 @@ type Viewer = { id: string; role: Role };
 export async function listTasks(user: Viewer): Promise<Task[]> {
   const { db } = await getRepo().conn();
   const rows = await db
-    .select({ task: t.tasks, status: t.sessions.status, duration: t.sessions.durationSeconds })
+    .select({ task: t.tasks, status: t.sessions.status, duration: t.sessions.durationSeconds, currentStep: t.sessions.currentStep, stepsDone: t.sessions.stepsDone, startedAt: t.sessions.startedAt, updatedAt: t.sessions.updatedAt })
     .from(t.tasks)
     .leftJoin(t.sessions, eq(t.sessions.id, t.tasks.sessionId))
     .where(readsAllSessions(user.role) ? undefined : eq(t.tasks.assignedTo, user.id))
     .orderBy(desc(t.tasks.createdAt))
     .limit(500);
-  return rows.map(({ task: r, status, duration }) => ({
+  return rows.map(({ task: r, status, duration, currentStep, stepsDone, startedAt, updatedAt }) => ({
     kind: "task" as const,
     id: r.id,
     title: r.title,
@@ -77,6 +79,7 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
     status: taskStatus(r.sessionId, (status as SessionStatus | null) ?? null),
     sessionStatus: (status as SessionStatus | null) ?? null,
     durationSeconds: duration ?? null,
+    check: startedAt && updatedAt ? { currentStep: currentStep ?? 1, stepsDone: stepsDone ?? 0, startedAt: startedAt.toISOString(), updatedAt: updatedAt.toISOString() } : null,
   }));
 }
 
@@ -109,6 +112,7 @@ export async function listOwnChecks(user: Viewer): Promise<Task[]> {
       status: taskStatus(s.id, status),
       sessionStatus: status,
       durationSeconds: s.durationSeconds ?? null,
+      check: { currentStep: s.currentStep, stepsDone: s.stepsDone, startedAt: s.startedAt.toISOString(), updatedAt: s.updatedAt.toISOString() },
     };
   });
 }

@@ -299,6 +299,31 @@ export function useCheckSession(id: string) {
 }
 
 /**
+ * Pauses the check running on this device (Start a check starts a new one). It stays in the list as Paused and is
+ * resumed from there. The pause is kept locally first, then sent; if the send fails it stays queued with that check.
+ */
+export async function pauseOnDevice(id: string): Promise<void> {
+  const cur = readLocal(id);
+  if (getActiveId() === id) setActiveId(null);
+  if (!cur || reduce(cur.actions, cur.meta.createdAt).status !== "running") return;
+  const seq = cur.actions.reduce((m, a) => Math.max(m, a.seq), 0) + 1;
+  const action = { type: "pause", id: uid(), seq, at: Date.now() } as Action;
+  const next: LocalSession = { ...cur, actions: [...cur.actions, action], pending: [...cur.pending, action.id] };
+  writeLocal(next);
+  try {
+    const pendingSet = new Set(next.pending);
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/actions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ meta: next.meta, actions: next.actions.filter((a) => pendingSet.has(a.id)).slice(0, BATCH) }),
+    });
+    if (res.ok) writeLocal({ ...next, created: true, pending: next.pending.slice(BATCH) });
+  } catch {
+    // Offline: it stays queued in the local copy of that check.
+  }
+}
+
+/**
  * Leaves a session for good (with her reason) so a new one can start. The action is kept
  * locally first, then sent; if the send fails it stays queued with that session.
  */
