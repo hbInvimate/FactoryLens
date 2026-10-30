@@ -130,8 +130,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </div>
       </div>
 
-      {/* Each card only as tall as its content. */}
-      <div className="grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
+      {/* The bottom row fills the rest of the screen; both cards are as tall as the taller one. */}
+      <div className="grid flex-1 items-stretch gap-4 xl:grid-cols-[1.6fr_1fr]">
       <section className="flex min-w-0 flex-col gap-4 rounded-[22px] border border-line bg-surface px-6 py-5 shadow-card" data-testid="assigned">
         <div className="flex flex-wrap items-baseline gap-3">
           <h2 className="flex-1 text-[22px] font-bold">Assigned to you</h2>
@@ -210,13 +210,14 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         {home.recent.length === 0 ? (
           <p className="text-[15px] text-muted">No completed checks yet.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-line" data-testid="recent-checks">
+          <ul className="flex min-h-[147px] flex-1 basis-0 flex-col flex-wrap content-start overflow-hidden" data-testid="recent-checks">
+            {/* As many rows as fit (at least 3): rows that do not fit wrap into a hidden column. */}
             {home.recent.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-x-6 gap-y-1 py-3 text-[16px]" data-session={r.id}>
+              <li key={r.id} className="flex h-[49px] w-full flex-none items-center gap-x-6 border-b border-line text-[16px]" data-session={r.id}>
                 <b className="whitespace-nowrap">
                   <LocalTime iso={r.finishedAt} />
                 </b>
-                <span className="min-w-[160px] flex-1">
+                <span className="min-w-0 flex-1 truncate">
                   {r.part} · {r.station.split(" · ")[0]}
                 </span>
                 <StatusChip status={r.status} />
@@ -278,7 +279,7 @@ export default function TasksPage(props: PageProps<"/tasks">) {
   return (
     <Gate area="check" next="/tasks">
       <TechShell current="tasks">
-        <main className="page-main flex flex-col gap-5">
+        <main className="page-main flex min-h-dvh flex-col gap-5">
           <Suspense fallback={<p className="text-[17px] text-muted">Loading sessions…</p>}>
             <Body searchParams={props.searchParams} />
           </Suspense>

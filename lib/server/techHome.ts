@@ -33,6 +33,7 @@ export interface TechHome {
   /** Completed checks right first time in a row, newest first. */
   streak: number;
   recent: { id: string; finishedAt: string; part: string; station: string; status: SessionStatus; cycleSeconds: number | null; conformance: number | null }[];
+  /** Up to 6; the page shows as many as fit. */
   /** One tip from their recent misses, or null when the recent checks were clean. */
   tip: { lead: string; text: string } | null;
   recentClean: number;
@@ -101,7 +102,7 @@ export async function techHome(user: { id: string; name: string }, stations: str
     rft: { right: done.filter((r) => allRight(r.id)).length, of: done.length },
     avgCycleSeconds: cycles.length ? Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length) : null,
     streak,
-    recent: done.slice(0, 3).map((r) => ({
+    recent: done.slice(0, 6).map((r) => ({
       id: r.id, finishedAt: (r.endedAt ?? r.updatedAt).toISOString(), part: r.part, station: r.station ?? r.fixture, status: r.status as SessionStatus,
       cycleSeconds: r.activeSeconds, conformance: r.conformance,
     })),
