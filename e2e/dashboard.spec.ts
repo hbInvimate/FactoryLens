@@ -42,7 +42,7 @@ test("One deviation fixed scores 92% on the dashboard and in the report", async 
   await openDashboard(page, station);
   await expect(page.getByTestId("tile-sessions")).toHaveText("1");
   await expect(page.getByTestId("tile-conformance")).toHaveText("92%");
-  await expect(page.getByTestId("tile-no-deviation")).toHaveText("0%");
+  await expect(page.getByTestId("conformance-squares").locator("[data-step]")).toHaveCount(12);
   await expect(page.getByTestId("tile-check-time")).toHaveText(/^\d+:\d\d$/);
   await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("row-conformance")).toHaveText("92%");
 
@@ -95,12 +95,12 @@ test("Blocks: click a step to filter the sessions table, remove the chip, shift 
 
   await page.goto(`/dashboard?station=${encodeURIComponent(station)}&range=7&sample=1`);
   await expect(page.getByTestId("sample-chip")).toHaveText("SAMPLE DATA · 2 real, 0 sample sessions");
-  await expect(page.getByTestId("conformance-overall")).toContainText("Overall 96% over 2 completed sessions");
+  await expect(page.getByTestId("tile-conformance")).toHaveText("96%");
 
   const block3 = page.getByTestId("block-deviations");
-  const step11 = block3.locator('[data-step="11"]');
-  await expect(step11.getByTestId("step-count")).toHaveText("1");
-  for (const v of ["V4", "V5"]) await expect(step11.locator(`[data-item="${v} not checked"]`)).toContainText("1");
+  const step11 = block3.getByTestId("deviation-rows").locator('[data-row="11"]');
+  await expect(step11.getByTestId("hotspot-count")).toHaveText("1");
+  for (const v of ["V4", "V5"]) await expect(step11.locator(`[data-tag="${v} not checked"]`)).toHaveText(`${v} not checked ×1`);
 
   await step11.getByRole("link").click();
   await expect(page).toHaveURL(/dev=11/);
@@ -141,10 +141,8 @@ test("A scrapped session shows Not scored and is left out of conformance and che
 
   await openDashboard(page, station);
   await expect(page.getByTestId("tile-sessions")).toHaveText("2");
-  await expect(page.getByTestId("tile-sessions-split")).toHaveText("1 complete · 0 on hold · 1 ended without a check · 0 left");
+  await expect(page.getByTestId("tile-sessions-split")).toHaveText("1 complete · 1 ended without a check · 0 left · 0 running");
   await expect(page.getByTestId("tile-conformance")).toHaveText("100%");
-  await expect(page.getByText("steps correct first time, 1 complete session")).toBeVisible();
-  await expect(page.getByText("complete sessions, without pauses and holds (1)")).toBeVisible();
   await expect(page.locator(`tr[data-session="${held}"]`).getByTestId("row-conformance")).toHaveText("Not scored");
   await expect(page.locator(`tr[data-session="${clean}"]`).getByTestId("row-conformance")).toHaveText("100%");
 

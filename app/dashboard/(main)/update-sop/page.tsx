@@ -43,6 +43,18 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/upda
         <h1 className="text-[30px] font-bold">Update SOP</h1>
         <p className="text-[16px] text-ink-2">Pick the session whose way of working should become the SOP. The platform does the rest.</p>
       </div>
+      {/* From "Draft SOP change" on the dashboard: the AI's suggested wording, ready to use. */}
+      {typeof sp.suggest === "string" && sp.suggest.trim() && (
+        <Card className="flex flex-col gap-2 border-primary-line bg-primary-soft px-5 py-4" testId="sop-suggestion">
+          <span className="text-[13px] font-bold tracking-wide text-primary-ink uppercase">Suggested change{typeof sp.step === "string" ? ` · step ${sp.step.slice(0, 2)}` : ""}</span>
+          <textarea
+            aria-label="Suggested SOP wording"
+            defaultValue={sp.suggest.slice(0, 500)}
+            rows={2}
+            className="w-full rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 py-2 text-[16px]"
+          />
+        </Card>
+      )}
       <Filters stations={stations} params={params} base="/dashboard/update-sop" fields={["station", "shift", "range"]} allTimeLabel="Last sessions" />
       <Card className="flex flex-col gap-3 px-6 py-5" testId="last-sessions">
         <div>

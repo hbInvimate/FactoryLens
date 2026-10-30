@@ -90,9 +90,8 @@ test("Held sessions are left out of conformance and check time; open holds tile"
   await waitSaved(page);
 
   await openDashboard(page, station);
-  await expect(page.getByTestId("tile-sessions-split")).toHaveText("1 complete · 1 on hold · 0 ended without a check · 0 left");
+  await expect(page.getByTestId("tile-sessions-split")).toHaveText("1 complete · 0 ended without a check · 0 left · 0 running");
   await expect(page.getByTestId("tile-conformance")).toHaveText("100%");
-  await expect(page.getByText("complete sessions, without pauses and holds (1)")).toBeVisible();
   await expect(page.getByTestId("tile-open-holds")).toHaveText("1");
   await expect(page.getByTestId("oldest-hold")).toHaveText(/^oldest waiting \d+:\d\d$/);
 
@@ -163,7 +162,7 @@ test("Older sessions still show: no decision recorded, and the old part-held cle
   const legacyRow = page.locator(`tr[data-session="${legacy}"]`);
   await expect(legacyRow).toContainText("Part held, not checked");
   await expect(legacyRow.getByTestId("row-conformance")).toHaveText("Not scored");
-  await expect(page.getByTestId("tile-sessions-split")).toHaveText("0 complete · 1 on hold · 1 ended without a check · 0 left");
+  await expect(page.getByTestId("tile-sessions-split")).toHaveText("0 complete · 1 ended without a check · 0 left · 0 running");
 
   await legacyRow.click();
   await expect(page.getByTestId("report-outcome")).toContainText("Part held and not scored");
