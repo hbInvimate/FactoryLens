@@ -1,19 +1,16 @@
 "use client";
-import { checkPointsDone, conformanceSoFar, elapsedMs, stepsDone } from "@/lib/check/reducer";
 import type { CheckState } from "@/lib/check/types";
-import { fmtClock } from "@/lib/client/hooks";
-import { useSopRevision, useSopStep } from "@/lib/client/sopContext";
+import { useSopStep } from "@/lib/client/sopContext";
 import type { Action } from "@/lib/check/types";
 import { useState } from "react";
 import { MEASURED_STEPS, MeasureEntry, latestValues, missingValues } from "./MeasureEntry";
-import { checkTargetSeconds } from "@/lib/sop-revisions";
-import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
-import { Btn, Panel, TabletIcon, Warn, cx } from "../ui";
+import { STEPS } from "@/lib/sop";
+import { Btn, Panel, TabletIcon, Warn } from "../ui";
 import { Modal } from "./Dialogs";
 import { StepDetails, VideoBox } from "./StepMedia";
 import { PointGrid } from "./PointGrid";
 import { StepTimeline } from "./StepTimeline";
-import { CountUp } from "@/components/ds/CountUp";
+import { CheckMetrics } from "./CheckMetrics";
 
 export function LodgeButton({ onClick }: { onClick: () => void }) {
   return (
@@ -25,53 +22,6 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
       <Warn size={22} />
       Lodge a discrepancy
     </button>
-  );
-}
-
-/** One of the six compact metric cards in the row above the media panel. Numbers count up; times do not. */
-function Metric({ label, value, sub, tone, still }: { label: string; value: string; sub?: string; tone?: "green" | "amber"; still?: boolean }) {
-  return (
-    <div className="flex min-w-0 flex-col rounded-[10px] border border-line bg-surface px-2.5 py-2 shadow-card">
-      <span className="truncate text-[12px] text-muted">{label}</span>
-      <span className={cx("truncate text-[22px] font-semibold leading-tight", tone === "amber" ? "text-amber-ink" : tone === "green" ? "text-primary-ink" : "text-ink")}>
-        {still ? value : <CountUp text={value} />}
-      </span>
-      {sub && <span className="truncate text-[12px] text-muted">{sub}</span>}
-    </div>
-  );
-}
-
-/** Steps done: a 56 px ring that fills to done/12 (600 ms), with "6/12" inside. */
-function StepsRing({ done, sub }: { done: number; sub: string }) {
-  const r = 25;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="flex min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-surface px-2.5 py-2 shadow-card" data-testid="steps-ring">
-      <span className="relative flex size-14 flex-none items-center justify-center">
-        <svg viewBox="0 0 56 56" className="absolute inset-0 size-14 -rotate-90" aria-hidden>
-          <circle cx="28" cy="28" r={r} fill="none" stroke="var(--fl-border)" strokeWidth="6" />
-          <circle
-            cx="28"
-            cy="28"
-            r={r}
-            fill="none"
-            stroke="var(--fl-primary)"
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - Math.min(12, done) / 12)}
-            className="ring-fill"
-          />
-        </svg>
-        <span className="relative text-[13px] font-bold">
-          <CountUp text={`${done}/12`} />
-        </span>
-      </span>
-      <span className="flex min-w-0 flex-col">
-        <span className="text-[12px] leading-tight text-muted">Steps done</span>
-        <span className="truncate text-[12px] text-muted">{sub}</span>
-      </span>
-    </div>
   );
 }
 
@@ -93,13 +43,9 @@ export function MainView({
   onLodge: () => void;
 }) {
   const sopStep = useSopStep();
-  const target = checkTargetSeconds(useSopRevision());
   const cur = Math.min(state.current, 12);
   const def = sopStep(cur);
   const run = state.steps[cur - 1];
-  const done = stepsDone(state);
-  const devs = state.deviations.length;
-  const conf = conformanceSoFar(state);
   const confirmed = new Set(run.confirmed.map((c) => c.point));
   // Steps 7 to 10: a value for every point, in order, before the step can be left (new checks; see MeasureEntry).
   const measured = !!onMeasure && MEASURED_STEPS.includes(cur) && def.points.length > 0;
@@ -206,14 +152,8 @@ export function MainView({
       </section>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-        <div className="grid grid-cols-6 gap-2" data-testid="metrics">
-          <StepsRing done={done} sub={devs ? "Deviations corrected" : "On track"} />
-          <Metric label="Check points" value={`${checkPointsDone(state)} / ${TOTAL_CHECK_POINTS}`} sub="Sequence" />
-          <Metric label="Time elapsed" still value={fmtClock(elapsedMs(state, now))} sub={`Target ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
-          <Metric label="Deviations" value={String(devs)} sub={devs ? "See the step list" : "None yet"} tone={devs ? "amber" : "green"} />
-          <Metric label="Conformance" value={conf === null ? "—" : `${conf}%`} sub="So far" tone="green" />
-          <Metric label="Phase" still value={def.phase} />
-        </div>
+        {/* Six big metric cards, 2 rows of 3, above the videos. The page may scroll. */}
+        <CheckMetrics state={state} now={now} />
 
         <Panel className="py-3">
           <div className="grid grid-cols-2 items-start gap-4" data-testid="media">

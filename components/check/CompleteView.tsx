@@ -49,7 +49,6 @@ export function CompleteView({
             <span className="text-[18px] text-muted">12 of 12 done</span>
           </div>
           {STEPS.map((s) => {
-            const r = state.steps[s.n - 1];
             const corrected = !isRightFirstTime(state, s.n);
             return (
               <div key={s.n} className="flex min-h-11 items-center gap-3.5 px-3.5" data-testid={`result-step-${s.n}`}>

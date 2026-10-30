@@ -153,9 +153,12 @@ textarea:focus-visible {
 .tl-lift {
   animation: tl-lift 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-/* The Steps done ring fills to the new value. */
+/* The Steps done ring fills to the new value; step bars grow. */
 .ring-fill {
   transition: stroke-dashoffset 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bar-grow {
+  transition: height 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes tl-lift {
   from { transform: scale(0.98); }
@@ -189,7 +192,8 @@ textarea:focus-visible {
     animation-delay: 0ms;
   }
   .tl-line,
-  .ring-fill {
+  .ring-fill,
+  .bar-grow {
     transition: none;
   }
 }

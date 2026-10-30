@@ -140,7 +140,7 @@ test("15 minutes without activity: the check pauses itself and its duration stay
   await expect(page.locator(`tr[data-session="${id}"]`).getByTestId("duration")).toHaveText(/^00:00:[0-5]\d$/);
 });
 
-test("check screen: metrics, the two videos side by side, step details and all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {
+test("check screen: six metric cards above the videos, videos side by side, all 12 steps fit at 1440 x 900; Back works", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await startCheck(page);
   await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
@@ -165,7 +165,12 @@ test("check screen: metrics, the two videos side by side, step details and all 1
   expect(Math.abs(c!.height - i!.height)).toBeLessThan(2); // equal height
   expect(Math.abs(c!.width - i!.width)).toBeLessThan(4); // 50/50
   expect(d!.y).toBeGreaterThan(c!.y + c!.height);
-  expect(d!.y + d!.height).toBeLessThanOrEqual(900 + banner); // above the fold
+  // Six cards in 2 rows of 3: the page may scroll to the details.
+  const cards = await metrics.locator(":scope > div").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+  expect(new Set(cards).size).toBe(2);
+  await expect(page.getByTestId("phase-card").locator("[data-phase]")).toHaveText(["Setup", "Seating", "Clamp", "Measure", "Release"]);
+  await expect(page.getByTestId("step-squares").locator("[data-look]")).toHaveCount(12);
+  await expect(page.getByTestId("cycle-bars").locator("[data-step]")).toHaveCount(12);
   const list = await page.getByTestId("step-list").boundingBox();
   const last = await page.locator("li button[data-step='12']").boundingBox();
   expect(last!.y + last!.height).toBeLessThanOrEqual(list!.y + list!.height + 2); // all 12 steps, no scrolling (2 px for sub-pixel rounding)
@@ -192,7 +197,11 @@ test("check screen: metrics, the two videos side by side, step details and all 1
   await page.getByRole("button", { name: "Done, next step" }).click();
   await expect(page.locator("li[aria-current=step]")).toContainText(STEPS[3].name);
   await expect(page.locator("li[aria-current=step]")).not.toContainText("Re-confirm");
-  await expect(metrics).toContainText("Deviations0");
+  await expect(page.getByTestId("deviation-count")).toHaveText("0");
+  await expect(page.getByTestId("deviations-card")).toContainText("Clean run so far");
+  // Back made steps 2 and 3 not right first time: amber squares.
+  await expect(page.getByTestId("step-squares").locator("[data-look]")).toHaveAttribute("data-look", /.*/);
+  await expect(page.getByTestId("step-squares").locator("[data-look=redone]")).toHaveCount(2);
   await expect(page.getByTestId("steps-ring")).toContainText("3/12");
   await waitSaved(page);
 });
