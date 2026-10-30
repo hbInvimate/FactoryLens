@@ -23,7 +23,7 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 export interface Task {
-  /** "task": assigned with New Session or task:create. "check": started by the person on Start a check. */
+  /** "task": assigned (npm run task:create, or the tasks API for a Supervisor or admin). "check": started without a task (older checks). */
   kind: "task" | "check";
   /** The task id, or for a "check" the session id. */
   id: string;
@@ -80,7 +80,7 @@ export async function listTasks(user: Viewer): Promise<Task[]> {
 }
 
 /**
- * Checks started on Start a check, not from a task: a Quality Technician's own; an admin's or Supervisor's view
+ * Checks started without a task (before checks could only start from one): a Quality Technician's own; an admin's or Supervisor's view
  * has every real one (and the demo people's, see supervisor.ts). Newest first.
  */
 export async function listOwnChecks(user: Viewer): Promise<Task[]> {
@@ -132,7 +132,7 @@ export const DUPLICATE_TASK = "This check is already assigned and not started";
 
 /**
  * Whether the Quality Technician already has a Not started or In progress task for the same part and cell/fixture
- * (compared without case or extra spaces). Used by New Session and npm run task:create.
+ * (compared without case or extra spaces). Used by the tasks API and npm run task:create.
  */
 export async function hasActiveDuplicate(db: AnyDb, assignedTo: string, part: string, station: string): Promise<boolean> {
   const rows = await db

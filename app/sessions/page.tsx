@@ -47,8 +47,7 @@ async function SessionTable({ searchParams }: { searchParams: PageProps<"/sessio
       <>
         {switchRow}
         <p className="text-[19px] text-ink-2" data-testid="history-empty">
-          {isTestMode() ? "Test mode: no checks in the temporary test database yet. Sessions saved in Neon are not shown here. " : "No checks yet. "}
-          <Link href="/" className="font-semibold text-primary-ink underline">Start one</Link>.
+          {isTestMode() ? "Test mode: no checks in the temporary test database yet. Sessions saved in Neon are not shown here." : "No checks yet."}
         </p>
       </>
     );

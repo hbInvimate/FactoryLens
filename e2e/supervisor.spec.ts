@@ -39,7 +39,7 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
   // Watch: the live view. Read-only, refreshed every 5 seconds while the check runs.
   await page.getByTestId("ongoing").locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Watch/ }).click();
   await expect(page).toHaveURL(new RegExp(`/supervisor/live/${id}$`));
-  await expect(page.getByRole("heading", { name: "B-pillar outer · First-off check" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^B-pillar outer.* · First-off check$/ })).toBeVisible();
   await expect(page.getByTestId("live-chip")).toHaveText("LIVE");
   await expect(page.getByTestId("live-sub")).toContainText("Test Quality Technician · Laser cell 3 · FX-014 · SOP rev A · started");
   await expect(page.getByTestId("stat-step")).toHaveText("3/12");

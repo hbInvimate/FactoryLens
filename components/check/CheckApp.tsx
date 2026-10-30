@@ -125,8 +125,8 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
   if (load === "missing") {
     return (
       <PageCenter title="This check was not found" body="It is not on this device or on the server.">
-        <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
-          Start a check
+        <Link href="/tasks" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
+          Back to Sessions
         </Link>
       </PageCenter>
     );
@@ -144,8 +144,8 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
   if (state.left) {
     return (
       <PageCenter title="This check was left, not finished" body={`Reason: ${state.left.reason}. A new check was started instead.`}>
-        <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
-          Start a check
+        <Link href="/tasks" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
+          Back to Sessions
         </Link>
       </PageCenter>
     );
@@ -298,7 +298,7 @@ export function CheckApp({ id, revisions }: { id: string; revisions: SopRevision
         onVoice={voice.toggle}
         onPause={() => act({ type: "pause" })}
         onLeave={() => {
-          setLeaveTo("/");
+          setLeaveTo("/tasks");
           setLeaving(true);
         }}
         canPause={!ended && state.status !== "complete"}

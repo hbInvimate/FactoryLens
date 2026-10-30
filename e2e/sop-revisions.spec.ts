@@ -85,10 +85,9 @@ test.describe("revisions in the database (no browser)", () => {
   });
 });
 
-test("a new check stores the Active revision; the start page says rev A", async ({ page, request }) => {
-  await page.goto("/");
-  await expect(page.getByText("SOP: First-off check, rev A, 12 steps.", { exact: false })).toBeVisible();
+test("a new check stores the Active revision; the check shows rev A", async ({ page, request }) => {
   const id = await startCheck(page);
+  await expect(page.getByText("First-off check, rev A", { exact: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Done, next step", exact: true }).click();
   await expect(page.getByTestId("connection")).toHaveText("Connected");
   const journal = await (await request.get(`/api/sessions/${id}`)).json();

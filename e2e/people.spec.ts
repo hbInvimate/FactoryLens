@@ -27,12 +27,9 @@ async function serverActions(request: APIRequestContext, id: string) {
   return (await res.json()) as { meta: { operator: string }; actions: { type: string; step?: number }[] };
 }
 
-test("the start form shows the signed-in Quality Technician, read-only, and the session is stored under them", async ({ page, context }) => {
+test("a check started from an assigned task is stored under the signed-in Quality Technician", async ({ page, context }) => {
   await signedIn(page, "technician");
-  await page.goto("/");
   const me = testUser("technician").name;
-  await expect(page.getByTestId("operator-name")).toHaveText(me);
-  await expect(page.getByRole("textbox", { name: "Quality Technician" })).toHaveCount(0);
   const id = await startCheck(page);
   await doSteps(page, 1, 1);
   await waitSaved(page);

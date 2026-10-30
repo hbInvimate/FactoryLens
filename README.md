@@ -8,7 +8,7 @@ The reference pack is in [`docs/`](docs/README.md): the SOP, the scenarios, the 
 
 | Path | What it is |
 |---|---|
-| `/` | Start a check (part, cell and fixture, Quality Technician label). Offers to resume a check in progress on this device. |
+| `/` | Redirects to `/tasks`. A check starts only from an assigned task (Start, or Resume) on the Quality Technician's Sessions list. |
 | `/check/[id]` | The live check. |
 | `/sessions` | History of every check. |
 | `/sessions/[id]` | One check: its steps, deviations with times, lodged discrepancies and handoff. |

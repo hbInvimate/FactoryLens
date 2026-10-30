@@ -67,7 +67,6 @@ test("a running check keeps revision A; new checks use the new revision and show
 
   // A new check by another Quality Technician: the new revision.
   const t2 = await signedIn(browser, "technician2");
-  await expect(t2.page.getByText(`SOP: First-off check, rev ${draftLabel}, 12 steps.`)).toBeVisible();
   newId = await startCheck(t2.page);
   await doSteps(t2.page, 1, 1);
   await waitSaved(t2.page);
@@ -87,7 +86,7 @@ test("the one-time banner and I have read this", async ({ browser }) => {
   await banner.getByRole("button", { name: "I have read this" }).click();
   await expect(banner).toHaveCount(0);
   await t1.page.reload();
-  await expect(t1.page.getByText(`SOP: First-off check, rev ${draftLabel}`, { exact: false })).toBeVisible();
+  await expect(t1.page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
   await expect(t1.page.getByTestId("sop-banner")).toHaveCount(0); // once only
   await t1.ctx.close();
 });
@@ -111,7 +110,6 @@ test("roll back to revision A with a reason; every action is in the audit log", 
 
   // New checks use A again, and Quality Technicians see the banner for it once.
   const t2 = await signedIn(browser, "technician2");
-  await expect(t2.page.getByText("SOP: First-off check, rev A, 12 steps.")).toBeVisible();
   await expect(t2.page.getByTestId("sop-banner")).toContainText("SOP rev A is active.");
   await t2.ctx.close();
 

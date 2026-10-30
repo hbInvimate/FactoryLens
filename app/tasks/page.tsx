@@ -9,15 +9,14 @@ import { ButtonLink, Card, Chip, Input, StatTile, Table, Td, Th, cx, type ChipTo
 import { IconClock, IconPlay, IconSearch } from "@/components/ds/icons";
 import { LocalTime } from "@/components/LocalTime";
 import { AutoSubmitSelect } from "@/components/tasks/AutoSubmit";
-import { NewTask } from "@/components/tasks/NewTask";
 import { OpenTask } from "@/components/tasks/OpenTask";
 import { TechShell } from "@/components/tasks/TechShell";
-import { seesAllSessions } from "@/lib/auth/roles";
 import { currentUser } from "@/lib/auth/server";
 import { NotConfigured } from "@/lib/server/repo";
 import { activeRevision } from "@/lib/server/sop";
-import { PRIORITIES, PRIORITY_LABEL, TASK_STATUS_LABEL, listOwnChecks, listTasks, technicians, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
-import Link from "next/link";
+import { bannerFor } from "@/lib/server/sopActivate";
+import { SopBanner } from "@/components/SopBanner";
+import { PRIORITIES, PRIORITY_LABEL, TASK_STATUS_LABEL, listOwnChecks, listTasks, type Priority, type Task, type TaskStatus } from "@/lib/server/tasks";
 
 export const metadata = { title: "FactoryLens AI: Sessions" };
 
@@ -54,15 +53,15 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
 
   let tasks: Task[];
   let checks: Task[];
-  let assignees: { id: string; name: string }[] | null;
   let rev;
+  let banner;
   try {
-    [tasks, checks, assignees, rev] = await Promise.all([listTasks(user), listOwnChecks(user), seesAllSessions(user.role) ? technicians() : Promise.resolve(null), activeRevision()]);
+    [tasks, checks, rev, banner] = await Promise.all([listTasks(user), listOwnChecks(user), activeRevision(), bannerFor(user.id)]);
   } catch (e) {
     if (e instanceof NotConfigured) return <Card className="px-6 py-5 text-[17px]">{e.message}</Card>;
     throw e;
   }
-  // Assigned tasks and the checks started on Start a check, in one list, newest first.
+  // Assigned tasks and checks started without a task (older ones), in one list, newest first.
   tasks = [...tasks, ...checks].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const shown = tasks.filter((t) => matches(t, status, priority, q));
   const notStarted = tasks.filter((t) => t.status === "not_started").length;
@@ -71,13 +70,13 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
 
   return (
     <>
+      {/* A new Active SOP revision, once per Quality Technician. */}
+      {banner && <SopBanner {...banner} />}
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-1 flex-col">
           <h1 className="text-[30px] font-bold">Sessions</h1>
           <p className="text-[16px] text-muted">Checks assigned to you</p>
         </div>
-        {/* Technicians start an assigned task here, or an unassigned check from the link under the list; only an admin creates one. */}
-        {assignees && <NewTask assignees={assignees} />}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -180,16 +179,12 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </tbody>
       </Table>
 
-      <div className="flex flex-col items-start gap-1">
-        {active === 0 && (
-          <p className="text-[17px] text-ink-2" data-testid="none-assigned">
-            No checks assigned to you
-          </p>
-        )}
-        <Link href="/" className="inline-flex min-h-[44px] items-center text-[15px] text-muted underline-offset-4 hover:underline" data-testid="start-unassigned">
-          Start an unassigned check
-        </Link>
-      </div>
+      {/* A check is started only with Start on an assigned task. */}
+      {active === 0 && (
+        <p className="text-[17px] text-ink-2" data-testid="none-assigned">
+          No checks assigned to you
+        </p>
+      )}
     </>
   );
 }

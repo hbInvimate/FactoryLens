@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 import { plantDay } from "../lib/shifts";
 import { signInAs } from "./auth-helpers";
 import { build } from "./fixtures";
-import { doSteps, unique, waitSaved } from "./helpers";
+import { doSteps, startAt, unique, waitSaved } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -17,14 +17,8 @@ test("a check finished by a Quality Technician appears at once for a Quality Eng
   const tech = await techCtx.newPage();
   await signInAs(tech, "technician", "/signin");
   await expect(tech).toHaveURL(/localhost:\d+\/tasks$/);
-  await tech.goto("/");
-  await tech.getByLabel("Cell and fixture", { exact: true }).selectOption("__add__");
-  await tech.getByLabel("New station: cell and fixture").fill(station);
-  await tech.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(tech.getByLabel("Cell and fixture", { exact: true })).toHaveValue(station);
-  await tech.getByRole("button", { name: "Start the check" }).click();
-  await tech.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
-  const realId = tech.url().split("/check/")[1];
+  // A task at the new station (cell and fixture), started from Sessions.
+  const realId = await startAt(tech, station);
   await doSteps(tech, 1, 12);
   await expect(tech.getByRole("heading", { name: "Check complete" })).toBeVisible();
   await waitSaved(tech);

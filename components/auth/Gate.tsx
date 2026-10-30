@@ -62,7 +62,7 @@ async function Check({ area, next, children }: { area: Area; next: string; child
           <ButtonLink variant="primary" href={SIGN_IN_PATH[area]}>
             Sign in as a {NEEDS[area]}
           </ButtonLink>
-          <ButtonLink href={other === "check" ? "/" : AREA_HOME[other]}>{HOME_TEXT[other]}</ButtonLink>
+          <ButtonLink href={AREA_HOME[other]}>{HOME_TEXT[other]}</ButtonLink>
         </div>
         {/* The dashboard's sidebar card has its own Sign out. */}
         {area !== "dashboard" && (

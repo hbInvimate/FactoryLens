@@ -2,20 +2,20 @@
 import { expect, test } from "@playwright/test";
 import { GENERIC_SIGN_IN_ERROR } from "../lib/auth/roles";
 import { signInAs, testUser } from "./auth-helpers";
+import { startCheck } from "./helpers";
 
 // These tests start signed out.
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test("a Quality Technician signs in at /signin and starts a check", async ({ page }) => {
+test("a Quality Technician signs in at /signin and starts a check from an assigned task", async ({ page }) => {
+  // There is no start page: / goes to Sessions.
   await page.goto("/");
-  await expect(page).toHaveURL(/\/signin\?next=%2F$/);
+  await expect(page).toHaveURL(/\/signin\?next=%2Ftasks$/);
   await expect(page.getByText("Quality Technician", { exact: true })).toBeVisible();
   await signInAs(page, "technician", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/$/); // ?next=/ is kept
+  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
   await expect(page.getByTestId("signed-in-user")).toContainText(testUser("technician").name);
-  await page.getByRole("button", { name: "Start the check" }).click();
-  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
-  await expect(page.locator("li[aria-current=step]")).toBeVisible();
+  await startCheck(page);
 });
 
 test("a Quality Technician cannot open the dashboard", async ({ page, context }) => {

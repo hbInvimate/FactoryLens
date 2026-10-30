@@ -283,8 +283,8 @@ export function EndedView({ state, meta, sync }: { state: CheckState; meta: Sess
             <MiniStepList state={state} short={false} />
           </Panel>
           <div className="flex gap-3">
-            <Link href="/" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
-              Start a new check
+            <Link href="/tasks" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-primary bg-primary px-6 text-[20px] font-semibold text-on-strong shadow-card hover:bg-primary-hover">
+              Back to Sessions
             </Link>
             <Link href="/sessions" className="tap inline-flex items-center rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-6 text-[20px] font-semibold shadow-card hover:bg-surface-2">
               Past sessions

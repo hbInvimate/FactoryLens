@@ -1,7 +1,7 @@
 // Scenario 7: things going wrong in the app itself.
 import { expect, test } from "@playwright/test";
 import { ADMIN_STATE } from "./auth-helpers";
-import { doSteps, grid, recordValues, startCheck, tap, waitSaved } from "./helpers";
+import { doSteps, grid, recordValues, startCheck, tap, waitSaved, assignTask } from "./helpers";
 
 test("Refresh mid-session resumes where she left off", async ({ page }) => {
   const id = await startCheck(page);
@@ -14,10 +14,10 @@ test("Refresh mid-session resumes where she left off", async ({ page }) => {
   for (const h of ["H1", "H2", "H3"]) await expect(g.getByRole("button", { name: h, exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(g.getByRole("button", { name: "H4", exact: true })).toHaveAttribute("aria-pressed", "false");
 
-  // The start page offers to resume it too.
+  // Sessions offers to resume it too.
   await waitSaved(page);
-  await page.goto("/");
-  await page.getByRole("link", { name: "Resume the check" }).click();
+  await page.goto("/tasks");
+  await page.locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
   await expect(page).toHaveURL(new RegExp(`/check/${id}$`));
   await expect(page.locator("li[aria-current=step]")).toContainText("Check holes H1 to H14");
 });
@@ -88,7 +88,7 @@ test("Mistaken tap: Undo within 10 seconds", async ({ page }) => {
 });
 
 test("Pause and Resume; Leave asks for a reason and keeps the session", async ({ page }) => {
-  await startCheck(page);
+  const id = await startCheck(page);
   await doSteps(page, 1, 2);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Paused" })).toBeVisible();
@@ -100,8 +100,8 @@ test("Pause and Resume; Leave asks for a reason and keeps the session", async ({
   await expect(leave).toBeDisabled();
   await page.getByRole("button", { name: "End of shift" }).click();
   await leave.click();
-  await page.waitForURL(/\/$/);
-  await page.getByRole("link", { name: "Resume the check" }).click();
+  await page.waitForURL(/\/tasks$/);
+  await page.locator(`tr[data-session="${id}"]`).getByRole("link", { name: /^Resume / }).click();
   await expect(page.getByRole("dialog", { name: "Paused" })).toContainText("End of shift");
   await page.getByRole("button", { name: "Resume" }).click();
   await expect(page.locator("li[aria-current=step]")).toContainText("Lower the part onto pads P1 to P3");
@@ -118,15 +118,10 @@ test("After a completed check, a new check starts at once and nothing shows as i
   await expect(page.getByRole("heading", { name: "Check complete" })).toBeVisible();
   await waitSaved(page);
 
-  // Back to the start page by the in-app link (the start page was visited before).
-  await page.getByRole("link", { name: "Start a new check" }).click();
-  await page.waitForURL(/\/$/);
-  await expect(page.getByText("A check is in progress on this device")).toHaveCount(0);
-  const start = page.getByRole("button", { name: "Start the check" });
-  await expect(start).toBeEnabled();
-  await start.click();
-  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
-  const second = page.url().split("/check/")[1];
+  // Back to Sessions by the in-app link; the next assigned task starts at once.
+  await page.getByRole("link", { name: "Back to Sessions" }).click();
+  await page.waitForURL(/\/tasks$/);
+  const second = await startCheck(page);
   expect(second).not.toBe(first);
   await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
   expect(await statusOf(request, first)).toBe("complete");
@@ -136,42 +131,27 @@ test("After a completed check, a new check starts at once and nothing shows as i
   await page.getByRole("button", { name: "Leave", exact: true }).click();
   await page.getByRole("button", { name: "End of shift" }).click();
   await page.getByRole("button", { name: "Leave the check" }).click();
-  await page.waitForURL(/\/$/);
-  await expect(page.getByText("A check is in progress on this device")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Start the check" })).toBeEnabled();
+  await page.waitForURL(/\/tasks$/);
   await waitSavedFor(request, second, "complete");
+  // Nothing in progress on this device: another task starts.
+  expect(await startCheck(page)).not.toBe(second);
 });
 
 async function waitSavedFor(request: import("@playwright/test").APIRequestContext, id: string, status: string) {
   await expect.poll(() => statusOf(request, id), { timeout: 15_000 }).toBe(status);
 }
 
-test("A check still running: resume it, or leave it with a reason and start a new one", async ({ page, request }) => {
+test("A check still running on this device: Start on another task says so and offers to resume it", async ({ page }) => {
   const old = await startCheck(page);
   await doSteps(page, 1, 2);
   await waitSaved(page);
 
-  await page.goto("/");
-  await expect(page.getByText("A check is in progress on this device")).toBeVisible();
-  await expect(page.getByText("Step 3 of 12.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start the check" })).toBeDisabled();
-  await expect(page.getByRole("link", { name: "Resume the check" })).toBeVisible();
-
-  await page.getByRole("button", { name: "End this check" }).click();
-  const confirm = page.getByRole("button", { name: "Leave it and start a new check" });
-  await expect(confirm).toBeDisabled();
-  await page.getByRole("button", { name: "Wrong part or session" }).click();
-  await confirm.click();
-
-  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/, { timeout: 5_000 });
-  expect(page.url()).not.toContain(old);
-  await expect(page.locator("li[aria-current=step]")).toContainText("Confirm part, fixture and SOP");
-  await waitSavedFor(request, old, "left");
-
-  const journal = await (await request.get(`/api/sessions/${old}`)).json();
-  expect(journal.actions.some((a: { type: string; end?: boolean; reason?: string }) => a.type === "leave" && a.end && a.reason === "Wrong part or session")).toBeTruthy();
-  await page.goto(`/check/${old}`);
-  await expect(page.getByRole("heading", { name: "This check was left, not finished" })).toBeVisible();
+  const title = await assignTask(page);
+  await page.goto(`/tasks?q=${encodeURIComponent(title)}`);
+  await page.getByRole("button", { name: `Start ${title}` }).click();
+  await expect(page.getByText("A check is in progress on this device. Finish or leave it first.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Resume it" })).toHaveAttribute("href", `/check/${old}`);
+  await expect(page).toHaveURL(/\/tasks/);
 });
 
 test("Touch targets are at least 56 px", async ({ page }) => {

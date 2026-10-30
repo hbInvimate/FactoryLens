@@ -19,14 +19,12 @@ async function wrongClampsThenFix(page: Page) {
   await page.getByRole("button", { name: "Fixed, continue" }).click();
 }
 
-test("Station list: seeded station, Add a station, empty station on the dashboard", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByLabel("Cell and fixture", { exact: true })).toHaveValue("Laser cell 3 · FX-014");
+test("Station list: seeded station, a station added, empty station on the dashboard", async ({ page }) => {
   const name = unique("Laser cell 9 · FX-EMPTY");
-  await page.getByLabel("Cell and fixture", { exact: true }).selectOption("__add__");
-  await page.getByLabel("New station: cell and fixture").fill(name);
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(page.getByLabel("Cell and fixture", { exact: true })).toHaveValue(name);
+  expect((await page.request.post("/api/stations", { data: { name } })).ok()).toBeTruthy();
+  const { stations } = (await (await page.request.get("/api/stations")).json()) as { stations: string[] };
+  expect(stations).toContain("Laser cell 3 · FX-014");
+  expect(stations).toContain(name);
 
   await openDashboard(page, name);
   // The tests run in test mode (FL_STORAGE=memory), so the empty dashboard says so.
