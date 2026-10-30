@@ -197,7 +197,8 @@ export async function wideMeasurements(f: DashFilter, source: Source | null): Pr
       point: t.measurements.pointId,
       values: sql<number[]>`array_agg(${t.measurements.value} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
       sources: sql<string[]>`array_agg(${t.measurements.source} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
-      times: sql<string[]>`array_agg(${t.measurements.recordedAt} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
+      // Milliseconds: the same on Neon and PGlite (a timestamp array comes back as text there).
+      times: sql<number[]>`array_agg((extract(epoch from ${t.measurements.recordedAt}) * 1000)::float8 order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
       status: t.sessions.status,
       startedAt: t.sessions.startedAt,
       technician: t.sessions.operatorLabel,
@@ -218,7 +219,7 @@ export async function wideMeasurements(f: DashFilter, source: Source | null): Pr
     const vals = (g.values ?? []).map(Number);
     const sources = g.sources ?? [];
     const times = g.times ?? [];
-    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1), demo: sources[sources.length - 1] === "demo", at: new Date(times[times.length - 1]).toISOString() };
+    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1), demo: sources[sources.length - 1] === "demo", at: new Date(Number(times[times.length - 1])).toISOString() };
   }
   const rows = [...bySession.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.sessionId.localeCompare(b.sessionId));
   return { count, rows };

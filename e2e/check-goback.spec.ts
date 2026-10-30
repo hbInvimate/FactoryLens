@@ -99,10 +99,11 @@ test("right first time: Back, an undone Next step and a corrected value all coun
   expect([isRightFirstTime(back, 1), isRightFirstTime(back, 2)]).toEqual([true, false]);
   const undone = reduce(log([{ type: "next_step", step: 1 }, { type: "undo", target: "a0" }, { type: "next_step", step: 1 }]), 0);
   expect(isRightFirstTime(undone, 1)).toBe(false);
-  const steps = log([1, 2, 3, 4, 5, 6].map((n) => ({ type: "next_step", step: n }) as ActionBody));
+  // Steps 1 to 6 done right: every point tapped, in order, then Next step.
+  const steps = log(STEPS.slice(0, 6).flatMap((s) => [...s.points.map((point) => ({ type: "tap_point", step: s.n, point }) as ActionBody), { type: "next_step", step: s.n } as ActionBody]));
   const measure = (point: string, value: number): ActionBody => ({ type: "measure", step: 7, point, value, unit: "mm", source: "typed", heard: "", confidence: null, status: "recorded" });
   const pts = STEPS[6].points.map((p) => measure(p, 8));
-  const fixed = reduce([...steps, ...log([measure("H1", 9), ...pts.slice(1), measure("H1", 8), { type: "next_step", step: 7 }]).map((a, i) => ({ ...a, id: `m${i}`, seq: 10 + i, at: 10_000 + i }))], 0);
+  const fixed = reduce([...steps, ...log([measure("H1", 9), ...pts.slice(1), measure("H1", 8), { type: "next_step", step: 7 }]).map((a, i) => ({ ...a, id: `m${i}`, seq: 100 + i, at: 100_000 + i }))], 0);
   expect(fixed.steps[6].doneAt).not.toBeNull();
   expect(isRightFirstTime(fixed, 7)).toBe(false);
   expect(correctFirstTime(fixed)).toBe(6);

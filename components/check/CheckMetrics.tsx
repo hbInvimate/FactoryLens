@@ -11,6 +11,7 @@ import { useSopRevision, useSopStep } from "@/lib/client/sopContext";
 import { STEPS, TOTAL_CHECK_POINTS } from "@/lib/sop";
 import { checkTargetSeconds } from "@/lib/sop-revisions";
 import { cx } from "../ui";
+import { confTone } from "@/lib/conformance-tone";
 
 const CARD = "flex min-w-0 flex-col gap-2 rounded-[20px] border border-line bg-surface px-5 py-4 shadow-card";
 const LABEL = "text-[16px] text-muted";
@@ -83,7 +84,6 @@ export function StepSquares({ looks, testId }: { looks: ("right" | "redone" | "c
   );
 }
 
-export const confTone = (p: number | null) => (p === null ? "text-muted" : p >= 90 ? "text-primary-ink" : p >= 75 ? "text-amber-ink" : "text-red-ink");
 
 export function CheckMetrics({ state, now }: { state: CheckState; now: number }) {
   const sopStep = useSopStep();
