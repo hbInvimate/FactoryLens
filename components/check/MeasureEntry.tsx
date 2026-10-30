@@ -95,14 +95,16 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
           <span>{measurementPrompt(current)}</span>
         </div>
       )}
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-[15px] text-muted">{edit && recorded.includes(edit) ? "Correct the value for" : "Point"}</span>
+      {/* A fixed layout, the same on every measure step, so nothing moves with point names or screen width.
+          Row 1: Point (110 px) · Value (110 px) · Record value, all 48 px tall on one line. */}
+      <div className="grid grid-cols-[110px_110px_auto] items-end justify-start gap-2">
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="truncate text-[15px] text-muted">{edit && recorded.includes(edit) ? "Correct the value for" : "Point"}</span>
           <select
             aria-label={`Step ${step} point to record`}
             value={chosen}
             onChange={(e) => onEdit(e.target.value === current ? null : e.target.value)}
-            className="tap rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 text-[20px]"
+            className="h-12 min-h-[48px]! rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 text-[18px] w-[110px] min-w-0! truncate"
           >
             {current && <option value={current}>{current}</option>}
             {recorded.map((p) => (
@@ -112,7 +114,7 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex min-w-0 flex-col gap-1">
           <span className="text-[15px] text-muted">Value ({MEASUREMENT_UNIT})</span>
           <input
             aria-label={`Value for ${chosen} in ${MEASUREMENT_UNIT}`}
@@ -120,38 +122,42 @@ export function MeasureEntry({ step, points, values, edit, onEdit, prompt, onRec
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && record()}
-            className="tap w-36 rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 text-[20px]"
+            className="h-12 min-h-[48px]! rounded-[var(--fl-radius-md)] border border-line-strong bg-surface px-3 text-[18px] w-[110px]"
           />
         </label>
-        <Btn variant="success" onClick={record}>
+        <Btn variant="success" onClick={record} className="h-12 min-h-[48px]! whitespace-nowrap">
           Record value
         </Btn>
-        {DEMO_FILL_ENABLED && onFillDemo && (
-          <span className="flex flex-col gap-0.5">
-            <Btn
-              variant="amber"
-              disabled={missing.length === 0}
-              onClick={() => {
-                onFillDemo(missing);
-                setText("");
-                setError(null);
-                onEdit(null);
-              }}
-            >
-              Fill demo values
-            </Btn>
-            <span className="text-[13px] text-amber-ink">Demo only. Values are invented.</span>
-          </span>
-        )}
-        <span className="text-[14px] text-muted">
-          {current ? `${points.length - missing.length} of ${points.length} recorded. Next: ${current}.` : `All ${points.length} recorded.`} Recording a value confirms the point.
-        </span>
       </div>
       {error && (
         <p role="alert" data-testid="measure-error" className="text-[16px] text-red-ink">
           {error}
         </p>
       )}
+      {/* Row 2: Fill demo values, with its note on the same line. */}
+      {DEMO_FILL_ENABLED && onFillDemo && (
+        <div className="flex flex-nowrap items-center gap-3">
+          <Btn
+            variant="amber"
+            disabled={missing.length === 0}
+            className="h-12 min-h-[48px]! flex-none whitespace-nowrap"
+            onClick={() => {
+              onFillDemo(missing);
+              setText("");
+              setError(null);
+              onEdit(null);
+            }}
+          >
+            Fill demo values
+          </Btn>
+          <span className="text-[13px] whitespace-nowrap text-amber-ink">Demo only. Values are invented.</span>
+        </div>
+      )}
+      {/* Row 3: progress. */}
+      <p className="text-[14px] text-muted" data-testid="measure-progress">
+        {current ? `${points.length - missing.length} of ${points.length} recorded. Next: ${current}.` : `All ${points.length} recorded.`} Recording a value confirms the point.
+      </p>
+      {/* Row 4: the recorded values, then the working note. */}
       {recorded.length > 0 && (
         <ul className="flex flex-wrap gap-2" aria-label={`Step ${step} recorded values`}>
           {recorded.map((p) => {
