@@ -85,7 +85,7 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
   await expect(page).toHaveURL(/\/supervisor\/tasks\?status=all&who=/);
   await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`)).toBeVisible();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Analytics" }).click();
-  for (const c of ["ftr-weeks", "step-times", "top-deviations", "station-discrepancies"]) await expect(page.getByTestId(c)).toBeVisible();
+  for (const c of ["ai-banner", "rft-card", "rft-gauge", "step-times", "top-deviations", "station-discrepancies"]) await expect(page.getByTestId(c)).toBeVisible();
   const filters = page.getByTestId("analytics-filters");
   await expect(filters.getByLabel("Period")).toHaveValue("8");
   await expect(filters.getByLabel("Station")).toHaveValue("all");
@@ -156,21 +156,23 @@ test("Analytics shows real deviations and discrepancies; each row opens Tasks fi
   await expect(page).toHaveURL(/\/supervisor$/);
   await page.goto(`/supervisor/analytics?weeks=8&station=${encodeURIComponent(station)}`);
   await expect(page.getByTestId("analytics-filters").getByLabel("Station")).toHaveValue(station);
-  await expect(page.getByRole("heading", { name: "Typical time per step (median)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where the time goes · per step" })).toBeVisible();
   await expect(page.getByTestId("step-times").locator("[data-step]")).toHaveCount(12);
 
   const devs = page.getByTestId("deviation-rows");
   await expect(devs.locator("[data-row]")).toHaveCount(2);
-  for (const [key, label] of [["5-wrong_order", "Step 5 wrong order"], ["11-skipped", "Step 11 skipped"]]) {
-    await expect(devs.locator(`[data-row="${key}"]`)).toContainText(label);
-    await expect(devs.locator(`[data-row="${key}"] b`)).toHaveText("1");
+  for (const [step, kind, label] of [["5", "wrong_order", "wrong order ×1"], ["11", "skipped", "skipped ×1"]]) {
+    await expect(devs.locator(`[data-row="${step}"] [data-tag="${kind}"]`)).toHaveText(label);
+    await expect(devs.locator(`[data-row="${step}"]`).getByTestId("hotspot-count")).toHaveText("1");
   }
+  await expect(page.getByTestId("deviation-total")).toHaveText("2");
+  await expect(page.getByTestId("step-tiles").locator("[data-step]")).toHaveCount(12);
   const stations = page.getByTestId("station-rows");
   await expect(stations.locator("[data-row]")).toHaveCount(1);
   await expect(stations.locator(`[data-row="${station}"] b`)).toHaveText("1");
 
   // A deviation row opens Tasks filtered to it, with this check in it.
-  await devs.locator('[data-row="11-skipped"]').click();
+  await devs.locator('[data-row="11"] [data-tag="skipped"]').click();
   await expect(page).toHaveURL(/\/supervisor\/tasks\?status=all&step=11&dev=skipped$/);
   await expect(page.getByTestId("tasks-focus")).toContainText("Step 11 skipped");
   await expect(page.getByTestId("supervisor-tasks").locator(`tr[data-session="${id}"]`)).toBeVisible();

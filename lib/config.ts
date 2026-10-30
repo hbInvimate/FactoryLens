@@ -92,3 +92,6 @@ export const MEASUREMENT_TOLERANCES: Record<"H" | "S" | "N" | "T" | "F", { nomin
   F: { nominal: 1.2, tol: 0.05 },
 };
 export const NEAR_LIMIT_SHARE = 0.3;
+
+/** Supervisor Analytics: the right-first-time goal, percent of completed checks. */
+export const RFT_GOAL_PERCENT = 90;

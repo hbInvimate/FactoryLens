@@ -281,6 +281,19 @@ export interface Analytics {
   byStation: { station: string; count: number }[];
   /** For the station filter. */
   stations: string[];
+  /** Right first time over the completed checks; left checks are counted apart (not scored). */
+  rft: { completed: number; right: number; redone: number; redoneSteps: number[]; left: number; runningRate: number[] };
+  medianCycleSeconds: number | null;
+  taktSeconds: number | null;
+  /** Per step 1 to 12: deviations (skipped, wrong order) and their kinds. */
+  deviationsByStep: { step: number; total: number; kinds: { kind: DeviationKind; count: number }[] }[];
+  discrepancies: {
+    total: number;
+    open: number;
+    cleared: number;
+    byCategory: { category: string; count: number }[];
+    openList: { id: string; sessionId: string; issue: string; category: string; station: string; loggedAt: string }[];
+  };
 }
 
 function mondayOf(now: Date): Date {
@@ -301,7 +314,7 @@ export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<A
   const monday = mondayOf(now);
   const from = new Date(monday.getTime() - (f.weeks - 1) * 7 * DAY);
   const where = and(shown, gte(t.sessions.startedAt, from), f.station ? eq(stationExpr, f.station) : undefined);
-  const [rows, devs, discs, stations, rev] = await Promise.all([
+  const [rows, devs, discs, stations, rev, leftRows, discRows] = await Promise.all([
     db.select().from(t.sessions).where(and(where, eq(t.sessions.status, "complete"))).orderBy(desc(t.sessions.startedAt)).limit(3000),
     db
       .select({ step: t.stepEvents.step, kind: t.stepEvents.kind, count: count() })
@@ -317,6 +330,13 @@ export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<A
       .groupBy(stationExpr),
     getRepo().stations(),
     activeRevision(),
+    db.select({ n: count() }).from(t.sessions).where(and(where, eq(t.sessions.status, "left"))),
+    db
+      .select({ id: t.discrepancies.id, sessionId: t.discrepancies.sessionId, issue: t.discrepancies.issueLabel, category: t.discrepancies.category, status: t.discrepancies.status, loggedAt: t.discrepancies.loggedAt, station: stationExpr })
+      .from(t.discrepancies)
+      .innerJoin(t.sessions, eq(t.sessions.id, t.discrepancies.sessionId))
+      .where(where)
+      .orderBy(desc(t.discrepancies.loggedAt)),
   ]);
   const weeks: Week[] = Array.from({ length: f.weeks }, (_, i) => {
     const start = new Date(monday.getTime() - (f.weeks - 1 - i) * 7 * DAY);
@@ -325,14 +345,48 @@ export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<A
     return { start: ymd(start), completed: done.length, ftrPct: pct(done.filter(ftr).length, done.length) };
   });
   const secs: number[][] = STEPS.map(() => []);
+  // Per completed check, oldest first: every step right first time, and the steps that were not.
+  const checks: { right: boolean; missed: number[] }[] = [];
   for (const s of await withActions(db, rows.slice(0, 300))) {
     const st = reduce(s.actions, s.startedAt);
     secs.forEach((x, i) => {
       const ms = stepActiveMs(st, i + 1);
       if (ms !== null) x.push(ms / 1000);
     });
+    const missed = STEPS.map((x) => x.n).filter((n) => !isRightFirstTime(st, n));
+    checks.unshift({ right: missed.length === 0, missed });
   }
+  const right = checks.filter((c) => c.right).length;
+  const cycles = rows.map((r) => r.activeSeconds).filter((x): x is number => x !== null);
+  const targets = STEPS.map((_, i) => rev.steps[i]?.targetCtSeconds ?? null);
+  const kinds = devs.filter((d): d is typeof d & { kind: DeviationKind } => isDeviationKind(d.kind));
+  const isOpen = (s: string) => s === "open" || s === "escalated";
+  const cats = new Map<string, number>();
+  for (const d of discRows) cats.set(d.category ?? "Other", (cats.get(d.category ?? "Other") ?? 0) + 1);
   return {
+    rft: {
+      completed: checks.length,
+      right,
+      redone: checks.length - right,
+      redoneSteps: [...new Set(checks.flatMap((c) => c.missed))].sort((a, b) => a - b),
+      left: Number(leftRows[0]?.n ?? 0),
+      runningRate: checks.map((_, i) => Math.round((checks.slice(0, i + 1).filter((c) => c.right).length / (i + 1)) * 100)),
+    },
+    medianCycleSeconds: cycles.length ? Math.round(percentile(cycles, 0.5) as number) : null,
+    taktSeconds: targets.every((x) => x !== null) ? targets.reduce((a, b) => a! + b!, 0) : null,
+    deviationsByStep: STEPS.map((s) => {
+      const k = kinds.filter((d) => d.step === s.n).map((d) => ({ kind: d.kind, count: Number(d.count) }));
+      return { step: s.n, total: k.reduce((a, b) => a + b.count, 0), kinds: k.sort((a, b) => b.count - a.count) };
+    }),
+    discrepancies: {
+      total: discRows.length,
+      open: discRows.filter((d) => isOpen(d.status)).length,
+      cleared: discRows.filter((d) => !isOpen(d.status)).length,
+      byCategory: [...cats.entries()].map(([category, n]) => ({ category, count: n })).sort((a, b) => b.count - a.count),
+      openList: discRows
+        .filter((d) => isOpen(d.status))
+        .map((d) => ({ id: d.id, sessionId: d.sessionId, issue: d.issue, category: d.category ?? "Other", station: d.station, loggedAt: d.loggedAt.toISOString() })),
+    },
     weeks,
     steps: STEPS.map((s, i) => ({
       step: s.n, name: s.name, sessions: secs[i].length, medianSeconds: secs[i].length ? Math.round(percentile(secs[i], 0.5) as number) : null, targetSeconds: rev.steps[i]?.targetCtSeconds ?? null,
