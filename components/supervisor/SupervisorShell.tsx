@@ -48,7 +48,7 @@ export function SupervisorShell({ current, children }: { current?: SupervisorNav
 export function SupervisorPage({ current, title, sub, actions, children }: { current: SupervisorNavKey; title: string; sub: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
     <SupervisorShell current={current}>
-      <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-6 py-6 md:px-8">
+      <main className="page-main flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col">
             <h1 className="text-[30px] font-bold">{title}</h1>

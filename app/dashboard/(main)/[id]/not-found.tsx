@@ -4,7 +4,7 @@ import { ButtonLink } from "@/components/ds";
 export default function SessionNotFound() {
   return (
     <Page>
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-10 md:px-8">
+      <main className="page-main flex flex-col gap-4">
         <Card className="flex flex-col gap-3 px-6 py-6">
           <h1 className="text-[26px] font-semibold" data-testid="session-not-found">
             Session not found

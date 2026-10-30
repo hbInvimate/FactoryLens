@@ -433,7 +433,7 @@ async function ReportPageBody(props: PageProps<"/dashboard/[id]">) {
 export default function ReportPage(props: PageProps<"/dashboard/[id]">) {
   return (
     <Page>
-      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-6 py-6 md:px-8 print:block print:max-w-none print:px-0 print:py-0 print:[&>*]:mb-4">
+      <main className="page-main flex flex-col gap-4 print:block print:max-w-none print:px-0 print:py-0 print:[&>*]:mb-4">
         <Suspense fallback={<Skeleton rows={12} />}>
           <ReportPageBody {...props} />
         </Suspense>

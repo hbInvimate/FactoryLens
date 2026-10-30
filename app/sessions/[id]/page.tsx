@@ -203,7 +203,7 @@ export default function SessionPage(props: PageProps<"/sessions/[id]">) {
     <Gate area="session" next="/sessions">
       <Shell>
         {(back) => (
-        <main className="flex flex-1 flex-col gap-5 px-8 py-7">
+        <main className="page-main flex flex-1 flex-col gap-5">
           <Link href={back.href} className="tap inline-flex w-fit items-center text-[18px] text-blue-ink">
             {back.label}
           </Link>

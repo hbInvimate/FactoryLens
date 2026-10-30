@@ -215,7 +215,7 @@ export default function LivePage(props: PageProps<"/supervisor/live/[id]">) {
   return (
     <Gate area="supervisor" next="/supervisor/tasks">
       <SupervisorShell current="tasks">
-        <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-5 md:px-8">
+        <main className="page-main flex flex-col gap-4">
           <Link href="/supervisor/tasks" className="inline-flex min-h-[56px] w-fit items-center text-[14px] font-semibold text-primary-ink hover:underline">
             ← Tasks
           </Link>

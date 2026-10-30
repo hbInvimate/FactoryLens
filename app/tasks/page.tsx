@@ -68,7 +68,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       {banner && <SopBanner {...banner} />}
       <div className="flex flex-col">
         <h1 className="text-[30px] font-bold" data-testid="greeting">
-          {home.greeting}, {home.firstName}
+          {home.greeting}
         </h1>
         <p className="text-[16px] text-muted">
           {ROLE_LABEL[user.role]} · {home.cell} · {home.shift}
@@ -129,7 +129,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.6fr_1fr]">
+      {/* Each card only as tall as its content. */}
+      <div className="grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
       <section className="flex min-w-0 flex-col gap-4 rounded-[22px] border border-line bg-surface px-6 py-5 shadow-card" data-testid="assigned">
         <div className="flex flex-wrap items-baseline gap-3">
           <h2 className="flex-1 text-[20px] font-semibold">Assigned to you</h2>
@@ -276,7 +277,7 @@ export default function TasksPage(props: PageProps<"/tasks">) {
   return (
     <Gate area="check" next="/tasks">
       <TechShell current="tasks">
-        <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 px-6 py-6 md:px-8">
+        <main className="page-main flex flex-col gap-5">
           <Suspense fallback={<p className="text-[17px] text-muted">Loading sessions…</p>}>
             <Body searchParams={props.searchParams} />
           </Suspense>

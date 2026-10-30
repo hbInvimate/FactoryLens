@@ -112,7 +112,7 @@ export default function SessionsPage(props: PageProps<"/sessions">) {
   return (
     <Gate area="check" next="/sessions">
       <TechShell current="sessions">
-        <main className="flex flex-1 flex-col gap-5 px-8 py-7">
+        <main className="page-main flex flex-1 flex-col gap-5">
           <h1 className="text-[30px] font-semibold">Past sessions</h1>
           <Suspense fallback={<TableSkeleton />}>
             <SessionTable searchParams={props.searchParams} />

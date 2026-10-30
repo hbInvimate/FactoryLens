@@ -25,7 +25,7 @@ const row = (page: Page, title: string) => page.getByTestId("tasks-table").locat
 
 test("a Quality Technician lands on Tasks, adds a task, filters and searches", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
-  await expect(page.getByTestId("greeting")).toHaveText(/^Good (morning|afternoon|evening), Test$/);
+  await expect(page.getByTestId("greeting")).toHaveText(/^Good (morning|afternoon|evening)$/);
   for (const k of ["hero-start", "stat-today", "stat-rft", "stat-cycle", "stat-streak", "assigned", "before-you-start", "sidebar-start"]) await expect(page.getByTestId(k)).toBeVisible();
   await expect(page.getByTestId("start-a-check")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");

@@ -228,7 +228,7 @@ export default function DashboardPage(props: PageProps<"/dashboard">) {
   return (
     <Gate area="dashboard" next="/dashboard">
       <Page>
-        <main className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-6 py-6 md:px-8">
+        <main className="page-main flex flex-col gap-4">
           <Suspense fallback={<Skeleton />}>
             <Body searchParams={props.searchParams} />
           </Suspense>

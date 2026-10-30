@@ -30,7 +30,7 @@ export default function Home() {
   return (
     <Gate area="check" next="/">
       <TechShell>
-        <main className="flex flex-1 flex-col px-8 py-8">
+        <main className="page-main flex flex-1 flex-col">
           <Start />
         </main>
       </TechShell>

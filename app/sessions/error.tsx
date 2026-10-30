@@ -8,7 +8,7 @@ export default function SessionsError({ error, retry }: { error: Error & { diges
     console.error(error);
   }, [error]);
   return (
-    <main className="flex flex-1 flex-col gap-5 px-8 py-7">
+    <main className="page-main flex flex-1 flex-col gap-5">
       <Panel title="Could not load the history">
         <p className="text-[18px] text-ink-2">The server or the database did not answer. Checks in progress are safe on their devices.</p>
         <div>
