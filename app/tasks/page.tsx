@@ -60,7 +60,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
   const active = tasks.filter(isActive).length;
   const rftPct = home.rft.of ? Math.round((home.rft.right / home.rft.of) * 100) : null;
   const takt = home.sop.takt === null ? null : fmtClock(home.sop.takt * 1000);
-  const CARD = "flex min-w-0 items-center gap-4 rounded-[22px] border border-line bg-surface px-5 py-4 shadow-card";
+  const CARD = "flex min-h-[150px] min-w-0 items-center gap-4 rounded-[22px] border border-line bg-surface px-[22px] py-5 shadow-card";
 
   return (
     <>
@@ -86,26 +86,27 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className={CARD} data-testid="stat-today">
-          <BigRing value={home.today.complete} of={home.today.started} size={92} />
+          <BigRing value={home.today.complete} of={home.today.started} size={96} stroke={10} />
           <span className="flex min-w-0 flex-col">
             <span className="text-[15px] text-muted">Checks today</span>
-            <span className="text-[24px] leading-tight font-bold">{home.today.started === 0 ? "None yet" : home.today.complete === home.today.started ? "All complete" : "In progress"}</span>
+            <span className="text-[26px] leading-tight font-bold">{home.today.started === 0 ? "None yet" : home.today.complete === home.today.started ? "All complete" : "In progress"}</span>
             <span className="text-[14px] text-muted">{home.today.started - home.today.complete} left</span>
           </span>
         </div>
         <div className={CARD} data-testid="stat-rft">
-          <span className="relative flex size-[92px] flex-none items-center justify-center">
-            <svg viewBox="0 0 128 128" className="absolute inset-0 size-[92px] -rotate-90" aria-hidden>
-              <circle cx="64" cy="64" r="56" fill="none" stroke="var(--fl-border)" strokeWidth="14" />
+          <span className="relative flex size-24 flex-none items-center justify-center">
+            {/* 96 px, stroke 10 px: 13.3 in the 128 viewBox. */}
+            <svg viewBox="0 0 128 128" className="absolute inset-0 size-24 -rotate-90" aria-hidden>
+              <circle cx="64" cy="64" r="57.3" fill="none" stroke="var(--fl-border)" strokeWidth="13.3" />
               {rftPct !== null && (
-                <circle cx="64" cy="64" r="56" fill="none" stroke={rftPct < RFT_GOAL_PERCENT ? "var(--fl-amber)" : "var(--fl-primary)"} strokeWidth="14" strokeLinecap="round" strokeDasharray={2 * Math.PI * 56} strokeDashoffset={2 * Math.PI * 56 * (1 - rftPct / 100)} className="ring-fill" />
+                <circle cx="64" cy="64" r="57.3" fill="none" stroke={rftPct < RFT_GOAL_PERCENT ? "var(--fl-amber)" : "var(--fl-primary)"} strokeWidth="13.3" strokeLinecap="round" strokeDasharray={2 * Math.PI * 57.3} strokeDashoffset={2 * Math.PI * 57.3 * (1 - rftPct / 100)} className="ring-fill" />
               )}
             </svg>
             <span className={cx("relative text-[20px] font-bold", rftPct === null ? "text-muted" : rftPct < RFT_GOAL_PERCENT ? "text-amber-ink" : "text-primary-ink")}>{rftPct === null ? "—" : <CountUp text={`${rftPct}%`} />}</span>
           </span>
           <span className="flex min-w-0 flex-col">
             <span className="text-[15px] text-muted">Right first time</span>
-            <span className="text-[24px] leading-tight font-bold">
+            <span className="text-[26px] leading-tight font-bold">
               {home.rft.right} of {home.rft.of}
             </span>
             <span className="text-[14px] text-muted">your last 8 weeks · goal {RFT_GOAL_PERCENT}%</span>
@@ -133,7 +134,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       <div className="grid items-start gap-4 xl:grid-cols-[1.6fr_1fr]">
       <section className="flex min-w-0 flex-col gap-4 rounded-[22px] border border-line bg-surface px-6 py-5 shadow-card" data-testid="assigned">
         <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="flex-1 text-[20px] font-semibold">Assigned to you</h2>
+          <h2 className="flex-1 text-[22px] font-bold">Assigned to you</h2>
           <span className="text-[14px] text-muted">Not started · In progress · Paused</span>
         </div>
 
@@ -152,14 +153,14 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
                 data-task={t.kind === "task" ? t.id : undefined}
                 data-session={t.sessionId ?? undefined}
                 data-status={t.status}
-                className={cx("flex flex-wrap items-center gap-4 rounded-[18px] bg-surface px-5 py-4", going ? "border-2 border-primary" : "border border-line")}
+                className={cx("flex items-center gap-4 rounded-[18px] bg-surface p-[18px]", going ? "border-2 border-primary" : "border border-line")}
               >
-                <BigRing value={done} of={STEP_COUNT} size={60} tone={going ? "amber" : paused ? "grey" : "green"} />
-                <div className="flex min-w-[220px] flex-1 flex-col gap-1">
+                <BigRing value={done} of={STEP_COUNT} size={60} stroke={7} tone={going ? "amber" : paused ? "grey" : "green"} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-3">
                     <b className="text-[20px] leading-tight break-words">{t.title}</b>
                     <span
-                      className={cx("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-semibold", going ? "bg-amber-soft text-amber-ink" : "bg-surface-2 text-ink-2")}
+                      className={cx("inline-flex flex-none items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold", going ? "bg-amber-soft text-amber-ink" : "bg-surface-2 text-ink-2")}
                       data-testid="task-status"
                     >
                       <span aria-hidden className={cx("size-2 rounded-full", going ? "bg-amber" : paused ? "bg-line-strong" : "bg-primary")} />
@@ -171,7 +172,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
                       </Chip>
                     )}
                   </div>
-                  <p className="text-[15px] text-ink-2 break-words">
+                  <p className="truncate text-[15px] text-ink-2">
                     {t.station}
                     {t.check ? (
                       <>
@@ -189,7 +190,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
                 {t.kind === "task" ? (
                   <OpenTask task={t} operatorName={user.name} sop={{ id: rev.id, label: rev.label }} big />
                 ) : (
-                  <ButtonLink variant="primary" href={`/check/${t.id}`} className="min-h-[56px] px-6 text-[18px] font-bold whitespace-nowrap" aria-label={`Resume ${t.title}`}>
+                  <ButtonLink variant="primary" href={`/check/${t.id}`} className="min-h-[56px] px-7 text-[18px] font-bold whitespace-nowrap" aria-label={`Resume ${t.title}`}>
                     ▶ Resume
                   </ButtonLink>
                 )}
@@ -205,7 +206,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </p>
       )}
 
-        <h2 className="pt-2 text-[20px] font-semibold">Recent checks</h2>
+        <h2 className="pt-2 text-[22px] font-bold">Recent checks</h2>
         {home.recent.length === 0 ? (
           <p className="text-[15px] text-muted">No completed checks yet.</p>
         ) : (
@@ -231,7 +232,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
       </section>
 
       <section className="flex min-w-0 flex-col gap-3 rounded-[22px] border border-line bg-surface px-6 py-5 shadow-card" data-testid="before-you-start">
-        <h2 className="text-[20px] font-semibold">Before you start</h2>
+        <h2 className="text-[22px] font-bold">Before you start</h2>
         <div className="flex gap-3 rounded-[14px] bg-surface-2 px-4 py-3" data-testid="tip">
           <span className="flex size-9 flex-none items-center justify-center rounded-[10px] bg-primary text-[14px] font-bold text-on-strong">AI</span>
           <p className="text-[15px]">

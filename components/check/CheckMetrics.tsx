@@ -19,14 +19,17 @@ const LABEL = "text-[16px] text-muted";
 const PHASES = [...new Set(STEPS.map((s) => s.phase))];
 
 /** A ring (128 px, 12 px stroke, round ends by default) with "X/Y" inside. */
-export function BigRing({ value, of, testId, size = 128, label, tone = "green" }: { value: number; of: number; testId?: string; size?: number; label?: string; tone?: "green" | "amber" | "grey" }) {
-  const r = 58;
+export function BigRing({
+  value, of, testId, size = 128, label, tone = "green", stroke,
+}: { value: number; of: number; testId?: string; size?: number; label?: string; tone?: "green" | "amber" | "grey"; /** Stroke in px at this size (default 12 at 128 px). */ stroke?: number }) {
+  const sw = stroke ? (stroke * 128) / size : 12;
+  const r = 64 - sw / 2;
   const c = 2 * Math.PI * r;
   return (
     <span className="relative flex flex-none items-center justify-center" style={{ width: size, height: size }} data-testid={testId}>
       <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-90" style={{ width: size, height: size }} aria-hidden>
-        <circle cx="64" cy="64" r={r} fill="none" stroke="var(--fl-border)" strokeWidth="12" />
-        <circle cx="64" cy="64" r={r} fill="none" stroke={tone === "amber" ? "var(--fl-amber)" : tone === "grey" ? "var(--fl-text-subtle)" : "var(--fl-primary)"} strokeWidth="12" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - (of ? Math.min(value, of) / of : 0))} className="ring-fill" />
+        <circle cx="64" cy="64" r={r} fill="none" stroke="var(--fl-border)" strokeWidth={sw} />
+        <circle cx="64" cy="64" r={r} fill="none" stroke={tone === "amber" ? "var(--fl-amber)" : tone === "grey" ? "var(--fl-text-subtle)" : "var(--fl-primary)"} strokeWidth={sw} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - (of ? Math.min(value, of) / of : 0))} className="ring-fill" />
       </svg>
       <span className="relative font-bold tabular-nums" style={{ fontSize: Math.round(size * 0.23) }}>
         <CountUp text={label ?? `${value}/${of}`} />

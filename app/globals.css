@@ -198,12 +198,12 @@ textarea:focus-visible {
   }
 }
 
-/* The page content next to the sidebar: full width up to 1680 px, left-aligned (not centred). In the components
+/* The page content next to the sidebar: the full width, left-aligned (not centred). In the components
    layer, so a page can still override it with a utility (the printed report does). */
 @layer components {
   .page-main {
     width: 100%;
-    max-width: 1680px;
+    max-width: none;
     padding: 24px 32px;
   }
   @media (max-width: 1023px) {

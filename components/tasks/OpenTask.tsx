@@ -11,7 +11,7 @@ import { createLocalSession } from "@/lib/client/useCheckSession";
 import { sopName } from "@/lib/sop-revisions";
 
 const SMALL = "min-h-[56px] px-4 text-[15px] shadow-none";
-const BIG = "min-h-[56px] px-6 text-[18px] font-bold whitespace-nowrap";
+const BIG = "min-h-[56px] px-7 text-[18px] font-bold whitespace-nowrap";
 
 /** The check in progress on this device, if any. */
 function activeCheck(): string | null {
