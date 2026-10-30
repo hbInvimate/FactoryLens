@@ -25,14 +25,10 @@ const row = (page: Page, title: string) => page.getByTestId("tasks-table").locat
 
 test("a Quality Technician lands on Tasks, adds a task, filters and searches", async ({ browser }) => {
   const { ctx, page } = await signedIn(browser, "technician");
-  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
-  await expect(page.getByText("Checks assigned to you", { exact: true })).toBeVisible();
-  await expect(page.getByTestId("stat-mine")).toHaveCount(0);
-  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Type");
-  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Submission");
-  await expect(page.getByTestId("start-a-check")).toHaveAttribute("href", "/");
+  await expect(page.getByTestId("greeting")).toHaveText(/^Good (morning|afternoon|evening), Test$/);
+  for (const k of ["hero-start", "stat-today", "stat-rft", "stat-cycle", "stat-streak", "assigned", "before-you-start", "sidebar-start"]) await expect(page.getByTestId(k)).toBeVisible();
+  await expect(page.getByTestId("start-a-check")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");
-  const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
 
   // A Quality Technician cannot create a task: the API refuses one.
   const denied = await page.request.post("/api/tasks", { data: { part: "X", station: "Laser cell 3 · FX-014", priority: "low" } });
@@ -42,13 +38,13 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await newTask(browser, new URL(page.url()).origin, title, "BRK-220", "High");
   await page.reload();
   const r = row(page, title);
+  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Type");
+  await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Submission");
   await expect(r).toContainText("BRK-220");
   await expect(r).toContainText("High");
   await expect(r).toContainText("Test Quality Technician");
   await expect(r.getByTestId("task-status")).toHaveText("Not started");
   // Other tests add sessions for this technician at the same time: at least one more.
-  await expect.poll(async () => Number(await page.getByTestId("stat-not-started").innerText())).toBeGreaterThanOrEqual(notStarted + 1);
-  await expect(page.getByTestId("stat-completed")).toHaveCount(0);
   // Only work still to do can be picked.
   await expect(page.getByLabel("Status").locator("option")).toHaveText(["All active", "Not started", "In progress", "Paused"]);
 
@@ -100,10 +96,10 @@ test("Start a check from Sessions; a task with the same part and cell, not start
   const title = unique("Same part");
   const taskId = await newTask(browser, new URL(page.url()).origin, title, part, "Medium", "technician2");
   await page.reload();
+  // The start card, with this part picked: Start a check starts that task instead of a new check.
+  await page.getByTestId("hero-start").getByLabel("Part").selectOption(part);
+  await page.getByTestId("hero-start").getByLabel("Cell and fixture").selectOption("Laser cell 3 · FX-014");
   await page.getByTestId("start-a-check").click();
-  await expect(page).toHaveURL(/localhost:\d+\/$/);
-  await page.getByLabel("Part", { exact: true }).fill(part);
-  await page.getByRole("button", { name: "Start the check" }).click();
   await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
   const id = page.url().split("/check/")[1];
   await waitSaved(page);
@@ -125,7 +121,7 @@ test("opening a task starts its check, with the step video and details; the stat
   const id = page.url().split("/check/")[1];
 
   // The task page: the SOP check, plus the step's video and details.
-  await expect(page.getByText(part, { exact: true })).toBeVisible();
+  await expect(page.getByRole("banner").getByText(part, { exact: true })).toBeVisible();
   await expect(page.getByTestId("step-video")).toHaveText("SOP video: Not recorded yet");
   await expect(page.getByTestId("step-details")).toContainText("What to do");
   await expect(page.getByTestId("step-details")).toContainText("What correct looks like");
