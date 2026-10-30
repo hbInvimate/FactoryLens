@@ -33,7 +33,8 @@ test("a Supervisor watches a check read-only from Home, Tasks, Team and Analytic
   await signInAs(page, "supervisor", "/signin");
   await expect(page).toHaveURL(/\/supervisor$/);
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
-  for (const k of ["kpi-ongoing", "kpi-today", "kpi-ftr", "kpi-hold"]) await expect(page.getByTestId(k)).toBeVisible();
+  for (const k of ["kpi-ongoing", "kpi-completed", "kpi-ftr", "kpi-cycle", "kpi-hold", "ai-banner", "recent-completed"]) await expect(page.getByTestId(k)).toBeVisible();
+  await expect(page.getByTestId("home-bars").locator("[data-step]")).toHaveCount(12);
   await expect(page.getByTestId("ongoing").locator(`tr[data-session="${id}"]`)).toBeVisible();
 
   // Watch: the live view. Read-only, refreshed every 5 seconds while the check runs.

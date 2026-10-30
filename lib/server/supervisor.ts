@@ -3,7 +3,7 @@
 // First-time right: a completed check with all 12 steps correct on the first attempt.
 import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import * as t from "@/db/schema";
-import { reduce, stepActiveMs } from "@/lib/check/reducer";
+import { isRightFirstTime, reduce, stepActiveMs } from "@/lib/check/reducer";
 import { ON_HOLD_STATUSES, type DeviationKind, type SessionStatus } from "@/lib/check/types";
 import { DEMO_EMAIL_DOMAIN, isDemoEmail } from "@/lib/sample/demoUsers";
 import { STEPS } from "@/lib/sop";
@@ -373,4 +373,76 @@ export async function sessionsMatching(step: number, kind: DeviationKind | null)
     if (ms !== null && ms / 1000 > target) over.add(s.id);
   }
   return over;
+}
+
+// ---------- Home: the last 7 days ----------
+
+export interface RecentCheck {
+  id: string;
+  finishedAt: string;
+  technician: string;
+  part: string;
+  station: string;
+  status: SessionStatus;
+  cycleSeconds: number | null;
+  conformance: number | null;
+  deviations: number;
+}
+
+export interface HomeWeek {
+  completed: number;
+  /** Completed with every step right first time. */
+  allRight: number;
+  left: number;
+  closed: number;
+  /** Steps right first time / steps, over the completed checks. Null without one. */
+  conformancePct: number | null;
+  /** Per step: right first time in every completed check, or redone in at least one. Null: no completed checks. */
+  stepLooks: ("right" | "redone")[] | null;
+  /** Mean check time of completed checks, and per step the mean time against the step target. */
+  avgCycleSeconds: number | null;
+  stepTimes: { n: number; seconds: number | null; target: number | null }[];
+  taktSeconds: number | null;
+  recent: RecentCheck[];
+  /** Assigned tasks not started yet, and the oldest one's creation time. */
+  notStarted: { count: number; oldest: string | null };
+}
+
+const CLOSED: SessionStatus[] = ["scrapped", "rework", "concession", "part_held"];
+
+export async function homeWeek(): Promise<HomeWeek> {
+  const { db } = await getRepo().conn();
+  const [rows, rev, open] = await Promise.all([
+    recent(7),
+    activeRevision(),
+    db.select({ createdAt: t.tasks.createdAt }).from(t.tasks).where(sql`${t.tasks.sessionId} is null`).orderBy(t.tasks.createdAt),
+  ]);
+  const done = rows.filter((r) => r.status === "complete");
+  const states = (await withActions(db, done.slice(0, 300))).map((s) => reduce(s.actions, s.startedAt));
+  const steps = STEPS.map((s) => s.n);
+  const rft = states.map((st) => steps.map((n) => isRightFirstTime(st, n)));
+  const rightSteps = rft.flat().filter(Boolean).length;
+  const times = steps.map((n) => states.map((st) => stepActiveMs(st, n)).filter((x): x is number => x !== null).map((ms) => ms / 1000));
+  const targets = steps.map((n) => rev.steps[n - 1]?.targetCtSeconds ?? null);
+  const cycles = done.map((r) => r.activeSeconds).filter((x): x is number => x !== null);
+  return {
+    completed: done.length,
+    allRight: done.filter(ftr).length,
+    left: rows.filter((r) => r.status === "left").length,
+    closed: rows.filter((r) => CLOSED.includes(r.status as SessionStatus)).length,
+    conformancePct: rft.length ? Math.round((rightSteps / (rft.length * 12)) * 100) : null,
+    stepLooks: rft.length ? steps.map((n) => (rft.every((x) => x[n - 1]) ? "right" : "redone")) : null,
+    avgCycleSeconds: cycles.length ? Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length) : null,
+    stepTimes: steps.map((n) => ({ n, seconds: times[n - 1].length ? times[n - 1].reduce((a, b) => a + b, 0) / times[n - 1].length : null, target: targets[n - 1] })),
+    taktSeconds: targets.every((x) => x !== null) ? targets.reduce((a, b) => a! + b!, 0) : null,
+    recent: done
+      .map((r) => ({ r, end: r.endedAt ?? r.updatedAt }))
+      .sort((a, b) => b.end.getTime() - a.end.getTime())
+      .slice(0, 10)
+      .map(({ r, end }) => ({
+        id: r.id, finishedAt: end.toISOString(), technician: r.operatorLabel, part: r.part, station: r.station ?? r.fixture, status: r.status as SessionStatus,
+        cycleSeconds: r.activeSeconds, conformance: r.conformance, deviations: r.deviations,
+      })),
+    notStarted: { count: open.length, oldest: open[0]?.createdAt.toISOString() ?? null },
+  };
 }

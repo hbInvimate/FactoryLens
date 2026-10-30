@@ -17,18 +17,18 @@ const LABEL = "text-[16px] text-muted";
 /** The SOP's phases, in order. */
 const PHASES = [...new Set(STEPS.map((s) => s.phase))];
 
-/** A 128 px ring (12 px stroke, round ends) with "X/Y" inside. */
-export function BigRing({ value, of, testId }: { value: number; of: number; testId?: string }) {
+/** A ring (128 px, 12 px stroke, round ends by default) with "X/Y" inside. */
+export function BigRing({ value, of, testId, size = 128, label }: { value: number; of: number; testId?: string; size?: number; label?: string }) {
   const r = 58;
   const c = 2 * Math.PI * r;
   return (
-    <span className="relative flex size-32 flex-none items-center justify-center" data-testid={testId}>
-      <svg viewBox="0 0 128 128" className="absolute inset-0 size-32 -rotate-90" aria-hidden>
+    <span className="relative flex flex-none items-center justify-center" style={{ width: size, height: size }} data-testid={testId}>
+      <svg viewBox="0 0 128 128" className="absolute inset-0 -rotate-90" style={{ width: size, height: size }} aria-hidden>
         <circle cx="64" cy="64" r={r} fill="none" stroke="var(--fl-border)" strokeWidth="12" />
         <circle cx="64" cy="64" r={r} fill="none" stroke="var(--fl-primary)" strokeWidth="12" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - (of ? Math.min(value, of) / of : 0))} className="ring-fill" />
       </svg>
-      <span className="relative text-[30px] font-bold tabular-nums">
-        <CountUp text={`${value}/${of}`} />
+      <span className="relative font-bold tabular-nums" style={{ fontSize: Math.round(size * 0.23) }}>
+        <CountUp text={label ?? `${value}/${of}`} />
       </span>
     </span>
   );
