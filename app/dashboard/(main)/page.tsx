@@ -19,6 +19,8 @@ import { activeRevision } from "@/lib/server/sop";
 import type { DashFilter } from "@/lib/server/sqlparts";
 import { analytics } from "@/lib/server/supervisor";
 import { revisionLabels } from "@/lib/server/sopActivate";
+import { CATEGORIES } from "@/lib/issues";
+import { sopName } from "@/lib/sop-revisions";
 import { STEPS, step as sopStep } from "@/lib/sop";
 
 export const metadata = { title: "FactoryLens AI: dashboard" };
@@ -141,11 +143,11 @@ async function Body({ searchParams }: { searchParams: SP }) {
       <div className="flex flex-col">
         <h1 className="text-[30px] leading-tight font-bold">Dashboard</h1>
         <p className="text-[15px] text-muted" data-testid="dashboard-sub">
-          {station} · SOP rev {rev.label}
+          {station} · {sopName(rev.label)}
         </p>
       </div>
-      <Filters stations={stations} params={params} />
       <span className="flex-1" />
+      <Filters stations={stations} params={params} />
       {params.sample && (
         <span data-testid="sample-chip" className="rounded-full border border-amber-line bg-amber-soft px-4 py-1.5 text-[14px] font-bold tracking-wide text-amber-ink">
           SAMPLE DATA · {s.real} real, {s.sample} sample {s.real + s.sample === 1 ? "session" : "sessions"}
@@ -191,7 +193,9 @@ async function Body({ searchParams }: { searchParams: SP }) {
   const wording = lead ? suggestion(lead.step, leadItem) : null;
   const rftText = a.rft.completed ? `${a.rft.right} of ${a.rft.completed} checks were right first time.` : "No completed checks to score yet.";
   const quiet = s.onHold === 0 && s.openDiscrepancies === 0;
-  const catMax = Math.max(1, ...cats.rows.flatMap((r) => SHIFT_IDS.map((x) => r[x])));
+  // Every category, lodged or not, in the catalogue's order.
+  const catRows = CATEGORIES.map((c) => cats.rows.find((r) => r.category === c) ?? { category: c, A: 0, B: 0, C: 0, total: 0 });
+  const catMax = Math.max(1, ...catRows.flatMap((r) => SHIFT_IDS.map((x) => r[x])));
   const cleared = Math.max(0, cats.totals.total - s.openDiscrepancies);
 
   return (
@@ -225,9 +229,9 @@ async function Body({ searchParams }: { searchParams: SP }) {
         <Kpi>
           <BigRing value={s.complete} of={s.total} size={96} stroke={10} />
           <span className="flex min-w-0 flex-col">
-            <span className="text-[14px] text-muted">Sessions</span>
-            <b className="text-[30px] leading-tight" data-testid="tile-sessions">
-              {s.total}
+            <span className="text-[14px] text-muted">Sessions · complete</span>
+            <b className="text-[30px] leading-tight">
+              <span data-testid="tile-sessions">{s.total}</span> total
             </b>
             <span className="text-[13px] text-ink-2" data-testid="tile-sessions-split">
               {`${s.complete} complete · ${s.endedWithoutCheck} ended without a check · ${s.left} left · ${s.inProgress} running`}
@@ -235,19 +239,24 @@ async function Body({ searchParams }: { searchParams: SP }) {
           </span>
         </Kpi>
         <Kpi>
-          <span className="flex min-w-0 flex-col gap-2">
-            <span className="text-[14px] text-muted">Station conformance</span>
-            <b className="text-[30px] leading-tight" data-testid="tile-conformance">
-              {s.conformance === null ? "not recorded" : `${s.conformance}%`}
-            </b>
-            <span className="flex flex-wrap gap-1" data-testid="conformance-squares">
+          <span className="flex min-w-0 flex-1 flex-col gap-2">
+            <span className="text-[14px] text-muted">Station conformance · steps right first time</span>
+            <span className="flex items-baseline gap-3">
+              <b className="text-[36px] leading-tight text-primary-ink" data-testid="tile-conformance">
+                {s.conformance === null ? "not recorded" : `${s.conformance}%`}
+              </b>
+              <span className="text-[14px] text-muted">
+                {s.scored} complete {s.scored === 1 ? "check" : "checks"}
+              </span>
+            </span>
+            <span className="grid grid-cols-12 gap-1" data-testid="conformance-squares">
               {byStep.map((d) => (
                 <span
                   key={d.step}
                   data-step={d.step}
                   title={`Step ${d.step}: ${d.total} ${d.total === 1 ? "deviation" : "deviations"}`}
                   className={cx(
-                    "flex size-6 items-center justify-center rounded-[6px] text-[11px] font-semibold",
+                    "flex h-7 items-center justify-center rounded-[6px] text-[11px] font-semibold",
                     d.total === 0 ? "bg-primary text-on-strong" : d.total === 1 ? "bg-amber-soft text-amber-ink" : "bg-amber text-on-amber",
                   )}
                 >
@@ -324,27 +333,23 @@ async function Body({ searchParams }: { searchParams: SP }) {
           sub="Issues lodged on the monitor, by category and the shift they were lodged in"
           right={
             <span className="flex gap-1.5">
-              {s.openDiscrepancies > 0 && (
-                <Chip tone="red" size="sm">
-                  {s.openDiscrepancies} open
-                </Chip>
-              )}
+              <Chip tone={s.openDiscrepancies > 0 ? "red" : "gray"} size="sm">
+                {s.openDiscrepancies} open
+              </Chip>
               <Chip tone="green" size="sm">
                 {cleared} cleared
               </Chip>
             </span>
           }
         />
-        {cats.totals.total === 0 && cats.fixedOnSpot.total === 0 ? (
-          <p className="py-6 text-center text-[17px] text-muted">No discrepancies lodged in this period.</p>
-        ) : (
+        {(
           <div className="flex flex-wrap items-center gap-8">
             <Donut parts={cats.rows.map((r) => ({ label: r.category, count: r.total }))} total={cats.totals.total} />
             <div className="flex w-full max-w-[760px] min-w-0 flex-1 flex-col gap-2">
               <table className="w-full text-[15px]" data-testid="category-table">
                 <thead className="text-[13px] text-muted">
                   <tr>
-                    <th className="py-1 text-left font-medium">Category</th>
+                    <th className="py-1 text-left font-semibold tracking-wide uppercase">Category</th>
                     {SHIFT_IDS.map((x) => (
                       <th key={x} className={cx("w-24 py-1 text-center font-medium", params.shift && params.shift !== x && "opacity-40")}>
                         Shift {x}
@@ -354,9 +359,9 @@ async function Body({ searchParams }: { searchParams: SP }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {cats.rows.map((r) => (
+                  {catRows.map((r) => (
                     <tr key={r.category} data-category={r.category}>
-                      <td className="py-1 pr-2">{r.category}</td>
+                      <td className={cx("py-1 pr-2", r.total === 0 && "text-muted")}>{r.category}</td>
                       {SHIFT_IDS.map((x) => (
                         <td key={x} className={cx("px-1 py-1 text-center", params.shift && params.shift !== x && "opacity-40")}>
                           <span

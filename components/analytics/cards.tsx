@@ -132,6 +132,8 @@ export function StepTimesCard({
   stepHref?: (step: number) => string;
 }) {
   const none = !steps.some((s) => s.medianSeconds !== null);
+  const shares = steps.filter((s) => s.medianSeconds !== null && s.targetSeconds).map((s) => ({ step: s.step, share: (s.medianSeconds as number) / (s.targetSeconds as number) }));
+  const slowest = shares.sort((x, y) => y.share - x.share)[0];
   return (
     <section className={CARD} data-testid="step-times">
       <CardHead
@@ -151,14 +153,15 @@ export function StepTimesCard({
           const share = s.medianSeconds === null ? 0 : s.targetSeconds ? Math.min(1, s.medianSeconds / s.targetSeconds) : 1;
           const name = `${s.step}. ${s.name}`;
           return (
-            <li key={s.step} data-step={s.step} className="grid grid-cols-[minmax(0,210px)_1fr_auto] items-center gap-3 text-[14px]">
+            <li key={s.step} data-step={s.step} className="grid grid-cols-[24px_minmax(0,200px)_1fr_auto] items-center gap-3 text-[14px]">
+              <span className="tabular-nums text-ink-2">{s.step}</span>
               {stepHref ? (
                 <Link href={stepHref(s.step)} className="truncate hover:text-primary-ink" title={name}>
-                  <b className="tabular-nums text-muted">{s.step}</b> {s.name}
+                  {s.name}
                 </Link>
               ) : (
                 <span className="truncate" title={name}>
-                  <b className="tabular-nums text-muted">{s.step}</b> {s.name}
+                  {s.name}
                 </span>
               )}
               <span className="h-2.5 rounded-full bg-surface-2">
@@ -171,6 +174,11 @@ export function StepTimesCard({
           );
         })}
       </ol>
+      <span className="flex flex-wrap gap-x-3 text-[13px] text-muted">
+        <span><i className="mr-1 inline-block size-2.5 rounded-sm bg-primary" />Under target</span>
+        <span><i className="mr-1 inline-block size-2.5 rounded-sm bg-amber" />Over target</span>
+        {slowest && <span>· Slowest share of target: step {slowest.step} ({Math.round(slowest.share * 100)}%)</span>}
+      </span>
     </section>
   );
 }
@@ -274,12 +282,12 @@ export function ShiftTimesCard({ shifts, taktSeconds, active }: { shifts: ShiftT
         sub={`Active time of completed checks, against takt ${clock(taktSeconds)}`}
         right={under && <Chip tone="green" size="sm">All shifts under takt</Chip>}
       />
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col border-t border-line">
         {shifts.map((s) => {
           const def = SHIFTS.find((x) => x.id === s.shift)!;
           const over = s.average !== null && taktSeconds !== null && s.average > taktSeconds;
           return (
-            <div key={s.shift} data-shift={s.shift} className={cx("grid grid-cols-[120px_1fr_auto] items-center gap-3", active !== null && active !== s.shift && "opacity-40")}>
+            <div key={s.shift} data-shift={s.shift} className={cx("grid grid-cols-[120px_1fr_auto] items-center gap-3 border-b border-line py-3", active !== null && active !== s.shift && "opacity-40")}>
               <span className="flex flex-col leading-tight">
                 <b className="text-[15px]">Shift {s.shift}</b>
                 <span className="text-[13px] text-muted">
@@ -293,20 +301,20 @@ export function ShiftTimesCard({ shifts, taktSeconds, active }: { shifts: ShiftT
                 {s.average === null ? (
                   <span className="text-muted">no checks</span>
                 ) : (
-                  <>
-                    <span className="tabular-nums">
-                      <b data-testid="shift-average">{clock(s.average)}</b> <span className="text-muted" data-testid="shift-median">· median {clock(s.median)}</span>
-                    </span>
-                    <Chip tone="gray" size="sm">
-                      {s.count} {s.count === 1 ? "check" : "checks"}
-                    </Chip>
-                  </>
+                  <span className="tabular-nums">
+                    <b className="text-[17px]" data-testid="shift-average">{clock(s.average)}</b> <span className="text-muted">avg</span>{" "}
+                    <span className="text-muted" data-testid="shift-median">· {clock(s.median)} median</span>
+                  </span>
                 )}
+                <Chip tone="gray" size="sm">
+                  {s.count} {s.count === 1 ? "check" : "checks"}
+                </Chip>
               </span>
             </div>
           );
         })}
       </div>
+      <p className="text-[13px] text-muted">Bar = average as a share of takt ({clock(taktSeconds)}) · shift times in lib/config.ts · plant time</p>
     </section>
   );
 }
