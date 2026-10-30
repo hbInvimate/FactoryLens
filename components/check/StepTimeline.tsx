@@ -91,8 +91,9 @@ export function StepTimeline({
                 {s.n}
               </span>
               <div className="tl-open">
-                <div className="min-h-0 overflow-hidden">
-                  <div className={cx(CARD, "tl-fade")} data-compact>
+                {/* Clipped while it opens, with room for the lifted card's shadow. */}
+                <div className="tl-lift min-h-0 overflow-clip [overflow-clip-margin:56px]">
+                  <div className={cx(CARD, "tl-fade shadow-[0_20px_50px_rgba(0,0,0,0.15)]")} data-compact>
                     <span className="text-[13px] font-semibold tracking-wide text-primary-ink uppercase" data-testid="step-of">
                       Step {s.n} of 12 · {def.phase}
                     </span>
@@ -115,8 +116,9 @@ export function StepTimeline({
               type="button"
               onClick={() => onRow(s.n)}
               data-step={s.n}
-              // 44 px rows so all 12 steps fit at 1440 x 900 (agreed exception to the 56 px rule).
-              className="grid min-h-[44px] w-full grid-cols-[29px_minmax(0,1fr)_auto] items-center gap-x-3 rounded-[10px] pr-2 text-left hover:bg-surface-2"
+              // 44 px rows so all 12 steps fit at 1440 x 900 (agreed exception to the 56 px rule). Focus mode: faded
+              // to 35% until hovered, focused or tapped.
+              className="grid min-h-[44px] w-full grid-cols-[29px_minmax(0,1fr)_auto] items-center gap-x-3 rounded-[10px] pr-2 text-left opacity-35 transition-opacity duration-300 hover:bg-surface-2 hover:opacity-100 focus-visible:opacity-100 active:opacity-100"
             >
               <span
                 data-dot={done ? "done" : "upcoming"}

@@ -1,6 +1,7 @@
 // FactoryLens AI design system, in the AI platform's style (docs/theme). Colours come only from the
 // tokens in docs/theme/tokens.css, through the Tailwind names in app/globals.css.
 import Link from "next/link";
+import { CountUp } from "./CountUp";
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from "react";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -184,7 +185,7 @@ export function StatTile({
       <span className={cx("flex size-11 flex-none items-center justify-center rounded-[12px]", TILE[tone])}>{icon}</span>
       <span className="flex min-w-0 flex-col">
         <span className={cx("text-[28px] font-bold leading-tight", v)} data-testid={testId}>
-          {value}
+          {typeof value === "number" || typeof value === "string" ? <CountUp text={String(value)} /> : value}
         </span>
         <span className="text-[14px] text-ink-2">{label}</span>
         {sub !== undefined && <span className="text-[13px] text-muted">{sub}</span>}

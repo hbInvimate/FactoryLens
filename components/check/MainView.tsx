@@ -13,6 +13,7 @@ import { Modal } from "./Dialogs";
 import { StepDetails, VideoBox } from "./StepMedia";
 import { PointGrid } from "./PointGrid";
 import { StepTimeline } from "./StepTimeline";
+import { CountUp } from "@/components/ds/CountUp";
 
 export function LodgeButton({ onClick }: { onClick: () => void }) {
   return (
@@ -27,13 +28,49 @@ export function LodgeButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** One of the six compact metric cards in the row above the media panel. */
-function Metric({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "green" | "amber" }) {
+/** One of the six compact metric cards in the row above the media panel. Numbers count up; times do not. */
+function Metric({ label, value, sub, tone, still }: { label: string; value: string; sub?: string; tone?: "green" | "amber"; still?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col rounded-[10px] border border-line bg-surface px-2.5 py-2 shadow-card">
       <span className="truncate text-[12px] text-muted">{label}</span>
-      <span className={cx("truncate text-[22px] font-semibold leading-tight", tone === "amber" ? "text-amber-ink" : tone === "green" ? "text-primary-ink" : "text-ink")}>{value}</span>
+      <span className={cx("truncate text-[22px] font-semibold leading-tight", tone === "amber" ? "text-amber-ink" : tone === "green" ? "text-primary-ink" : "text-ink")}>
+        {still ? value : <CountUp text={value} />}
+      </span>
       {sub && <span className="truncate text-[12px] text-muted">{sub}</span>}
+    </div>
+  );
+}
+
+/** Steps done: a 56 px ring that fills to done/12 (600 ms), with "6/12" inside. */
+function StepsRing({ done, sub }: { done: number; sub: string }) {
+  const r = 25;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="flex min-w-0 items-center gap-2.5 rounded-[10px] border border-line bg-surface px-2.5 py-2 shadow-card" data-testid="steps-ring">
+      <span className="relative flex size-14 flex-none items-center justify-center">
+        <svg viewBox="0 0 56 56" className="absolute inset-0 size-14 -rotate-90" aria-hidden>
+          <circle cx="28" cy="28" r={r} fill="none" stroke="var(--fl-border)" strokeWidth="6" />
+          <circle
+            cx="28"
+            cy="28"
+            r={r}
+            fill="none"
+            stroke="var(--fl-primary)"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - Math.min(12, done) / 12)}
+            className="ring-fill"
+          />
+        </svg>
+        <span className="relative text-[13px] font-bold">
+          <CountUp text={`${done}/12`} />
+        </span>
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[12px] leading-tight text-muted">Steps done</span>
+        <span className="truncate text-[12px] text-muted">{sub}</span>
+      </span>
     </div>
   );
 }
@@ -170,12 +207,12 @@ export function MainView({
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
         <div className="grid grid-cols-6 gap-2" data-testid="metrics">
-          <Metric label="Steps done" value={`${done} / 12`} sub={devs ? "Deviations corrected" : "On track"} />
+          <StepsRing done={done} sub={devs ? "Deviations corrected" : "On track"} />
           <Metric label="Check points" value={`${checkPointsDone(state)} / ${TOTAL_CHECK_POINTS}`} sub="Sequence" />
-          <Metric label="Time elapsed" value={fmtClock(elapsedMs(state, now))} sub={`Target ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
+          <Metric label="Time elapsed" still value={fmtClock(elapsedMs(state, now))} sub={`Target ${target === null ? "[set by plant]" : fmtClock(target * 1000)}`} />
           <Metric label="Deviations" value={String(devs)} sub={devs ? "See the step list" : "None yet"} tone={devs ? "amber" : "green"} />
           <Metric label="Conformance" value={conf === null ? "—" : `${conf}%`} sub="So far" tone="green" />
-          <Metric label="Phase" value={def.phase} />
+          <Metric label="Phase" still value={def.phase} />
         </div>
 
         <Panel className="py-3">

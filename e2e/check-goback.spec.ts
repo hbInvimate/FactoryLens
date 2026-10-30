@@ -178,6 +178,6 @@ test("check screen: metrics, the two videos side by side, step details and all 1
   await expect(page.locator("li[aria-current=step]")).toContainText(STEPS[3].name);
   await expect(page.locator("li[aria-current=step]")).not.toContainText("Re-confirm");
   await expect(metrics).toContainText("Deviations0");
-  await expect(metrics).toContainText("Steps done3 / 12");
+  await expect(page.getByTestId("steps-ring")).toContainText("3/12");
   await waitSaved(page);
 });
