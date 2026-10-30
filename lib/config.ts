@@ -78,3 +78,17 @@ export const DEMO_FILL_ENABLED = true;
 /** Invented values: the nominal per feature (by the first letter of the point id), plus or minus DEMO_FILL_SPREAD. Never a measurement. */
 export const DEMO_FILL_NOMINALS: Record<"H" | "S" | "N" | "T" | "F", number> = { H: 8.0, S: 6.2, N: 3.1, T: 0.4, F: 1.2 };
 export const DEMO_FILL_SPREAD = 0.05;
+
+/**
+ * SOP tolerance per feature (by the first letter of the point id): nominal ± tol, in mm. Placeholders until the SOP
+ * carries real tolerances. The Measurements page colours values with them: green inside, amber within
+ * NEAR_LIMIT_SHARE of the tolerance from a limit, red outside. The check screen still never judges a value.
+ */
+export const MEASUREMENT_TOLERANCES: Record<"H" | "S" | "N" | "T" | "F", { nominal: number; tol: number }> = {
+  H: { nominal: 8.0, tol: 0.05 },
+  S: { nominal: 6.2, tol: 0.05 },
+  N: { nominal: 3.1, tol: 0.05 },
+  T: { nominal: 0.4, tol: 0.05 },
+  F: { nominal: 1.2, tol: 0.05 },
+};
+export const NEAR_LIMIT_SHARE = 0.3;

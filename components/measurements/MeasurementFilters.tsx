@@ -3,10 +3,11 @@
 import Form from "next/form";
 import { SHIFTS } from "@/lib/config";
 import { RANGES } from "@/lib/dashboard/metrics";
+import { POINT_GROUPS, groupLabel } from "@/lib/measure-judge";
 
 const SELECT = "min-h-[56px] rounded-lg border border-line-strong bg-surface px-3 text-[16px] text-ink";
 
-export function MeasurementFilters({ stations, value }: { stations: string[]; value: { view: string; station: string; range: string; shift: string; step: string; source: string; sort: string; dir: string } }) {
+export function MeasurementFilters({ stations, value }: { stations: string[]; value: { view: string; station: string; range: string; shift: string; step: string; source: string; sort: string; dir: string; group: string } }) {
   const submit = (e: React.ChangeEvent<HTMLSelectElement>) => e.currentTarget.form?.requestSubmit();
   return (
     <Form action="/dashboard/measurements" className="flex flex-wrap items-center gap-3" data-testid="measurement-filters">
@@ -54,6 +55,15 @@ export function MeasurementFilters({ stations, value }: { stations: string[]; va
         <option value="typed">Typed</option>
         <option value="demo">Demo</option>
       </select>
+      {value.view !== "list" && (
+        <select name="group" aria-label="Points" defaultValue={value.group} onChange={submit} className={SELECT}>
+          {POINT_GROUPS.map((g) => (
+            <option key={g.id} value={g.id}>
+              {groupLabel(g.id)}
+            </option>
+          ))}
+        </select>
+      )}
     </Form>
   );
 }

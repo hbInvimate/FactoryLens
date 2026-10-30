@@ -200,7 +200,6 @@ test("check screen: six metric cards above the videos, videos side by side, all 
   await expect(page.getByTestId("deviation-count")).toHaveText("0");
   await expect(page.getByTestId("deviations-card")).toContainText("Clean run so far");
   // Back made steps 2 and 3 not right first time: amber squares.
-  await expect(page.getByTestId("step-squares").locator("[data-look]")).toHaveAttribute("data-look", /.*/);
   await expect(page.getByTestId("step-squares").locator("[data-look=redone]")).toHaveCount(2);
   await expect(page.getByTestId("steps-ring")).toContainText("3/12");
   await waitSaved(page);

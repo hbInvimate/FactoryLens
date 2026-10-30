@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { Suspense, cache } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { Avatar, Card, Chip, StatTile, cx, type ChipTone } from "@/components/ds";
+import { CountUp } from "@/components/ds/CountUp";
 import { IconAlert, IconChecklist, IconClock, IconTarget } from "@/components/ds/icons";
 import { Empty, isMissing, load, minutes } from "@/components/supervisor/parts";
 import { SupervisorPage } from "@/components/supervisor/SupervisorShell";
@@ -63,7 +64,7 @@ function Stat({ label, value, testId }: { label: string; value: string | number;
   return (
     <span className="flex flex-col">
       <span className="text-[22px] font-bold" data-testid={testId}>
-        {value}
+        <CountUp text={String(value)} />
       </span>
       <span className="text-[13px] text-muted">{label}</span>
     </span>

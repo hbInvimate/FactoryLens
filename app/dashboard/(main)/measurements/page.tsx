@@ -1,5 +1,5 @@
-// /dashboard/measurements: every value recorded at steps 7 to 10, as recorded. Never judged: no tolerance,
-// no pass or fail. Quality Engineer and admin only.
+// /dashboard/measurements: every value recorded at steps 7 to 10. The line view colours each value against the SOP
+// tolerance (lib/config.ts), with KPIs and the worst drifting point. Quality Engineer and admin only.
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -9,6 +9,10 @@ import { ButtonLink, Chip, Table, Tabs, Td, Th } from "@/components/ds";
 import { LocalTime } from "@/components/LocalTime";
 import { MeasurementFilters } from "@/components/measurements/MeasurementFilters";
 import { cx } from "@/components/ui";
+import { StatTile } from "@/components/ds";
+import { IconAlert, IconChecklist, IconTarget } from "@/components/ds/icons";
+import { MEASUREMENT_UNIT, NEAR_LIMIT_SHARE } from "@/lib/config";
+import { POINT_GROUPS, drift, groupLabel, judge, likelyCause, toleranceOf, type PointGroupId } from "@/lib/measure-judge";
 import { dashView, type DashView } from "@/lib/server/dashView";
 import { PAGE_SIZE, WIDE_LIMIT, listMeasurements, parseMeasurementParams, wideMeasurements, type Sort, type Source } from "@/lib/server/measurements";
 import { WideTable } from "@/components/measurements/WideTable";
@@ -42,7 +46,8 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
   const { stations, params, f } = view;
   const m = parseMeasurementParams(sp);
   const viewKind = sp.view === "list" ? "list" : "line";
-  const base = { view: viewKind, station: params.station, range: params.range, shift: params.shift ?? "all", step: m.step ? String(m.step) : "", source: m.source ?? "", sort: m.sort, dir: m.dir };
+  const group: PointGroupId = POINT_GROUPS.some((g) => g.id === sp.group) ? (sp.group as PointGroupId) : "holes";
+  const base = { view: viewKind, station: params.station, range: params.range, shift: params.shift ?? "all", step: m.step ? String(m.step) : "", source: m.source ?? "", sort: m.sort, dir: m.dir, group };
   const href = (change: Record<string, string | number>) => `/dashboard/measurements?${new URLSearchParams({ ...base, page: String(m.page), ...Object.fromEntries(Object.entries(change).map(([k, v]) => [k, String(v)])) })}`;
   const csv = `/api/measurements/csv?${new URLSearchParams(base)}`;
 
@@ -63,17 +68,74 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
         ]}
       />
       <MeasurementFilters stations={stations} value={base} />
-      {viewKind === "line" ? <Line f={f} source={m.source} /> : <List f={f} m={m} href={href} />}
+      {viewKind === "line" ? <Line f={f} source={m.source} group={group} station={params.station} /> : <List f={f} m={m} href={href} />}
     </>
   );
 }
 
-async function Line({ f, source }: { f: DashView["f"]; source: Source | null }) {
+async function Line({ f, source, group, station }: { f: DashView["f"]; source: Source | null; group: PointGroupId; station: string }) {
   const { count, rows } = await wideMeasurements(f, source);
+  const points = POINT_GROUPS.find((g) => g.id === group)!.points;
+  const list = rows ?? [];
+  // KPIs over the latest value of each point in this group, in the checks shown.
+  let readings = 0;
+  let out = 0;
+  let near = 0;
+  const per = new Map<string, { out: number; near: number }>();
+  for (const r of list)
+    for (const p of points) {
+      const c = r.cells[p];
+      if (!c) continue;
+      readings++;
+      const j = judge(p, c.latest);
+      const e = per.get(p) ?? { out: 0, near: 0 };
+      if (j === "out") {
+        out++;
+        e.out++;
+      }
+      if (j === "near") {
+        near++;
+        e.near++;
+      }
+      per.set(p, e);
+    }
+  const series = (p: string) => [...list].reverse().flatMap((r) => (r.cells[p] ? [{ value: r.cells[p].latest, at: r.cells[p].at, sessionId: r.sessionId }] : []));
+  const ranked = [...per.entries()].sort((a, b) => b[1].out * 2 + b[1].near - (a[1].out * 2 + a[1].near));
+  const worst = ranked[0] && ranked[0][1].out + ranked[0][1].near > 0 ? ranked[0][0] : null;
+  const worstDrift = worst ? drift(series(worst)) : null;
+  // The banner: the point drifting furthest toward or past a limit; else the worst point; none when all are in tolerance.
+  const drifting = points
+    .map((p) => ({ p, d: drift(series(p)), s: series(p) }))
+    .filter((x) => x.d && x.s.length > 0 && judge(x.p, x.s[x.s.length - 1].value) !== "in")
+    .sort((a, b) => Math.abs(b.d!.to - b.d!.from) - Math.abs(a.d!.to - a.d!.from))[0];
+  const banner = drifting
+    ? {
+        point: drifting.p,
+        text: `${drifting.p} is drifting ${drifting.d!.dir}: ${drifting.d!.from} → ${drifting.d!.to} ${MEASUREMENT_UNIT} over the last ${drifting.d!.n} checks, now ${judge(drifting.p, drifting.d!.to) === "out" ? "out of tolerance" : "near the limit"}. Likely cause: ${likelyCause(drifting.p)} at ${station}. Suggest checking it before the next shift.`,
+      }
+    : worst
+      ? { point: worst, text: `${worst} is the worst point: ${per.get(worst)!.out} out of tolerance and ${per.get(worst)!.near} near the limit in ${list.length} checks. Likely cause: ${likelyCause(worst)} at ${station}.` }
+      : null;
+  const tol = toleranceOf(points[0]);
+  const allComplete = list.length > 0 && list.every((r) => r.status === "complete");
   return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-testid="measurement-kpis">
+        <StatTile icon={<IconChecklist />} tone="blue" value={list.length} label="Checks" sub={`${allComplete ? "all complete · " : ""}${readings} readings`} testId="kpi-checks" />
+        <StatTile icon={<IconAlert />} tone="red" valueTone={out ? "red" : undefined} value={out} label="Out of tolerance" sub={tol ? `${tol.nominal.toFixed(2)} ± ${tol.tol} ${MEASUREMENT_UNIT}` : undefined} testId="kpi-out" />
+        <StatTile icon={<IconAlert />} tone="amber" valueTone={near ? "amber" : undefined} value={near} label="Near the limit" sub={tol ? `within ${+(tol.tol * NEAR_LIMIT_SHARE).toFixed(3)} ${MEASUREMENT_UNIT} of a limit` : undefined} testId="kpi-near" />
+        <StatTile
+          icon={<IconTarget />}
+          tone="violet"
+          value={worst ?? "—"}
+          label="Worst point"
+          sub={worst ? (worstDrift ? `drifting ${worstDrift.dir} · ${worstDrift.n} checks in a row` : `${per.get(worst)!.out} out, ${per.get(worst)!.near} near`) : "all in tolerance"}
+          testId="kpi-worst"
+        />
+      </div>
     <Card className="flex flex-col gap-3 px-6 py-5">
       <p className="text-[15px] font-semibold" data-testid="check-count">
-        {count} {count === 1 ? "check" : "checks"}
+        {count} {count === 1 ? "check" : "checks"} · {groupLabel(group)} ({MEASUREMENT_UNIT})
       </p>
       {!rows ? (
         <p className="rounded-card border border-amber-line bg-amber-soft px-4 py-3 text-[15px] text-amber-ink" data-testid="wide-too-many">
@@ -85,11 +147,11 @@ async function Line({ f, source }: { f: DashView["f"]; source: Source | null }) 
         </p>
       ) : (
         <>
-          <WideTable rows={rows} />
-          <p className="text-[13px] text-muted">The latest value of each point. A dot marks a corrected value (hover for the earlier ones); D marks a demo value (invented, not a measurement). – : nothing recorded.</p>
+          <WideTable rows={rows} points={points} banner={banner} />
         </>
       )}
     </Card>
+    </>
   );
 }
 
@@ -139,7 +201,7 @@ async function List({ f, m, href }: { f: DashView["f"]; m: ReturnType<typeof par
                   <Td>{r.station}</Td>
                   <Td>
                     <Link href={`/dashboard/${r.sessionId}`} className="font-semibold text-primary-ink hover:underline">
-                      Open
+                      View
                     </Link>
                   </Td>
                   <Td>{r.step}</Td>

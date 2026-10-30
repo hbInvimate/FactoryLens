@@ -156,6 +156,8 @@ export interface WideCell {
   earlier: number[];
   /** The latest value came from "Fill demo values". */
   demo: boolean;
+  /** When the latest value was recorded (ISO). */
+  at: string;
 }
 
 export interface WideRow {
@@ -163,6 +165,8 @@ export interface WideRow {
   startedAt: string;
   technician: string;
   station: string;
+  /** The check status (complete, left, ...). */
+  status: string;
   /** A demo (sample) session: its values carry a "D". */
   demo: boolean;
   cells: Record<string, WideCell>;
@@ -193,6 +197,8 @@ export async function wideMeasurements(f: DashFilter, source: Source | null): Pr
       point: t.measurements.pointId,
       values: sql<number[]>`array_agg(${t.measurements.value} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
       sources: sql<string[]>`array_agg(${t.measurements.source} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
+      times: sql<string[]>`array_agg(${t.measurements.recordedAt} order by ${t.measurements.recordedAt}, ${t.measurements.id})`,
+      status: t.sessions.status,
       startedAt: t.sessions.startedAt,
       technician: t.sessions.operatorLabel,
       station: sql<string>`${stationExpr}`,
@@ -201,17 +207,18 @@ export async function wideMeasurements(f: DashFilter, source: Source | null): Pr
     .from(t.measurements)
     .innerJoin(t.sessions, eq(t.sessions.id, t.measurements.sessionId))
     .where(w)
-    .groupBy(t.measurements.sessionId, t.measurements.pointId, t.sessions.startedAt, t.sessions.operatorLabel, stationExpr, t.sessions.isSample);
+    .groupBy(t.measurements.sessionId, t.measurements.pointId, t.sessions.startedAt, t.sessions.operatorLabel, stationExpr, t.sessions.isSample, t.sessions.status);
   const bySession = new Map<string, WideRow>();
   for (const g of grouped) {
     let row = bySession.get(g.sessionId);
     if (!row) {
-      row = { sessionId: g.sessionId, startedAt: new Date(g.startedAt).toISOString(), technician: g.technician, station: g.station, demo: g.demo === true, cells: {} };
+      row = { sessionId: g.sessionId, startedAt: new Date(g.startedAt).toISOString(), technician: g.technician, station: g.station, status: g.status, demo: g.demo === true, cells: {} };
       bySession.set(g.sessionId, row);
     }
     const vals = (g.values ?? []).map(Number);
     const sources = g.sources ?? [];
-    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1), demo: sources[sources.length - 1] === "demo" };
+    const times = g.times ?? [];
+    if (vals.length) row.cells[g.point] = { latest: vals[vals.length - 1], earlier: vals.slice(0, -1), demo: sources[sources.length - 1] === "demo", at: new Date(times[times.length - 1]).toISOString() };
   }
   const rows = [...bySession.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt) || a.sessionId.localeCompare(b.sessionId));
   return { count, rows };
