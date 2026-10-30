@@ -30,8 +30,7 @@ test("a Quality Technician lands on Tasks, adds a task, filters and searches", a
   await expect(page.getByTestId("stat-mine")).toHaveCount(0);
   await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Type");
   await expect(page.getByTestId("tasks-table").locator("thead")).not.toContainText("Submission");
-  // No way to start a check except Start on an assigned task.
-  await expect(page.locator('a[href="/"]')).toHaveCount(0);
+  await expect(page.getByTestId("start-a-check")).toHaveAttribute("href", "/");
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Sessions", exact: true })).toHaveAttribute("aria-current", "page");
   const notStarted = Number(await page.getByTestId("stat-not-started").innerText());
 
@@ -92,6 +91,26 @@ test("a second task for the same part, cell and technician is refused while the 
   // Another cell is a different check.
   const other = await ctx.request.post("/api/tasks", { data: { part, station: "Laser cell 9 · FX-099", priority: "high", assignedTo } });
   expect(other.status()).toBe(201);
+  await ctx.close();
+});
+
+test("Start a check from Sessions; a task with the same part and cell, not started yet, is started instead of a new check", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  const part = unique("SAME");
+  const title = unique("Same part");
+  const taskId = await newTask(browser, new URL(page.url()).origin, title, part, "Medium", "technician2");
+  await page.reload();
+  await page.getByTestId("start-a-check").click();
+  await expect(page).toHaveURL(/localhost:\d+\/$/);
+  await page.getByLabel("Part", { exact: true }).fill(part);
+  await page.getByRole("button", { name: "Start the check" }).click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  const id = page.url().split("/check/")[1];
+  await waitSaved(page);
+  // The assigned task now has this check: no second row for the same part and cell.
+  await page.goto(`/tasks?q=${encodeURIComponent(part)}`);
+  await expect(page.getByTestId("tasks-table").locator("tbody tr[data-status]")).toHaveCount(1);
+  await expect(page.locator(`tr[data-task="${taskId}"]`)).toHaveAttribute("data-session", id);
   await ctx.close();
 });
 

@@ -8,12 +8,11 @@ import { startCheck } from "./helpers";
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test("a Quality Technician signs in at /signin and starts a check from an assigned task", async ({ page }) => {
-  // There is no start page: / goes to Sessions.
   await page.goto("/");
-  await expect(page).toHaveURL(/\/signin\?next=%2Ftasks$/);
+  await expect(page).toHaveURL(/\/signin\?next=%2F$/);
   await expect(page.getByText("Quality Technician", { exact: true })).toBeVisible();
   await signInAs(page, "technician", "/signin");
-  await expect(page).toHaveURL(/localhost:\d+\/tasks$/);
+  await expect(page).toHaveURL(/localhost:\d+\/$/); // ?next=/ is kept: the start page
   await expect(page.getByTestId("signed-in-user")).toContainText(testUser("technician").name);
   await startCheck(page);
 });

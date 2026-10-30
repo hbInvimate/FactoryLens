@@ -77,6 +77,9 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
           <h1 className="text-[30px] font-bold">Sessions</h1>
           <p className="text-[16px] text-muted">Checks assigned to you</p>
         </div>
+        <ButtonLink variant="primary" href="/" data-testid="start-a-check">
+          Start a check
+        </ButtonLink>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -179,11 +182,13 @@ async function Body({ searchParams }: { searchParams: PageProps<"/tasks">["searc
         </tbody>
       </Table>
 
-      {/* A check is started only with Start on an assigned task. */}
       {active === 0 && (
-        <p className="text-[17px] text-ink-2" data-testid="none-assigned">
-          No checks assigned to you
-        </p>
+        <div className="flex flex-col items-center gap-4 rounded-[20px] border-2 border-dashed border-line-strong px-6 py-10 text-center" data-testid="none-assigned">
+          <p className="text-[19px] text-ink-2">No checks assigned to you</p>
+          <ButtonLink variant="primary" href="/" className="min-h-[64px] px-8 text-[20px]" data-testid="start-a-check-empty">
+            Start a check
+          </ButtonLink>
+        </div>
       )}
     </>
   );

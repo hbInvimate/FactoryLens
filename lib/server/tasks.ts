@@ -1,12 +1,13 @@
 // Tasks: first-off checks to do, on the Quality Technician's /tasks page. A task's status is never stored:
 // it follows the check started from it, so the check logic stays the only source of truth.
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { AnyDb } from "@/db/client";
 import * as t from "@/db/schema";
 import { readsAllSessions, seesAllSessions, type Role } from "@/lib/auth/roles";
 import type { SessionStatus } from "@/lib/check/types";
 import { getRepo } from "./repo";
 import { shown } from "./supervisor";
+import { stationExpr } from "./sqlparts";
 import { BadRequest } from "./validate";
 
 export const PRIORITIES = ["high", "medium", "low"] as const;
@@ -129,6 +130,32 @@ function text(v: unknown, name: string, min: number, max: number): string {
 }
 
 export const DUPLICATE_TASK = "This check is already assigned and not started";
+
+/**
+ * The start page's duplicate block: the signed-in Quality Technician's check for the same part and cell/fixture that
+ * is already In progress (open it), else such a task still Not started (start that one). Null: start a new check.
+ */
+export async function activeMatch(user: Viewer, part: string, station: string): Promise<{ kind: "check"; sessionId: string } | { kind: "task"; taskId: string; title: string } | null> {
+  const { db } = await getRepo().conn();
+  const same = (col: unknown, v: string) => sql`lower(btrim(${col})) = lower(btrim(${v}))`;
+  const [checks, tasks] = await Promise.all([
+    db
+      .select({ id: t.sessions.id })
+      .from(t.sessions)
+      .where(and(eq(t.sessions.userId, user.id), inArray(t.sessions.status, ["running", "paused", "on_hold", "stopped"]), same(t.sessions.part, part), same(stationExpr, station)))
+      .orderBy(desc(t.sessions.startedAt))
+      .limit(1),
+    db
+      .select({ id: t.tasks.id, title: t.tasks.title })
+      .from(t.tasks)
+      .where(and(eq(t.tasks.assignedTo, user.id), isNull(t.tasks.sessionId), same(t.tasks.part, part), same(t.tasks.station, station)))
+      .orderBy(t.tasks.createdAt)
+      .limit(1),
+  ]);
+  if (checks[0]) return { kind: "check", sessionId: checks[0].id };
+  if (tasks[0]) return { kind: "task", taskId: tasks[0].id, title: tasks[0].title };
+  return null;
+}
 
 /**
  * Whether the Quality Technician already has a Not started or In progress task for the same part and cell/fixture

@@ -17,12 +17,8 @@ const nextConfig: NextConfig = {
     },
   },
   async redirects() {
-    // There is no start page: a Quality Technician starts a check from an assigned task on Sessions.
-    // The old scripted demo lived at /monitor.
-    return [
-      { source: "/", destination: "/tasks", permanent: false },
-      { source: "/monitor", destination: "/tasks", permanent: false },
-    ];
+    // The old scripted demo lived here.
+    return [{ source: "/monitor", destination: "/", permanent: false }];
   },
 };
 
