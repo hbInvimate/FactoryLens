@@ -26,8 +26,8 @@ export function SignInPage({ area, searchParams }: { area: Area; searchParams: P
       <section className="flex flex-col gap-10 border-b border-primary-line bg-primary-soft px-8 py-8 lg:w-[46%] lg:justify-between lg:border-r lg:border-b-0 lg:px-14 lg:py-12">
         <Logo />
         <div className="flex flex-col gap-4">
-          <p className="text-[36px] leading-[1.08] font-bold tracking-tight text-ink lg:text-[52px]">First-off checks, done right the first time.</p>
-          <p className="text-[20px] text-ink-2">One SOP, followed step by step, watched live and improved from the best sessions.</p>
+          <p className="text-[36px] leading-[1.08] font-bold tracking-tight text-ink lg:text-[52px]">AI that guides every first-off check, step by step.</p>
+          <p className="text-[20px] text-ink-2">Technicians follow the SOP, AI watches each step, and engineers improve it from the best sessions.</p>
         </div>
         <div className="flex flex-col gap-8">
           <ul className="flex flex-col gap-3" data-testid="signin-ticks">
