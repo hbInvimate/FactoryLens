@@ -1,4 +1,5 @@
 "use client";
+import { isRightFirstTime } from "@/lib/check/reducer";
 import type { CheckState } from "@/lib/check/types";
 import { STEPS } from "@/lib/sop";
 import { Ring, Tick, Warn, cx } from "../ui";
@@ -29,7 +30,7 @@ export function MiniStepList({
         }
         const body = (
           <>
-            {done ? <Tick size={24} tone={run.outcome === "corrected" ? "amber" : "green"} /> : <Ring n={s.n} size={24} active={selected === s.n} />}
+            {done ? <Tick size={24} tone={isRightFirstTime(state, s.n) ? "green" : "amber"} /> : <Ring n={s.n} size={24} active={selected === s.n} />}
             <span className={cx("text-left text-[17px]", done ? "text-muted" : "text-ink", selected === s.n && "font-semibold text-ink")}>{name}</span>
           </>
         );

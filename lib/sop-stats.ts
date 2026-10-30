@@ -1,6 +1,6 @@
 // How each step is performed, from saved sessions (docs/sop-management). Pure: no database here, so the
 // maths can be tested on a fixed dataset. FactoryLens AI shows these numbers; it never says which way is better.
-import { activeCheckMs, reduce, stepActiveMs } from "@/lib/check/reducer";
+import { activeCheckMs, isRightFirstTime, reduce, stepActiveMs } from "@/lib/check/reducer";
 import type { Action } from "@/lib/check/types";
 import type { ShiftId } from "@/lib/config";
 import { SHIFTS } from "@/lib/config";
@@ -75,7 +75,7 @@ function reduceAll(sessions: StatSession[]): Reduced[] {
       s,
       shift: shiftOf(s.startedAt),
       stepMs: Array.from({ length: 12 }, (_, i) => stepActiveMs(st, i + 1)),
-      correct: st.steps.map((r) => r.outcome === "correct"),
+      correct: st.steps.map((r) => isRightFirstTime(st, r.n)),
       checkMs: activeCheckMs(st),
     };
   });

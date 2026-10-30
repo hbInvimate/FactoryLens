@@ -93,6 +93,21 @@ test("closing the page pauses the check; reopening resumes it and the closed tim
   expect(elapsedMs(s, now)).toBeLessThan(now - meta.createdAt - 3_500);
 });
 
+test("right first time: Back, an undone Next step and a corrected value all count as not right first time", async () => {
+  const { isRightFirstTime, correctFirstTime } = await import("../lib/check/reducer");
+  const back = reduce(log([{ type: "next_step", step: 1 }, { type: "next_step", step: 2 }, { type: "go_back", from: 3, to: 2, by: "QT" }, { type: "next_step", step: 2 }]), 0);
+  expect([isRightFirstTime(back, 1), isRightFirstTime(back, 2)]).toEqual([true, false]);
+  const undone = reduce(log([{ type: "next_step", step: 1 }, { type: "undo", target: "a0" }, { type: "next_step", step: 1 }]), 0);
+  expect(isRightFirstTime(undone, 1)).toBe(false);
+  const steps = log([1, 2, 3, 4, 5, 6].map((n) => ({ type: "next_step", step: n }) as ActionBody));
+  const measure = (point: string, value: number): ActionBody => ({ type: "measure", step: 7, point, value, unit: "mm", source: "typed", heard: "", confidence: null, status: "recorded" });
+  const pts = STEPS[6].points.map((p) => measure(p, 8));
+  const fixed = reduce([...steps, ...log([measure("H1", 9), ...pts.slice(1), measure("H1", 8), { type: "next_step", step: 7 }]).map((a, i) => ({ ...a, id: `m${i}`, seq: 10 + i, at: 10_000 + i }))], 0);
+  expect(fixed.steps[6].doneAt).not.toBeNull();
+  expect(isRightFirstTime(fixed, 7)).toBe(false);
+  expect(correctFirstTime(fixed)).toBe(6);
+});
+
 test("a gap of more than 10 minutes without activity is not counted, even without a pause", () => {
   const s = reduce(
     log([{ type: "next_step", step: 1 }, { type: "next_step", step: 2 }]).map((a, i) => (i === 1 ? { ...a, at: 1_000 + 20 * 60_000 } : a)),

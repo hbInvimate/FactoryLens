@@ -2,7 +2,7 @@
 // no model. A Quality Technician is listed when their newest completed checks are ALL faster than the
 // station median by the set margin, and their first-time-correct rate is not below the station's.
 // Real sessions only: a sample session is never part of a candidate.
-import { activeCheckMs, correctFirstTime, reduce, stepActiveMs } from "@/lib/check/reducer";
+import { activeCheckMs, correctFirstTime, isRightFirstTime, reduce, stepActiveMs } from "@/lib/check/reducer";
 import {
   CANDIDATE_MIN_CHECKS, CANDIDATE_MIN_IMPROVEMENT_PERCENT, STEP_CHANGE_MIN_PERCENT, STEP_CHANGE_MIN_SECONDS, STEP_CHANGE_SHARE_PERCENT,
 } from "@/lib/config";
@@ -59,7 +59,7 @@ export function checkRows(sessions: StatSession[]): CheckRow[] {
         const v = stepActiveMs(st, i + 1);
         return v === null ? null : v / 1000;
       }),
-      correct: st.steps.map((r) => r.outcome === "correct"),
+      correct: st.steps.map((r) => isRightFirstTime(st, r.n)),
       orders: st.steps.map((r) => {
         const seen = new Set<string>();
         return [...r.confirmed].sort((a, b) => a.order - b.order).map((c) => c.point).filter((p) => (seen.has(p) ? false : (seen.add(p), true)));

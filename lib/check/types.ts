@@ -242,6 +242,12 @@ export interface CheckState {
   stepEvents: StepEvent[];
   /** When she did something on the check (every action but the automatic pauses), oldest first. For active time. */
   activity: number[];
+  /** Steps reopened with Back (go-back) or by undoing their Next step: not right first time. */
+  reopened: Set<number>;
+  /** Steps where a recorded value was corrected (a second value for the same point): not right first time. */
+  valueCorrected: Set<number>;
+  /** "step:point" of every recorded value so far, to see corrections. */
+  recordedPoints: Set<string>;
   /** Every go-back, oldest first. Not deviations. */
   goBacks: { at: number; from: number; to: number; by: string }[];
   status: SessionStatus;

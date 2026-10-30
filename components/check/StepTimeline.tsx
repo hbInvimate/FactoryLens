@@ -4,6 +4,7 @@
 // Motion: the card of the step just left collapses while the new one opens (CSS keyframes in globals.css), the green
 // line follows the current dot, a newly done dot pops its tick, then the list scrolls the current step near the top.
 import { useLayoutEffect, useRef, useState, type AnimationEvent, type ReactNode } from "react";
+import { isRightFirstTime } from "@/lib/check/reducer";
 import type { CheckState } from "@/lib/check/types";
 import { useSopStep } from "@/lib/client/sopContext";
 import { STEPS } from "@/lib/sop";
@@ -124,7 +125,7 @@ export function StepTimeline({
                 data-dot={done ? "done" : "upcoming"}
                 className={cx(
                   "relative z-10 flex size-[29px] items-center justify-center rounded-full text-[13px] font-bold",
-                  done ? (r.outcome === "corrected" ? "bg-amber text-on-amber" : "bg-primary text-on-strong") : "border-2 border-line-strong bg-surface text-muted",
+                  done ? (isRightFirstTime(state, s.n) ? "bg-primary text-on-strong" : "bg-amber text-on-amber") : "border-2 border-line-strong bg-surface text-muted",
                 )}
               >
                 {done ? <span className={cx("inline-block", s.n === leaving && "tl-pop")}>✓</span> : s.n}

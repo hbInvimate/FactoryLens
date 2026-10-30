@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { checkPointsDone, conformance, correctFirstTime, elapsedMs, openHolds } from "@/lib/check/reducer";
+import { checkPointsDone, conformance, correctFirstTime, elapsedMs, isRightFirstTime, openHolds } from "@/lib/check/reducer";
 import { deviationText, fixedLine } from "@/lib/check/text";
 import type { CheckState } from "@/lib/check/types";
 import { fmtClock } from "@/lib/client/hooks";
@@ -50,7 +50,7 @@ export function CompleteView({
           </div>
           {STEPS.map((s) => {
             const r = state.steps[s.n - 1];
-            const corrected = r.outcome === "corrected";
+            const corrected = !isRightFirstTime(state, s.n);
             return (
               <div key={s.n} className="flex min-h-11 items-center gap-3.5 px-3.5" data-testid={`result-step-${s.n}`}>
                 <Tick tone={corrected ? "amber" : "green"} />

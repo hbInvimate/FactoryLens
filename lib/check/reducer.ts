@@ -41,6 +41,9 @@ function initial(startedAt: number): CheckState {
     final: null,
     stepEvents: [],
     goBacks: [],
+    reopened: new Set(),
+    valueCorrected: new Set(),
+    recordedPoints: new Set(),
     activity: [],
     status: "running",
     raisers: new Set(),
@@ -87,7 +90,14 @@ export function reduce(actions: Action[], startedAt: number): CheckState {
       undone.add(t.id);
     }
   }
-  return undone.size ? fold(sorted, startedAt, undone) : first;
+  if (!undone.size) return first;
+  const s = fold(sorted, startedAt, undone);
+  // An undone Next step reopened that step: it is not right first time.
+  for (const id of undone) {
+    const a = byId.get(id);
+    if (a?.type === "next_step") s.reopened.add(a.step);
+  }
+  return s;
 }
 
 /** The action an Undo button would revert right now, if any. */
@@ -198,7 +208,12 @@ function apply(s: CheckState, a: Action) {
     case "measure":
       // A recorded value confirms its check point, exactly like a tap, so nothing is entered twice.
       // The value itself is only recorded (see the measurements table); the check never judges it.
-      if (a.status === "recorded" && a.value !== null) apply(s, { id: a.id, seq: a.seq, at: a.at, type: "tap_point", step: a.step, point: a.point });
+      if (a.status === "recorded" && a.value !== null) {
+        const key = `${a.step}:${a.point}`;
+        if (s.recordedPoints.has(key)) s.valueCorrected.add(a.step);
+        s.recordedPoints.add(key);
+        apply(s, { id: a.id, seq: a.seq, at: a.at, type: "tap_point", step: a.step, point: a.point });
+      }
       return;
 
     case "release_clamps": {
@@ -237,7 +252,10 @@ function apply(s: CheckState, a: Action) {
     case "go_back": {
       if (isLocked(s) || openDeviation(s) || s.current > STEP_COUNT || a.from !== s.current) return;
       if (!Number.isInteger(a.to) || a.to < 1 || a.to >= s.current || s.steps[a.to - 1].doneAt === null) return;
-      for (let n = a.to; n < s.current; n++) s.steps[n - 1].reconfirm = true;
+      for (let n = a.to; n < s.current; n++) {
+        s.steps[n - 1].reconfirm = true;
+        s.reopened.add(n);
+      }
       s.goBacks.push({ at: a.at, from: a.from, to: a.to, by: String(a.by ?? "").slice(0, 100) });
       s.current = a.to;
       return;
@@ -429,8 +447,18 @@ export function checkPointsDone(s: CheckState): number {
   return n;
 }
 
+/**
+ * THE right-first-time rule, used everywhere conformance or right first time appears. A step is right first time
+ * only when it is done and was not skipped, done in the wrong order or given a deviation, not reopened with Back or
+ * Undo, and had no recorded value corrected. (Left and closed checks are not scored at all: see conformance.)
+ */
+export function isRightFirstTime(s: CheckState, n: number): boolean {
+  const r = s.steps[n - 1];
+  return !!r && r.doneAt !== null && r.outcome === "correct" && !s.reopened.has(n) && !s.valueCorrected.has(n);
+}
+
 export function correctFirstTime(s: CheckState): number {
-  return s.steps.filter((r) => r.outcome === "correct").length;
+  return s.steps.filter((r) => isRightFirstTime(s, r.n)).length;
 }
 
 /** Final score: steps correct first time / 12. Only for a complete session: never for one on hold or ended without a check. */
@@ -443,7 +471,7 @@ export function conformance(s: CheckState): number | null {
 export function conformanceSoFar(s: CheckState): number | null {
   const decided = s.steps.filter((r) => r.outcome !== "pending" || s.deviations.some((d) => d.step === r.n));
   if (!decided.length) return null;
-  const right = decided.filter((r) => r.outcome === "correct").length;
+  const right = decided.filter((r) => isRightFirstTime(s, r.n)).length;
   return Math.round((right / decided.length) * 100);
 }
 
