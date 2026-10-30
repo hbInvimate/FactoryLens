@@ -4,9 +4,8 @@ import Form from "next/form";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Gate } from "@/components/auth/Gate";
-import Link from "next/link";
-import { ButtonLink, Card, Chip } from "@/components/ds";
-import { CARD, DONUT, Donut, HotspotsCard, RftCard, StepTimesCard, pctOf } from "@/components/analytics/cards";
+import { ButtonLink, Card } from "@/components/ds";
+import { DiscrepanciesCard, HotspotsCard, RftCard, StepTimesCard } from "@/components/analytics/cards";
 import { RFT_GOAL_PERCENT } from "@/lib/config";
 import { STEPS } from "@/lib/sop";
 import { isMissing, load } from "@/components/supervisor/parts";
@@ -92,56 +91,7 @@ async function Body({ searchParams }: { searchParams: SP }) {
           }))}
         />
 
-        <section className={CARD} data-testid="station-discrepancies">
-          <div className="flex items-start gap-3">
-            <div className="flex flex-1 flex-col">
-              <h2 className="text-[20px] font-semibold">Discrepancies</h2>
-              <p className="text-[14px] text-muted">Issues lodged during checks, by what went wrong</p>
-            </div>
-            <span className="flex gap-1.5">
-              {disc.open > 0 && <Chip tone="red" size="sm">{disc.open} open</Chip>}
-              <Chip tone="green" size="sm">{disc.cleared} cleared</Chip>
-            </span>
-          </div>
-          {disc.total === 0 ? (
-            <p className="py-10 text-center text-[17px] text-muted">No data yet</p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-6">
-              <Donut parts={disc.byCategory.map((c) => ({ label: c.category, count: c.count }))} total={disc.total} />
-              <div className="flex min-w-[220px] flex-1 flex-col gap-2">
-                <ul className="flex flex-col gap-1.5" data-testid="category-legend">
-                  {disc.byCategory.map((c, i) => (
-                    <li key={c.category} className="flex items-center gap-2 text-[15px]" data-category={c.category}>
-                      <i className="inline-block size-3 rounded-sm" style={{ background: DONUT[i % DONUT.length] }} />
-                      <span className="flex-1">{c.category}</span>
-                      <b className="tabular-nums">{c.count}</b>
-                      <span className="w-12 text-right text-muted">{pctOf(c.count, disc.total)}%</span>
-                    </li>
-                  ))}
-                </ul>
-                <span className="border-t border-line pt-2 text-[13px] text-muted">By station</span>
-                <span className="flex flex-wrap gap-1.5" data-testid="station-rows">
-                  {a.byStation.map((s) => (
-                    <Link key={s.station} href={tasks({ station: s.station })} className="rounded-full border border-line bg-surface-2 px-3 py-1 text-[13px] font-semibold hover:border-primary" data-row={s.station}>
-                      {s.station} · <b>{s.count}</b>
-                    </Link>
-                  ))}
-                </span>
-                {disc.openList.map((d) => (
-                  <div key={d.id} className="flex flex-wrap items-center gap-2 rounded-[12px] bg-red-soft px-3 py-2 text-[14px]" data-open={d.id}>
-                    <b className="text-red-ink">Open</b>
-                    <span className="min-w-0 flex-1">
-                      {d.category} · {d.issue} · {d.station}
-                    </span>
-                    <Link href={`/supervisor/live/${d.sessionId}`} className="font-semibold text-primary-ink underline">
-                      View
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+        <DiscrepanciesCard d={disc} stations={a.byStation} stationHref={(x) => tasks({ station: x })} openHref={(id) => `/supervisor/live/${id}`} viewAllHref={tasks({})} />
       </div>
     </>
   );

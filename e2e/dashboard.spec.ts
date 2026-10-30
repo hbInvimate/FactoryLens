@@ -118,8 +118,8 @@ test("Blocks: click a step to filter the sessions table, remove the chip, shift 
   await expect(page).toHaveURL(new RegExp(`shift=${mine}`));
   await expect(page.getByTestId("tile-sessions")).toHaveText("2");
   // Block 2 still shows all three shifts, the others dimmed.
-  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${other}"]`)).toHaveClass(/opacity-40/);
-  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${mine}"]`)).not.toHaveClass(/opacity-40/);
+  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${other}"]`).first()).toHaveClass(/opacity-40/);
+  await expect(page.getByTestId("block-shifts").locator(`[data-shift="${mine}"]`).first()).not.toHaveClass(/opacity-40/);
   await page.getByLabel("Shift", { exact: true }).selectOption(other);
   await expect(page).toHaveURL(new RegExp(`shift=${other}`));
   await expect(page.getByTestId("dashboard-empty")).toBeVisible();

@@ -3,23 +3,23 @@ import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { Gate } from "@/components/auth/Gate";
 import { isTestMode } from "@/components/TestModeBanner";
-import { CardHead, CARD, Donut, HotspotsCard, RftCard, ShiftTimesCard, StepTimesCard } from "@/components/analytics/cards";
+import { DiscrepanciesCard, HotspotsCard, RftCard, ShiftsCompared, StepTimesCard, type ShiftRow } from "@/components/analytics/cards";
 import { BigRing } from "@/components/check/CheckMetrics";
 import { Filters } from "@/components/dashboard/Filters";
 import { Card, Page, Skeleton } from "@/components/dashboard/light";
-import { ButtonLink, Chip, cx } from "@/components/ds";
+import { ButtonLink, cx } from "@/components/ds";
 import { OldestHoldAge, SessionsTable } from "@/components/dashboard/SessionsTable";
-import { HOLD_WARN_MINUTES, RFT_GOAL_PERCENT, SHIFTS, type ShiftId } from "@/lib/config";
+import { HOLD_WARN_MINUTES, RFT_GOAL_PERCENT, SHIFTS } from "@/lib/config";
+import { shiftOf } from "@/lib/shifts";
 import { includeSampleFor, parseRange, rangeStart, type Range } from "@/lib/dashboard/metrics";
 import { dashHref, parseDev, parseShift, type DashParams } from "@/lib/dashboard/params";
 import { fmtClock } from "@/lib/format";
-import { checkTimeByShift, deviationsByStep, discrepanciesByCategory, summary, type StepDeviations } from "@/lib/server/analytics";
+import { checkTimeByShift, deviationsByStep, summary, type StepDeviations } from "@/lib/server/analytics";
 import { getRepo, NotConfigured, SEED_STATION } from "@/lib/server/repo";
 import { activeRevision } from "@/lib/server/sop";
 import type { DashFilter } from "@/lib/server/sqlparts";
 import { analytics } from "@/lib/server/supervisor";
 import { revisionLabels } from "@/lib/server/sopActivate";
-import { CATEGORIES } from "@/lib/issues";
 import { sopName } from "@/lib/sop-revisions";
 import { STEPS, step as sopStep } from "@/lib/sop";
 
@@ -30,7 +30,6 @@ type SP = PageProps<"/dashboard">["searchParams"];
 const TABLE_LIMIT = 200;
 /** The right-first-time and step-time cards count in weeks: the date range, rounded up. */
 const WEEKS: Record<Range, number> = { "7": 1, "30": 5, "90": 13, all: 520 };
-const SHIFT_IDS: ShiftId[] = ["A", "B", "C"];
 const KPI = "flex min-w-0 items-center gap-4 rounded-[20px] border border-line bg-surface px-5 py-4 shadow-card";
 const clock = (s: number | null) => (s === null ? "—" : fmtClock(s * 1000));
 
@@ -128,13 +127,15 @@ async function Body({ searchParams }: { searchParams: SP }) {
   };
   const f: DashFilter = { station, since: rangeStart(params.range), shift: params.shift, includeSample: params.sample };
   const conn = await repo.conn();
-  const [s, rev, a, devs, shifts, cats] = await Promise.all([
+  // Shifts compared: every shift, whatever the shift filter (it only dims the others).
+  const all: DashFilter = { ...f, shift: null };
+  const [s, rev, a, devs, shifts, list] = await Promise.all([
     summary(conn, f),
     activeRevision(),
     analytics({ weeks: WEEKS[params.range], station }),
     deviationsByStep(conn, f, 12),
-    checkTimeByShift(conn, f),
-    discrepanciesByCategory(conn, f),
+    checkTimeByShift(conn, all),
+    repo.dashboard(all, { limit: 5000 }),
   ]);
   const updateHref = `/dashboard/update-sop?station=${encodeURIComponent(station)}`;
 
@@ -193,10 +194,17 @@ async function Body({ searchParams }: { searchParams: SP }) {
   const wording = lead ? suggestion(lead.step, leadItem) : null;
   const rftText = a.rft.completed ? `${a.rft.right} of ${a.rft.completed} checks were right first time.` : "No completed checks to score yet.";
   const quiet = s.onHold === 0 && s.openDiscrepancies === 0;
-  // Every category, lodged or not, in the catalogue's order.
-  const catRows = CATEGORIES.map((c) => cats.rows.find((r) => r.category === c) ?? { category: c, A: 0, B: 0, C: 0, total: 0 });
-  const catMax = Math.max(1, ...catRows.flatMap((r) => SHIFT_IDS.map((x) => r[x])));
-  const cleared = Math.max(0, cats.totals.total - s.openDiscrepancies);
+  const shiftRows: ShiftRow[] = SHIFTS.map(({ id }) => {
+    const done = list.rows.filter((r) => r.status === "complete" && shiftOf(r.startedAt) === id);
+    const time = shifts.find((x) => x.shift === id);
+    return {
+      shift: id,
+      checks: done.length,
+      avgSeconds: time?.average ?? null,
+      rftPct: done.length ? Math.round((done.filter((r) => r.conformance === 100).length / done.length) * 100) : null,
+      deviations: done.reduce((n, r) => n + (r.deviations ?? 0), 0),
+    };
+  });
 
   return (
     <>
@@ -324,80 +332,15 @@ async function Body({ searchParams }: { searchParams: SP }) {
             ],
           }))}
         />
-        <ShiftTimesCard shifts={shifts} taktSeconds={a.taktSeconds} active={params.shift} />
+        <DiscrepanciesCard
+          d={a.discrepancies}
+          stations={a.byStation.filter((x) => x.station === station)}
+          openHref={(id) => `/dashboard/${id}`}
+          viewAllHref="#sessions"
+        />
       </div>
 
-      <section className={CARD} data-testid="block-categories">
-        <CardHead
-          title="Discrepancies"
-          sub="Issues lodged on the monitor, by category and the shift they were lodged in"
-          right={
-            <span className="flex gap-1.5">
-              <Chip tone={s.openDiscrepancies > 0 ? "red" : "gray"} size="sm">
-                {s.openDiscrepancies} open
-              </Chip>
-              <Chip tone="green" size="sm">
-                {cleared} cleared
-              </Chip>
-            </span>
-          }
-        />
-        {(
-          <div className="flex flex-wrap items-center gap-8">
-            <Donut parts={cats.rows.map((r) => ({ label: r.category, count: r.total }))} total={cats.totals.total} />
-            <div className="flex w-full max-w-[760px] min-w-0 flex-1 flex-col gap-2">
-              <table className="w-full text-[15px]" data-testid="category-table">
-                <thead className="text-[13px] text-muted">
-                  <tr>
-                    <th className="py-1 text-left font-semibold tracking-wide uppercase">Category</th>
-                    {SHIFT_IDS.map((x) => (
-                      <th key={x} className={cx("w-24 py-1 text-center font-medium", params.shift && params.shift !== x && "opacity-40")}>
-                        Shift {x}
-                      </th>
-                    ))}
-                    <th className="w-20 py-1 text-center font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {catRows.map((r) => (
-                    <tr key={r.category} data-category={r.category}>
-                      <td className={cx("py-1 pr-2", r.total === 0 && "text-muted")}>{r.category}</td>
-                      {SHIFT_IDS.map((x) => (
-                        <td key={x} className={cx("px-1 py-1 text-center", params.shift && params.shift !== x && "opacity-40")}>
-                          <span
-                            className={cx(
-                              "inline-flex min-w-12 justify-center rounded-[8px] px-2 py-1 font-semibold",
-                              r[x] === 0 ? "bg-surface-2 text-subtle" : r[x] / catMax > 0.5 ? "bg-primary text-on-strong" : "bg-primary-soft text-primary-ink",
-                            )}
-                            data-shift={x}
-                          >
-                            {r[x]}
-                          </span>
-                        </td>
-                      ))}
-                      <td className="py-1 text-center font-bold" data-shift="total">
-                        {r.total}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="border-t border-line font-semibold">
-                    <td className="py-1.5">All categories</td>
-                    {SHIFT_IDS.map((x) => (
-                      <td key={x} className={cx("py-1.5 text-center", params.shift && params.shift !== x && "opacity-40")}>
-                        {cats.totals[x]}
-                      </td>
-                    ))}
-                    <td className="py-1.5 text-center">{cats.totals.total}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p className="text-[13px] text-ink-2" data-testid="fixed-on-spot">
-                Fixed on the spot (not lodged): {SHIFTS.map((x) => `Shift ${x.id} ${cats.fixedOnSpot[x.id]}`).join(" · ")} · total {cats.fixedOnSpot.total}
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
+      <ShiftsCompared rows={shiftRows} taktSeconds={a.taktSeconds} active={params.shift} />
 
       <div id="sessions" className="flex flex-wrap items-center gap-3 pt-2">
         <h2 className="text-[20px] font-semibold">Sessions</h2>

@@ -11,6 +11,8 @@ import { percentile } from "@/lib/sop-stats";
 import { getRepo } from "./repo";
 import { activeRevision } from "./sop";
 import { stationExpr } from "./sqlparts";
+import type { ShiftId } from "@/lib/config";
+import { shiftOf } from "@/lib/shifts";
 import { withActions } from "./sopData";
 
 const DAY = 86_400_000;
@@ -293,6 +295,10 @@ export interface Analytics {
     cleared: number;
     byCategory: { category: string; count: number }[];
     openList: { id: string; sessionId: string; issue: string; category: string; station: string; loggedAt: string }[];
+    /** Lodged per shift (the shift it was lodged in). */
+    byShift: Record<ShiftId, number>;
+    /** When the newest cleared discrepancy was lodged. Null: none cleared. */
+    lastClearedAt: string | null;
   };
 }
 
@@ -386,6 +392,8 @@ export async function analytics(f: AnalyticsFilter, now = new Date()): Promise<A
       openList: discRows
         .filter((d) => isOpen(d.status))
         .map((d) => ({ id: d.id, sessionId: d.sessionId, issue: d.issue, category: d.category ?? "Other", station: d.station, loggedAt: d.loggedAt.toISOString() })),
+      byShift: discRows.reduce((m, d) => ({ ...m, [shiftOf(d.loggedAt)]: m[shiftOf(d.loggedAt)] + 1 }), { A: 0, B: 0, C: 0 } as Record<ShiftId, number>),
+      lastClearedAt: discRows.find((d) => !isOpen(d.status))?.loggedAt.toISOString() ?? null,
     },
     weeks,
     steps: STEPS.map((s, i) => ({
