@@ -91,7 +91,7 @@ test("the page: the candidate with their label and the video note, others not li
   await expect(a.getByTestId("candidate-streak")).toHaveText("6 in a row");
   await expect(a.getByTestId("candidate-ftc")).toHaveText("100%");
   await expect(a.getByTestId("candidate-steps")).toHaveText("5, 7, 9");
-  await expect(page.getByTestId("candidates")).toContainText("Use this to improve the process, not to rank people.");
+  await expect(page.getByTestId("candidates")).toContainText("Improve the process, not rank people.");
   await expect(page.getByTestId("ct-trend").locator("svg")).toBeVisible();
   await expect(page.getByTestId("trend-callout")).toHaveText(`Consistently faster: ${testUser("technician").name} below the station median in 6 checks in a row (−12%)`);
   await expect(page.getByTestId("sample-chip")).toHaveCount(0);
