@@ -77,6 +77,32 @@ test("the CSV in the line view: one row per check, the latest values, the note o
   expect(lines.slice(1).every((l) => l.endsWith('"Voice-entered or typed, not a validated record"'))).toBe(true); // quoted: it has a comma
 });
 
+test("Export: CSV one row per reading, the control chart as a PDF, both in a ZIP, named after station, point and date", async ({ page, request }) => {
+  const q = `station=${encodeURIComponent(STATION)}&range=all&shift=all&group=holes&point=H1&n=25`;
+  const name = new RegExp(`filename="measurements_[A-Za-z0-9-]+_H1_\\d{4}-\\d{2}-\\d{2}\\.(csv|pdf|zip)"`);
+  const csv = await request.get(`/api/measurements/export?${q}&format=csv`);
+  expect(csv.headers()["content-disposition"]).toMatch(name);
+  expect((await csv.text()).split("\r\n")[0]).toContain("recorded_at,technician,station,session,step,point,value");
+  const pdf = await request.get(`/api/measurements/export?${q}&format=pdf`);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  const bytes = await pdf.body();
+  expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+  expect(bytes.toString("latin1")).toContain("/MediaBox [0 0 842 595]");
+  expect(bytes.toString("latin1")).toContain("(H1 \xb7 control chart)");
+  const z = await (await request.get(`/api/measurements/export?${q}&format=zip`)).body();
+  expect(z.readUInt32LE(0)).toBe(0x04034b50);
+  expect(z.toString("latin1")).toMatch(/measurements_[A-Za-z0-9-]+_H1_[\d-]+\.csv/);
+
+  // The readings picker: Last 7 shows at most 7 points, and the choice is in the URL for the Export menu.
+  await page.goto(url());
+  await page.getByTestId("readings-picker").getByRole("button", { name: "Last 7" }).click();
+  await expect(page).toHaveURL(/n=7/);
+  expect(await page.getByTestId("control-chart").locator("circle").count()).toBeLessThanOrEqual(7);
+  await expect(page.getByTestId("stat-n")).toHaveText(/^[0-7]$/);
+  await page.getByTestId("export-menu").click();
+  await expect(page.getByTestId("export-pdf")).toBeVisible();
+});
+
 test("a Quality Technician gets 403 from the export and the access message on the page", async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const p = await ctx.newPage();

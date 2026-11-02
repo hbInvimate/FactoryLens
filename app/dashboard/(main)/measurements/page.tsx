@@ -16,6 +16,8 @@ import { POINT_GROUPS, drift, groupLabel, judge, likelyCause, toleranceOf, type 
 import { dashView, type DashView } from "@/lib/server/dashView";
 import { PAGE_SIZE, WIDE_LIMIT, listMeasurements, parseMeasurementParams, wideMeasurements, type Sort, type Source } from "@/lib/server/measurements";
 import { WideTable } from "@/components/measurements/WideTable";
+import { ControlChart } from "@/components/measurements/ControlChart";
+import { ExportMenu } from "@/components/measurements/ExportMenu";
 import { NotConfigured } from "@/lib/server/repo";
 
 export const metadata = { title: "FactoryLens AI: measurements" };
@@ -49,16 +51,13 @@ async function Body({ searchParams }: { searchParams: PageProps<"/dashboard/meas
   const group: PointGroupId = POINT_GROUPS.some((g) => g.id === sp.group) ? (sp.group as PointGroupId) : "holes";
   const base = { view: viewKind, station: params.station, range: params.range, shift: params.shift ?? "all", step: m.step ? String(m.step) : "", source: m.source ?? "", sort: m.sort, dir: m.dir, group };
   const href = (change: Record<string, string | number>) => `/dashboard/measurements?${new URLSearchParams({ ...base, page: String(m.page), ...Object.fromEntries(Object.entries(change).map(([k, v]) => [k, String(v)])) })}`;
-  const csv = `/api/measurements/csv?${new URLSearchParams(base)}`;
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <h1 className="text-[30px] font-bold">Measurements</h1>
         <span className="flex-1" />
-        <ButtonLink href={csv} data-testid="csv-export">
-          Export CSV
-        </ButtonLink>
+        <ExportMenu query={new URLSearchParams(base).toString()} />
       </div>
       <Tabs
         label="View"
@@ -147,6 +146,7 @@ async function Line({ f, source, group, station }: { f: DashView["f"]; source: S
         </p>
       ) : (
         <>
+          <ControlChart rows={rows} points={points} initialPoint={banner?.point ?? worst ?? points[0]} />
           <WideTable rows={rows} points={points} banner={banner} />
         </>
       )}
