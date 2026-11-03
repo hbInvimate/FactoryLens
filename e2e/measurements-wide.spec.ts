@@ -40,8 +40,8 @@ test("one row per check, all on one page, newest first; the latest value wins, a
   await expect(rows).toHaveCount(57); // no paging
   await expect(rows.first()).toHaveAttribute("data-session", ids[54]); // newest first
   // One point group at a time (Holes by default): the left columns, then H1 to H14.
-  await expect(page.getByTestId("wide-table").locator("thead th")).toHaveCount(5 + 14);
-  await expect(page.getByTestId("wide-table").locator("thead th").first()).toHaveText("Date");
+  await expect(page.getByTestId("wide-table").locator("thead th")).toHaveCount(3 + 14);
+  await expect(page.getByTestId("wide-table").locator("thead th").first()).toHaveText("Check");
 
   const row = page.locator(`tr[data-session="${corrected}"]`);
   const h1 = row.locator('td[data-point="H1"]');
