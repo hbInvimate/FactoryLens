@@ -237,3 +237,25 @@ test("below 1024 px the sidebar is behind the menu button", async ({ browser }) 
   await expect(page.getByRole("dialog", { name: "Menu" })).toBeHidden();
   await ctx.close();
 });
+
+test("Start a check twice in a row (one open) lands on the check screen each time, without a refresh", async ({ browser }) => {
+  const { ctx, page } = await signedIn(browser, "technician2");
+  await page.getByTestId("start-a-check").click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  const first = page.url();
+  // Back to Sessions in the app: the page was kept mounted, and no "Starting…" is left over from the first start.
+  await page.goBack();
+  await page.waitForURL(/\/tasks/);
+  await expect(page.getByTestId("start-a-check")).toHaveText("▶ Start a check");
+  await expect(page.getByTestId("start-a-check")).toBeEnabled();
+  // The sidebar button uses the same start: a new check, on the check screen.
+  await page.getByTestId("sidebar-start").click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  expect(page.url()).not.toBe(first);
+  await page.goBack();
+  await page.waitForURL(/\/tasks/);
+  await page.getByTestId("start-a-check").click();
+  await page.waitForURL(/\/check\/[A-Za-z0-9-]+$/);
+  await expect(page.getByTestId("start-stalled")).toHaveCount(0);
+  await ctx.close();
+});

@@ -2,12 +2,13 @@
 // The Sessions page's start card: Part, Cell and fixture and SOP, pre-filled with the last-used values, and a big
 // Start a check that always starts a new check at once. A check running on this device is paused first: it stays in
 // "Assigned to you" as Paused. (The duplicate rule is only for supervisor task creation.)
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 import { reduce } from "@/lib/check/reducer";
 import { ENDED_STATUSES } from "@/lib/check/types";
 import { getActiveId, readLocal } from "@/lib/client/local";
 import { createLocalSession, pauseOnDevice } from "@/lib/client/useCheckSession";
+import { useStartCheck } from "@/lib/client/useStartCheck";
 import { sopName } from "@/lib/sop-revisions";
 
 const SELECT = "min-h-[56px] w-full rounded-[14px] border border-primary-line bg-surface px-3 pt-5 pb-1.5 text-[17px] font-semibold text-ink";
@@ -30,25 +31,23 @@ export function HeroStart({
   last: { part: string; station: string };
   sop: { id: string | null; label: string };
 }) {
-  const router = useRouter();
   const [part, setPart] = useState(last.part);
   const [station, setStation] = useState(last.station);
-  const [busy, setBusy] = useState(false);
+  const { start: open, busy, stalled, reset } = useStartCheck();
   const [error, setError] = useState<string | null>(null);
 
   const start = async () => {
     setError(null);
-    setBusy(true);
-    const open = deviceCheck();
-    if (open) await pauseOnDevice(open);
-    let id: string;
     try {
-      id = createLocalSession({ part, sop: sopName(sop.label), fixture: station, station, operator: operatorName, ...(sop.id ? { sopRevisionId: sop.id } : {}) });
+      await open(async () => {
+        const running = deviceCheck();
+        if (running) await pauseOnDevice(running);
+        return createLocalSession({ part, sop: sopName(sop.label), fixture: station, station, operator: operatorName, ...(sop.id ? { sopRevisionId: sop.id } : {}) });
+      });
     } catch {
-      setBusy(false);
-      return setError("This device could not store the new check. Tap Start again.");
+      reset();
+      setError("This device could not store the new check. Tap Start again.");
     }
-    router.push(`/check/${id}`);
   };
 
   return (
@@ -92,12 +91,20 @@ export function HeroStart({
         <button
           type="button"
           onClick={() => void start()}
-          disabled={busy}
+          disabled={busy && !stalled}
           className="inline-flex min-h-[64px] items-center gap-2 rounded-[16px] bg-primary px-8 text-[22px] font-bold text-on-strong shadow-card hover:bg-primary-hover disabled:opacity-60"
           data-testid="start-a-check"
         >
-          ▶ {busy ? "Starting…" : "Start a check"}
+          ▶ {busy && !stalled ? "Starting…" : "Start a check"}
         </button>
+        {stalled && (
+          <span role="status" className="text-[15px] text-ink-2" data-testid="start-stalled">
+            Check created –{" "}
+            <Link href={`/check/${stalled}`} className="font-semibold text-primary-ink underline">
+              Open it
+            </Link>
+          </span>
+        )}
         {error && (
           <span role="alert" className="max-w-[320px] text-right text-[14px] text-red-ink">
             {error}
