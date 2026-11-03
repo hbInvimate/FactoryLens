@@ -11,13 +11,16 @@ import { MEASUREMENT_UNIT } from "@/lib/config";
 import { judge, toleranceOf, type Judgement, type Series } from "@/lib/measure-judge";
 import type { WideRow } from "@/lib/server/measurements";
 
+// Fixed, sticky left columns; the point columns share the rest of the width equally (at least POINT_MIN each).
 const FIXED = [
-  { label: "Date", w: 130 },
-  { label: "Quality Technician", w: 150 },
-  { label: "Station", w: 140 },
-  { label: "Status", w: 112 },
-  { label: "Session", w: 76 },
+  { label: "Check", w: 200 },
+  { label: "Status", w: 120 },
+  { label: "Session", w: 72 },
 ];
+const POINT_MIN = 64;
+const FIXED_W = FIXED.reduce((a, c) => a + c.w, 0);
+/** "Test Quality Technician" to "TQ". */
+const initials = (name: string) => name.split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
 const LEFT = FIXED.map((_, i) => FIXED.slice(0, i).reduce((a, c) => a + c.w, 0));
 const SPARK_H = 30;
 
@@ -76,16 +79,16 @@ export function WideTable({ rows, points, banner }: { rows: WideRow[]; points: r
       )}
 
       <div className="max-h-[70vh] overflow-auto rounded-[20px] border border-line bg-surface" data-testid="wide-scroll">
-        <table className="border-separate border-spacing-0 text-[14px]" data-testid="wide-table">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ minWidth: FIXED_W + points.length * POINT_MIN }} data-testid="wide-table">
           <thead>
             <tr>
               {FIXED.map((c, i) => (
-                <th key={c.label} className={cx(th, stick, "top-0 z-30 bg-surface-2 pb-2 align-bottom")} style={{ left: LEFT[i], minWidth: c.w, maxWidth: c.w }}>
+                <th key={c.label} className={cx(th, stick, "top-0 z-30 bg-surface-2 pb-2 align-bottom")} style={{ left: LEFT[i], width: c.w }}>
                   {c.label}
                 </th>
               ))}
               {points.map((p, i) => (
-                <th key={p} className={cx(th, "sticky top-0 z-20 bg-surface-2 pt-2 pb-2 text-center", i === 0 && "border-l")} style={{ minWidth: 64 }}>
+                <th key={p} className={cx(th, "sticky top-0 z-20 bg-surface-2 px-1 pt-2 pb-2 text-center", i === 0 && "border-l")}>
                   <span style={{ height: SPARK_H }} className="flex items-center" data-testid={`spark-${p}`}>
                     <Spark point={p} series={series(p)} />
                   </span>
@@ -97,28 +100,22 @@ export function WideTable({ rows, points, banner }: { rows: WideRow[]; points: r
           <tbody>
             {rows.map((r) => (
               <tr key={r.sessionId} data-session={r.sessionId} className="hover:bg-surface-2">
-                <td className={cx(stick, "border-b border-line px-3 py-2 align-top")} style={{ left: LEFT[0], minWidth: FIXED[0].w, maxWidth: FIXED[0].w }}>
+                <td className={cx(stick, "border-b border-line px-3 py-2 align-top")} style={{ left: LEFT[0], width: FIXED[0].w }}>
                   <span className="flex flex-col leading-tight">
                     <b className="text-[14px]">
-                      <LocalTime iso={r.startedAt} dateOnly />
+                      <LocalTime iso={r.startedAt} dateOnly /> <LocalTime iso={r.startedAt} timeOnly />
                     </b>
-                    <span className="text-[13px] text-muted">
-                      <LocalTime iso={r.startedAt} timeOnly />
+                    <span className="truncate text-[13px] text-muted" title={`${r.technician} · ${r.station}`}>
+                      {initials(r.technician)} · {r.station.split(" · ")[0]}
                     </span>
                   </span>
                 </td>
-                <td className={cx(stick, "border-b border-line px-3 py-2 align-top break-words")} style={{ left: LEFT[1], minWidth: FIXED[1].w, maxWidth: FIXED[1].w }}>
-                  {r.technician}
-                </td>
-                <td className={cx(stick, "border-b border-line px-3 py-2 align-top break-words")} style={{ left: LEFT[2], minWidth: FIXED[2].w, maxWidth: FIXED[2].w }}>
-                  {r.station}
-                </td>
-                <td className={cx(stick, "border-b border-line px-3 py-2 align-top")} style={{ left: LEFT[3], minWidth: FIXED[3].w, maxWidth: FIXED[3].w }}>
+                <td className={cx(stick, "border-b border-line px-3 py-2 align-top")} style={{ left: LEFT[1], width: FIXED[1].w }}>
                   <span className={cx("inline-flex rounded-full px-2.5 py-0.5 text-[13px] font-semibold", r.status === "complete" ? "bg-primary-soft text-primary-ink" : "bg-surface-2 text-ink-2")} data-testid="status-pill">
                     {STATUS_LABEL[r.status] ?? r.status}
                   </span>
                 </td>
-                <td className={cx(stick, "border-b border-r border-line px-3 py-2 align-top")} style={{ left: LEFT[4], minWidth: FIXED[4].w, maxWidth: FIXED[4].w }}>
+                <td className={cx(stick, "border-b border-r border-line px-3 py-2 align-top")} style={{ left: LEFT[2], width: FIXED[2].w }}>
                   <Link href={`/dashboard/${r.sessionId}`} className="font-semibold text-primary-ink underline-offset-4 hover:underline">
                     View
                   </Link>
@@ -128,13 +125,13 @@ export function WideTable({ rows, points, banner }: { rows: WideRow[]; points: r
                   const corrected = !!c && c.earlier.length > 0;
                   const j = c ? judge(p, c.latest) : null;
                   return (
-                    <td key={p} data-point={p} data-corrected={corrected ? "1" : undefined} data-judge={j ?? undefined} className={cx("border-b border-line px-1.5 py-1.5 text-center", i === 0 && "border-l")}>
+                    <td key={p} data-point={p} data-corrected={corrected ? "1" : undefined} data-judge={j ?? undefined} className={cx("border-b border-line px-1 py-1.5 text-center", i === 0 && "border-l")}>
                       {c ? (
                         <button
                           type="button"
                           onClick={() => setOpen({ point: p, at: c.at, sessionId: r.sessionId })}
                           title={corrected ? `Corrected. Earlier: ${c.earlier.join(", ")} ${MEASUREMENT_UNIT}` : r.demo || c.demo ? "Demo value, not a measurement" : `${p} history`}
-                          className={cx("inline-flex min-w-[52px] items-center justify-center rounded-[8px] px-2 py-1 font-semibold tabular-nums whitespace-nowrap hover:ring-2 hover:ring-primary-line", j ? PILL[j] : "bg-surface-2")}
+                          className={cx("inline-flex w-full items-center justify-center rounded-[8px] px-1 py-1 font-semibold tabular-nums whitespace-nowrap hover:ring-2 hover:ring-primary-line", j ? PILL[j] : "bg-surface-2")}
                         >
                           {c.latest}
                           {corrected && <span aria-label="corrected" className="ml-0.5 inline-block size-1.5 rounded-full bg-amber align-top" data-testid="corrected-dot" />}
