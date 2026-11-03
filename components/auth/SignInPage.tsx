@@ -24,10 +24,16 @@ export function SignInPage({ area, searchParams }: { area: Area; searchParams: P
   return (
     <main className="flex min-h-dvh flex-1 flex-col bg-page lg:flex-row">
       <section className="flex flex-col gap-10 border-b border-primary-line bg-primary-soft px-8 py-8 lg:w-[46%] lg:justify-between lg:border-r lg:border-b-0 lg:px-14 lg:py-12">
-        <Logo />
+        <span className="flex items-center gap-3">
+          <Logo />
+          <span className="rounded-full border border-primary-line bg-surface px-3 py-0.5 text-[13px] font-semibold text-primary-ink">Quality</span>
+        </span>
         <div className="flex flex-col gap-4">
-          <p className="text-[36px] leading-[1.08] font-bold tracking-tight text-ink lg:text-[52px]">AI that guides every first-off check, step by step.</p>
-          <p className="text-[20px] text-ink-2">Technicians follow the SOP, AI watches each step, and engineers improve it from the best sessions.</p>
+          <p className="text-[13px] font-bold tracking-wide text-primary-ink uppercase">FactoryLens Quality · Part of the FactoryLens AI platform</p>
+          <p className="text-[36px] leading-[1.08] font-bold tracking-tight text-ink lg:text-[52px]">Quality, guided by AI. Every check, every step.</p>
+          <p className="text-[20px] text-ink-2">
+            Quality Technicians follow the SOP with AI guidance, Supervisors see every check live, and Quality Engineers improve the SOP from the best sessions.
+          </p>
         </div>
         <div className="flex flex-col gap-8">
           <ul className="flex flex-col gap-3" data-testid="signin-ticks">
