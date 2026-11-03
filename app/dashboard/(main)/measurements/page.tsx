@@ -132,7 +132,7 @@ async function Line({ f, source, group, station }: { f: DashView["f"]; source: S
           testId="kpi-worst"
         />
       </div>
-    <Card className="flex flex-col gap-3 px-6 py-5">
+    <Card className="flex flex-col gap-3 px-5 py-5">
       <p className="text-[15px] font-semibold" data-testid="check-count">
         {count} {count === 1 ? "check" : "checks"} · {groupLabel(group)} ({MEASUREMENT_UNIT})
       </p>
